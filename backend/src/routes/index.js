@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import healthRoutes from './health.routes.js';
 import authRoutes from '../modules/auth/auth.routes.js';
+import customerRoutes from '../modules/customers/customer.routes.js';
 
 const router = Router();
 
@@ -21,5 +22,6 @@ router.get('/api/v1', (_req, res) => {
 
 // Domain Modules
 router.use('/api/v1/auth', authRoutes);
+router.use('/api/v1/customers', customerRoutes);
 
 export default router;
