@@ -50,7 +50,7 @@ export default function LoginPage() {
         {/* Error Notification */}
         {error && (
           <div className="mb-6 p-3 rounded-lg bg-red-50 border border-red-200 flex items-center gap-2 text-red-700 text-sm">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
@@ -113,24 +113,24 @@ export default function LoginPage() {
               onClick={() => handleQuickLogin('owner@visioncare.com', 'Password123!')}
               className="text-left px-3 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs transition flex justify-between items-center"
             >
-              <span className="font-semibold text-slate-800">Vision Care (Owner)</span>
-              <span className="text-indigo-600">Rajesh Sharma &rarr;</span>
+              <span className="font-semibold text-slate-800">Vision Opticals (Owner)</span>
+              <span className="text-indigo-600">Halil &rarr;</span>
             </button>
             <button
               type="button"
               onClick={() => handleQuickLogin('staff@visioncare.com', 'Password123!')}
               className="text-left px-3 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs transition flex justify-between items-center"
             >
-              <span className="font-semibold text-slate-800">Vision Care (Staff)</span>
-              <span className="text-indigo-600">Anjali Gupta &rarr;</span>
+              <span className="font-semibold text-slate-800">Vision Opticals (Staff)</span>
+              <span className="text-indigo-600">Halil &rarr;</span>
             </button>
             <button
               type="button"
               onClick={() => handleQuickLogin('owner@cityeye.com', 'Password123!')}
               className="text-left px-3 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs transition flex justify-between items-center"
             >
-              <span className="font-semibold text-slate-800">City Eye Optics (Store B)</span>
-              <span className="text-indigo-600">Suresh Verma &rarr;</span>
+              <span className="font-semibold text-slate-800">Vision Care Optics (Store B)</span>
+              <span className="text-indigo-600">Spiderman &rarr;</span>
             </button>
           </div>
         </div>
