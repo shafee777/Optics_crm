@@ -62,17 +62,29 @@ async function seed() {
     // 5. Sample Customer for Store A (Ravi Kumar)
     const custAResult = await client.query(`
       INSERT INTO customers (store_id, full_name, phone, email, gender, age, address)
-      VALUES ('${storeAId}', 'Ravi Kumar', '9876543210', 'ravi@example.com', 'Male', 38, 'Flat 201, Green Park, Delhi')
-      ON CONFLICT (store_id, phone) DO UPDATE SET full_name = EXCLUDED.full_name
+      SELECT '${storeAId}', 'Ravi Kumar', '9876543210', 'ravi@example.com', 'Male', 38, 'Flat 201, Green Park, Delhi'
+      WHERE NOT EXISTS (
+        SELECT 1 FROM customers WHERE store_id = '${storeAId}' AND phone = '9876543210'
+      )
       RETURNING id;
     `);
-    const customerAId = custAResult.rows[0].id;
+    let customerAId;
+    if (custAResult.rows.length > 0) {
+      customerAId = custAResult.rows[0].id;
+    } else {
+      const existingCustomer = await client.query(
+        `SELECT id FROM customers WHERE store_id = '${storeAId}' AND phone = '9876543210' ORDER BY created_at ASC LIMIT 1;`
+      );
+      customerAId = existingCustomer.rows[0].id;
+    }
 
     // 6. Customer in Store B with the SAME phone (Proves tenant isolation!)
     await client.query(`
       INSERT INTO customers (store_id, full_name, phone, email, gender, age, address)
-      VALUES ('${storeBId}', 'Ravi Kumar (City Eye Branch)', '9876543210', 'ravi.cityeye@example.com', 'Male', 38, 'MG Road')
-      ON CONFLICT (store_id, phone) DO NOTHING;
+      SELECT '${storeBId}', 'Ravi Kumar (City Eye Branch)', '9876543210', 'ravi.cityeye@example.com', 'Male', 38, 'MG Road'
+      WHERE NOT EXISTS (
+        SELECT 1 FROM customers WHERE store_id = '${storeBId}' AND phone = '9876543210'
+      );
     `);
 
     // 7. Initial Historical Prescription for Ravi at Vision Care
@@ -80,11 +92,17 @@ async function seed() {
       INSERT INTO prescriptions (
         store_id, customer_id, r_sph, r_cyl, r_axis, r_add, l_sph, l_cyl, l_axis, l_add, pd, notes
       )
-      VALUES (
+      SELECT
         '${storeAId}', '${customerAId}',
         -1.50, -0.50, 90, 1.25,
         -1.75, -0.25, 85, 1.25,
         63.0, 'Mild eye strain during screen use'
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM prescriptions
+        WHERE store_id = '${storeAId}'
+          AND customer_id = '${customerAId}'
+          AND notes = 'Mild eye strain during screen use'
       );
     `);
 
