@@ -3,72 +3,71 @@ import api from '../../services/api.js';
 
 const AuthContext = createContext(null);
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('optics_user');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const initializeAuth = async () => {
-      const token = localStorage.getItem('optics_token');
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const response = await api.get('/auth/me');
-        setUser(response.data.data.user);
-      } catch (err) {
-        console.error('Session expired or invalid:', err);
-        localStorage.removeItem('optics_token');
-        localStorage.removeItem('optics_user');
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initializeAuth();
+    const token = localStorage.getItem('optics_token');
+    if (!token) {
+      setUser(null);
+    }
+    setLoading(false);
   }, []);
 
   const login = async (email, password) => {
     const response = await api.post('/auth/login', { email, password });
-    const { token, user: userData } = response.data.data;
+    const { token, refreshToken, user: userData } = response.data.data;
 
     localStorage.setItem('optics_token', token);
+    if (refreshToken) {
+      localStorage.setItem('optics_refresh_token', refreshToken);
+    }
     localStorage.setItem('optics_user', JSON.stringify(userData));
     setUser(userData);
     return userData;
   };
 
-  const logout = () => {
-    localStorage.removeItem('optics_token');
-    localStorage.removeItem('optics_user');
-    setUser(null);
-    window.location.href = '/login';
+  const logout = async () => {
+    try {
+      const refreshToken = localStorage.getItem('optics_refresh_token');
+      if (refreshToken) {
+        await api.post('/auth/logout', { refreshToken });
+      }
+    } catch (err) {
+      console.warn('Server logout error:', err);
+    } finally {
+      localStorage.removeItem('optics_token');
+      localStorage.removeItem('optics_refresh_token');
+      localStorage.removeItem('optics_user');
+      setUser(null);
+      window.location.href = '/login';
+    }
+  };
+
+  const value = {
+    user,
+    login,
+    logout,
+    isAuthenticated: !!user,
+    isOwner: user?.role === 'OWNER',
+    isStaff: user?.role === 'STAFF',
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isAuthenticated: !!user,
-        loading,
-        login,
-        logout,
-        isOwner: user?.role === 'OWNER',
-        isStaff: user?.role === 'STAFF',
-      }}
-    >
-      {children}
+    <AuthContext.Provider value={value}>
+      {!loading && children}
     </AuthContext.Provider>
   );
-};
+}
 
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
+}

@@ -19,8 +19,8 @@ export default function CreateOrderPage() {
 
   // Items
   const [items, setItems] = useState([
-    { itemType: 'FRAME', description: '', quantity: 1, unitPrice: '', discount: 0, saveToStock: false },
-    { itemType: 'LENS', description: '', quantity: 1, unitPrice: '', discount: 0, saveToStock: false },
+    { productId: null, itemType: 'FRAME', description: '', quantity: 1, unitPrice: '', discount: 0 },
+    { productId: null, itemType: 'LENS', description: '', quantity: 1, unitPrice: '', discount: 0 },
   ]);
 
   // Order Settings
@@ -76,10 +76,10 @@ export default function CreateOrderPage() {
     const prod = stockProducts.find((p) => p.id === productId);
     if (prod) {
       const updated = [...items];
+      updated[index].productId = prod.id; // <-- Passes real product ID
       updated[index].description = `${prod.brand ? prod.brand + ' ' : ''}${prod.name}${prod.model_code ? ' (' + prod.model_code + ')' : ''}`;
       updated[index].unitPrice = prod.selling_price;
       updated[index].itemType = prod.item_type;
-      updated[index].saveToStock = false;
       setItems(updated);
     }
   };
@@ -143,6 +143,7 @@ export default function CreateOrderPage() {
         prescriptionId: selectedPrescriptionId || null,
         dueDate,
         items: items.map((i) => ({
+          productId: i.productId || null,
           itemType: i.itemType,
           description: i.description,
           quantity: parseInt(i.quantity, 10),
