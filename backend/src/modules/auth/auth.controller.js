@@ -25,4 +25,22 @@ export const authController = {
       next(error);
     }
   },
+
+  async refresh(req, res, next) {
+    try {
+      const tokens = await authService.refresh(req.body.refreshToken);
+      res.status(200).json({ success: true, data: tokens });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async logout(req, res, next) {
+    try {
+      await authService.logout(req.body.refreshToken);
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  },
 };

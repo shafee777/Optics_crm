@@ -10,6 +10,7 @@ import CreateOrderPage from '../features/orders/CreateOrderPage.jsx';
 import OrderDetailsPage from '../features/orders/OrderDetailsPage.jsx';
 import FinancePage from '../features/finance/FinancePage.jsx';
 import DashboardPage from '../features/dashboard/DashboardPage.jsx';
+import ProductsPage from '../features/products/ProductsPage.jsx';
 
 export default function AppRouter() {
   return (
@@ -29,6 +30,7 @@ export default function AppRouter() {
         <Route path="orders" element={<OrdersPage />} />
         <Route path="orders/new" element={<CreateOrderPage />} />
         <Route path="orders/:id" element={<OrderDetailsPage />} />
+        <Route path="inventory" element={<ProductsPage />} />
         <Route path="finance" element={<FinancePage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

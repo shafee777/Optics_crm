@@ -10,7 +10,8 @@ import {
   LogOut, 
   Store,
   ShieldCheck,
-  Receipt
+  Receipt,
+  Package 
 } from 'lucide-react';
 
 export default function AppLayout() {
@@ -21,6 +22,7 @@ export default function AppLayout() {
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Customers', href: '/customers', icon: Users },
     { name: 'Orders', href: '/orders', icon: ShoppingBag },
+    { name: 'Inventory', href: '/inventory', icon: Package }, 
     ...(isOwner
       ? [{ name: 'Finance & Analytics', href: '/finance', icon: IndianRupee }]
       : [{ name: 'Record Expenses', href: '/finance', icon: Receipt }]),

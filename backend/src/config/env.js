@@ -8,8 +8,17 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(5000),
   DATABASE_URL: z.string().url({ message: 'DATABASE_URL must be a valid PostgreSQL connection string' }),
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
-  JWT_ACCESS_SECRET: z.string().min(16, { message: 'JWT_ACCESS_SECRET must be at least 16 characters' }),
-  JWT_EXPIRES_IN: z.string().default('1d'),
+  JWT_ACCESS_SECRET: z
+    .string()
+    .min(32, { message: 'JWT_ACCESS_SECRET must be at least 32 characters' })
+    .default('dev-access-secret-change-me-please-123456'),
+  JWT_REFRESH_SECRET: z
+    .string()
+    .min(32, { message: 'JWT_REFRESH_SECRET must be at least 32 characters' })
+    .default('dev-refresh-secret-change-me-please-654321'),
+  JWT_EXPIRES_IN: z.string().default('15m'),
+  JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
+  LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 });
 

@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api.js';
 import OrderStatusBadge from './OrderStatusBadge.jsx';
 import RecordPaymentModal from '../payments/RecordPaymentModal.jsx';
+import PrintOrderInvoice from './PrintOrderInvoice.jsx';
+
 import { 
   ArrowLeft, 
   Phone, 
@@ -11,7 +13,8 @@ import {
   CheckCircle2, 
   Check, 
   IndianRupee,
-  Plus
+  Plus,
+  Printer
 } from 'lucide-react';
 
 export default function OrderDetailsPage() {
@@ -20,8 +23,22 @@ export default function OrderDetailsPage() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showPrintView, setShowPrintView] = useState(false);
+  const [linkedPrescription, setLinkedPrescription] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+
+  // Fetch linked prescription if order has prescription_id
+  useEffect(() => {
+    if (order?.prescription_id && order?.customer_id) {
+      api.get(`/customers/${order.customer_id}/prescriptions`)
+        .then((res) => {
+          const found = res.data.data.find((p) => p.id === order.prescription_id);
+          if (found) setLinkedPrescription(found);
+        })
+        .catch((err) => console.error(err));
+    }
+  }, [order]);
 
   const fetchOrder = useCallback(async () => {
     try {
@@ -39,7 +56,6 @@ export default function OrderDetailsPage() {
   }, [fetchOrder]);
 
   const handleStatusTransition = async (nextStatus) => {
-    // Business Rule: If attempting to mark as DELIVERED while there is an outstanding balance, open payment modal to collect payment first!
     if (nextStatus === 'DELIVERED' && order.balance_due > 0) {
       setIsPaymentModalOpen(true);
       return;
@@ -72,6 +88,33 @@ export default function OrderDetailsPage() {
     );
   }
 
+  // Dedicated Print / Invoice View
+  if (showPrintView) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="flex justify-between items-center print:hidden">
+          <button
+            onClick={() => setShowPrintView(false)}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 transition"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Order Details
+          </button>
+          <button
+            onClick={() => window.print()}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-sm transition flex items-center gap-1.5"
+          >
+            <Printer className="w-4 h-4" />
+            Print Document
+          </button>
+        </div>
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm print:shadow-none print:p-0 print:border-none">
+          <PrintOrderInvoice order={order} prescription={linkedPrescription} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Back button */}
@@ -96,8 +139,16 @@ export default function OrderDetailsPage() {
           </p>
         </div>
 
-        {/* State Machine Action Controls */}
-        <div className="flex items-center gap-2">
+        {/* Action Controls & Print Toggle */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setShowPrintView(true)}
+            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition flex items-center gap-1.5"
+          >
+            <Printer className="w-4 h-4 text-slate-600" />
+            Print Invoice
+          </button>
+
           {order.status === 'PENDING' && (
             <button
               disabled={updatingStatus}
@@ -147,7 +198,7 @@ export default function OrderDetailsPage() {
 
       {error && (
         <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-center gap-2 text-red-700 text-sm">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}
@@ -214,7 +265,7 @@ export default function OrderDetailsPage() {
           </div>
         </div>
 
-        {/* Right 1 Col: Customer & Payment Summary Card */}
+        {/* Right 1 Col: Customer & Financial Summary */}
         <div className="space-y-6">
           {/* Customer Card */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">

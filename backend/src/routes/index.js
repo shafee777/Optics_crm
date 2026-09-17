@@ -8,6 +8,7 @@ import paymentRoutes from '../modules/payments/payment.routes.js';
 import expenseRoutes from '../modules/expenses/expense.routes.js';
 import dashboardRoutes from '../modules/dashboard/dashboard.routes.js';
 import reportRoutes from '../modules/reports/report.routes.js';
+import productRoutes from '../modules/products/product.routes.js';
 
 const router = Router();
 
@@ -35,5 +36,6 @@ router.use('/api/v1/orders/:orderId/payments', paymentRoutes);
 router.use('/api/v1/expenses', expenseRoutes);
 router.use('/api/v1/dashboard', dashboardRoutes);
 router.use('/api/v1/reports', reportRoutes);
+router.use('/api/v1/products', productRoutes);
 
 export default router;

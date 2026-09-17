@@ -2,6 +2,10 @@ import { query } from '../../config/database.js';
 
 export const paymentRepository = {
   async create(storeId, orderId, userId, data) {
+    return await this.createTx(query, storeId, orderId, userId, data);
+  },
+
+  async createTx(db, storeId, orderId, userId, data) {
     const sql = `
       INSERT INTO payments (
         store_id, order_id, amount, payment_method, reference, created_by, notes
@@ -18,7 +22,7 @@ export const paymentRepository = {
       userId,
       data.notes || null,
     ];
-    const res = await query(sql, values);
+    const res = await db.query(sql, values);
     return res.rows[0];
   },
 
