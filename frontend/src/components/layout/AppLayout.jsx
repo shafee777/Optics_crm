@@ -9,18 +9,21 @@ import {
   IndianRupee, 
   LogOut, 
   Store,
-  ShieldCheck
+  ShieldCheck,
+  Receipt
 } from 'lucide-react';
 
 export default function AppLayout() {
-  const { user, logout } = useAuth();
+  const { user, logout, isOwner } = useAuth();
   const location = useLocation();
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Customers', href: '/customers', icon: Users },
     { name: 'Orders', href: '/orders', icon: ShoppingBag },
-    { name: 'Finance', href: '/finance', icon: IndianRupee },
+    ...(isOwner
+      ? [{ name: 'Finance & Analytics', href: '/finance', icon: IndianRupee }]
+      : [{ name: 'Record Expenses', href: '/finance', icon: Receipt }]),
   ];
 
   return (
