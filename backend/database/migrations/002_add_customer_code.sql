@@ -1,25 +1,23 @@
--- 1. Add customer_code column
+-- 1. Add customer_code column if missing
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS customer_code VARCHAR(50);
 
--- 2. Drop the strict unique phone constraint so family members can share phones
+-- 2. Drop strict unique phone constraint to allow shared family numbers
 ALTER TABLE customers DROP CONSTRAINT IF EXISTS uq_customers_store_phone;
 
--- 3. Populate existing rows with customer codes (CUST-1001, CUST-1002, ...)
-DO $$
-DECLARE
-    r RECORD;
-    c INT;
-BEGIN
-    FOR r IN SELECT DISTINCT store_id FROM customers LOOP
-        c := 1000;
-        FOR r IN SELECT id FROM customers WHERE store_id = r.store_id AND customer_code IS NULL ORDER BY created_at ASC LOOP
-            c := c + 1;
-            UPDATE customers SET customer_code = 'CUST-' || c WHERE id = r.id;
-        END LOOP;
-    END LOOP;
-END $$;
+-- 3. Backfill existing rows (CUST-1001, CUST-1002, ...) partitioned per store
+WITH numbered_customers AS (
+  SELECT 
+    id,
+    'CUST-' || (1000 + ROW_NUMBER() OVER (PARTITION BY store_id ORDER BY created_at ASC)) AS generated_code
+  FROM customers
+  WHERE customer_code IS NULL
+)
+UPDATE customers c
+SET customer_code = nc.generated_code
+FROM numbered_customers nc
+WHERE c.id = nc.id;
 
--- 4. Add unique constraint on (store_id, customer_code)
+-- 4. Add unique constraint per store and lookup index
 DO $$
 BEGIN
     IF NOT EXISTS (

@@ -1,5 +1,6 @@
 import { query, withTransaction } from '../../config/database.js';
 import { ORDER_STATUS } from './order.constants.js';
+import { AppError } from '../../shared/errors/AppError.js';
 
 export const orderRepository = {
   async ensureStoreCountersTable(db = query) {
@@ -51,25 +52,31 @@ export const orderRepository = {
     return `ORD-${nextSeq}`;
   },
 
-  // Atomic order creation: Order Header + Order Items + Optional Advance Payment
   async createTransactional(storeId, userId, data) {
     return await withTransaction(async (client) => {
       const orderNumber = await this.getNextOrderNumber(client, storeId);
 
-      // 1. Calculate financial totals
       let subtotal = 0;
       const computedItems = data.items.map((item) => {
-        const itemTotal = item.quantity * item.unitPrice - (item.discount || 0);
+        const itemSubtotal = item.quantity * item.unitPrice;
+        const itemTotal = Math.max(0, itemSubtotal - (item.discount || 0));
         subtotal += itemTotal;
-        return { ...item, totalPrice: Math.max(0, itemTotal) };
+        return { ...item, totalPrice: itemTotal };
       });
 
-      const orderDiscount = data.discount || 0;
-      const orderTax = data.tax || 0;
-      const finalTotal = Math.max(0, subtotal - orderDiscount + orderTax);
+      const discount = data.discount || 0;
+      const tax = data.tax || 0;
+      const totalAmount = Math.max(0, subtotal - discount + tax);
 
-      // 2. Insert Order Header
-      const orderSql = `
+      if (data.advancePayment && data.advancePayment.amount > totalAmount) {
+        throw new AppError(
+          `Advance payment (₹${data.advancePayment.amount}) cannot exceed order total (₹${totalAmount})`,
+          400,
+          'ADVANCE_PAYMENT_EXCEEDS_TOTAL'
+        );
+      }
+
+      const orderQuery = `
         INSERT INTO orders (
           store_id, customer_id, prescription_id, order_number,
           order_date, due_date, status,
@@ -79,7 +86,7 @@ export const orderRepository = {
         VALUES ($1, $2, $3, $4, CURRENT_DATE, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING *;
       `;
-      const orderRes = await client.query(orderSql, [
+      const { rows: orderRows } = await client.query(orderQuery, [
         storeId,
         data.customerId,
         data.prescriptionId || null,
@@ -87,50 +94,64 @@ export const orderRepository = {
         data.dueDate,
         ORDER_STATUS.PENDING,
         subtotal,
-        orderDiscount,
-        orderTax,
-        finalTotal,
+        discount,
+        tax,
+        totalAmount,
         data.notes || null,
         userId,
       ]);
-      const createdOrder = orderRes.rows[0];
+      const createdOrder = orderRows[0];
 
-      // 3. Insert Order Items
       for (const item of computedItems) {
-        const itemSql = `
-          INSERT INTO order_items (
-            order_id, item_type, description, quantity, unit_price, discount, total_price
-          )
-          VALUES ($1, $2, $3, $4, $5, $6, $7);
-        `;
-        await client.query(itemSql, [
-          createdOrder.id,
-          item.itemType,
-          item.description,
-          item.quantity,
-          item.unitPrice,
-          item.discount || 0,
-          item.totalPrice,
-        ]);
+        await client.query(
+          `
+            INSERT INTO order_items (
+              order_id, product_id, item_type, description, quantity,
+              unit_price, discount, total_price
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
+          `,
+          [
+            createdOrder.id,
+            item.productId || null,
+            item.itemType,
+            item.description,
+            item.quantity,
+            item.unitPrice,
+            item.discount || 0,
+            item.totalPrice,
+          ]
+        );
+
+        if (item.productId) {
+          await client.query(
+            `
+              UPDATE products
+              SET stock_quantity = GREATEST(0, stock_quantity - $1), updated_at = NOW()
+              WHERE id = $2 AND store_id = $3;
+            `,
+            [item.quantity, item.productId, storeId]
+          );
+        }
       }
 
-      // 4. Insert Advance Payment if provided
       if (data.advancePayment && data.advancePayment.amount > 0) {
-        const paymentSql = `
-          INSERT INTO payments (
-            store_id, order_id, amount, payment_method, reference, created_by, notes
-          )
-          VALUES ($1, $2, $3, $4, $5, $6, $7);
-        `;
-        await client.query(paymentSql, [
-          storeId,
-          createdOrder.id,
-          data.advancePayment.amount,
-          data.advancePayment.paymentMethod,
-          data.advancePayment.reference || null,
-          userId,
-          'Initial Advance Payment',
-        ]);
+        await client.query(
+          `
+            INSERT INTO payments (
+              store_id, order_id, amount, payment_method, reference, created_by
+            )
+            VALUES ($1, $2, $3, $4, $5, $6);
+          `,
+          [
+            storeId,
+            createdOrder.id,
+            data.advancePayment.amount,
+            data.advancePayment.paymentMethod,
+            data.advancePayment.reference || null,
+            userId,
+          ]
+        );
       }
 
       return createdOrder;
