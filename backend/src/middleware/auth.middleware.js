@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
 import { AppError } from '../shared/errors/AppError.js';
 
-export const authMiddleware = (req, _res, next) => {
+export const authenticate = (req, _res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -26,3 +26,5 @@ export const authMiddleware = (req, _res, next) => {
     return next(new AppError('Invalid authentication token', 401, 'INVALID_TOKEN'));
   }
 };
+
+export const authMiddleware = authenticate;

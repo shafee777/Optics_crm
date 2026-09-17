@@ -1,22 +1,55 @@
 import { query } from '../../config/database.js';
 
 export const customerRepository = {
-  // Get next sequential customer code (e.g. CUST-1003)
-  async getNextCustomerCode(storeId) {
-    const sql = `
-      SELECT customer_code 
-      FROM customers 
-      WHERE store_id = $1 AND customer_code LIKE 'CUST-%'
-      ORDER BY customer_code DESC 
-      LIMIT 1;
-    `;
-    const res = await query(sql, [storeId]);
-    if (res.rows.length === 0 || !res.rows[0].customer_code) {
-      return 'CUST-1001';
-    }
-    const lastNum = parseInt(res.rows[0].customer_code.replace('CUST-', ''), 10);
-    const nextNum = isNaN(lastNum) ? 1001 : lastNum + 1;
-    return `CUST-${nextNum}`;
+  async ensureStoreCountersTable(db = query) {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS store_counters (
+        store_id UUID PRIMARY KEY REFERENCES stores(id) ON DELETE CASCADE,
+        customer_code_seq INT NOT NULL DEFAULT 1000,
+        order_number_seq INT NOT NULL DEFAULT 1000,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS idx_store_counters_updated_at
+      ON store_counters(updated_at);
+    `);
+  },
+
+  // Concurrency-safe, store-scoped customer code generation.
+  async getNextCustomerCode(storeId, client = null) {
+    const db = client ?? query;
+
+    await this.ensureStoreCountersTable(db);
+
+    await db.query(
+      `
+        INSERT INTO store_counters (store_id, customer_code_seq, order_number_seq)
+        VALUES ($1, 1000, 1000)
+        ON CONFLICT (store_id) DO NOTHING;
+      `,
+      [storeId]
+    );
+
+    const res = await db.query(
+      `
+        UPDATE store_counters
+        SET customer_code_seq = GREATEST(
+              customer_code_seq,
+              COALESCE((SELECT MAX(CAST(regexp_replace(customer_code, '^CUST-','') AS integer))
+                        FROM customers WHERE store_id = $1), 1000)
+            ) + 1,
+            updated_at = NOW()
+        WHERE store_id = $1
+        RETURNING customer_code_seq;
+      `,
+      [storeId]
+    );
+
+    const nextSeq = Number(res.rows[0]?.customer_code_seq ?? 1001);
+    return `CUST-${nextSeq}`;
   },
 
   async findByCode(storeId, code) {

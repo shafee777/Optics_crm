@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../services/api.js';
-import { ArrowLeft, Plus, Trash2, ShoppingBag, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, ShoppingBag, AlertCircle, Sparkles } from 'lucide-react';
 
 export default function CreateOrderPage() {
   const [searchParams] = useSearchParams();
   const preselectedCustomerId = searchParams.get('customerId');
-
   const navigate = useNavigate();
 
   // Customer selection
@@ -15,16 +14,19 @@ export default function CreateOrderPage() {
   const [prescriptions, setPrescriptions] = useState([]);
   const [selectedPrescriptionId, setSelectedPrescriptionId] = useState('');
 
+  // Products stock catalog (for quick select)
+  const [stockProducts, setStockProducts] = useState([]);
+
   // Items
   const [items, setItems] = useState([
-    { itemType: 'FRAME', description: '', quantity: 1, unitPrice: '', discount: 0 },
-    { itemType: 'LENS', description: '', quantity: 1, unitPrice: '', discount: 0 },
+    { itemType: 'FRAME', description: '', quantity: 1, unitPrice: '', discount: 0, saveToStock: false },
+    { itemType: 'LENS', description: '', quantity: 1, unitPrice: '', discount: 0, saveToStock: false },
   ]);
 
   // Order Settings
   const [dueDate, setDueDate] = useState(() => {
     const d = new Date();
-    d.setDate(d.getDate() + 3); // Default due date = 3 days later
+    d.setDate(d.getDate() + 3);
     return d.toISOString().split('T')[0];
   });
   const [orderDiscount, setOrderDiscount] = useState(0);
@@ -38,10 +40,14 @@ export default function CreateOrderPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Fetch customers list for dropdown
+  // Fetch customers and stock products
   useEffect(() => {
     api.get('/customers?limit=50')
       .then((res) => setCustomers(res.data.data))
+      .catch((err) => console.error(err));
+
+    api.get('/products?limit=200')
+      .then((res) => setStockProducts(res.data.data))
       .catch((err) => console.error(err));
   }, []);
 
@@ -52,7 +58,7 @@ export default function CreateOrderPage() {
         .then((res) => {
           setPrescriptions(res.data.data);
           if (res.data.data.length > 0) {
-            setSelectedPrescriptionId(res.data.data[0].id); // Default to latest power
+            setSelectedPrescriptionId(res.data.data[0].id);
           }
         })
         .catch((err) => console.error(err));
@@ -65,8 +71,21 @@ export default function CreateOrderPage() {
     setItems(updated);
   };
 
+  const handleSelectFromStock = (index, productId) => {
+    if (!productId) return;
+    const prod = stockProducts.find((p) => p.id === productId);
+    if (prod) {
+      const updated = [...items];
+      updated[index].description = `${prod.brand ? prod.brand + ' ' : ''}${prod.name}${prod.model_code ? ' (' + prod.model_code + ')' : ''}`;
+      updated[index].unitPrice = prod.selling_price;
+      updated[index].itemType = prod.item_type;
+      updated[index].saveToStock = false;
+      setItems(updated);
+    }
+  };
+
   const addItem = () => {
-    setItems([...items, { itemType: 'ACCESSORY', description: '', quantity: 1, unitPrice: '', discount: 0 }]);
+    setItems([...items, { itemType: 'ACCESSORY', description: '', quantity: 1, unitPrice: '', discount: 0, saveToStock: false }]);
   };
 
   const removeItem = (index) => {
@@ -102,6 +121,23 @@ export default function CreateOrderPage() {
     setLoading(true);
 
     try {
+      // 1. Auto-save items to stock inventory if marked
+      for (const item of items) {
+        if (item.saveToStock && item.description && item.unitPrice) {
+          try {
+            await api.post('/products', {
+              itemType: item.itemType,
+              name: item.description,
+              sellingPrice: parseFloat(item.unitPrice),
+              stockQuantity: 0, // Recorded via order
+            });
+          } catch (err) {
+            console.warn('Auto stock save skipped', err);
+          }
+        }
+      }
+
+      // 2. Create the order
       const payload = {
         customerId: selectedCustomerId,
         prescriptionId: selectedPrescriptionId || null,
@@ -150,13 +186,13 @@ export default function CreateOrderPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-slate-900">New Optical Order</h1>
-          <p className="text-xs text-slate-500">Configure frames, lenses, and advance payment</p>
+          <p className="text-xs text-slate-500">Select stock items or enter custom frames & lenses</p>
         </div>
       </div>
 
       {error && (
         <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-center gap-2 text-red-700 text-sm">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <AlertCircle className="w-5 h-5 shrink-0" />
           <span>{error}</span>
         </div>
       )}
@@ -214,68 +250,109 @@ export default function CreateOrderPage() {
             </button>
           </div>
 
-          <div className="space-y-3">
-            {items.map((item, index) => (
-              <div
-                key={index}
-                className="p-3 bg-slate-50 border border-slate-200 rounded-xl grid grid-cols-1 md:grid-cols-12 gap-3 items-center"
-              >
-                <div className="md:col-span-2">
-                  <select
-                    value={item.itemType}
-                    onChange={(e) => handleItemChange(index, 'itemType', e.target.value)}
-                    className="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs bg-white font-semibold"
-                  >
-                    <option value="FRAME">Frame</option>
-                    <option value="LENS">Lens</option>
-                    <option value="COATING">Coating</option>
-                    <option value="CONTACT_LENS">Contact Lens</option>
-                    <option value="ACCESSORY">Accessory</option>
-                    <option value="SERVICE">Service</option>
-                  </select>
-                </div>
+          <div className="space-y-4">
+            {items.map((item, index) => {
+              const matchedStock = stockProducts.filter((p) => p.item_type === item.itemType);
+              return (
+                <div
+                  key={index}
+                  className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                    <div className="md:col-span-3">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Type</label>
+                      <select
+                        value={item.itemType}
+                        onChange={(e) => handleItemChange(index, 'itemType', e.target.value)}
+                        className="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs bg-white font-semibold"
+                      >
+                        <option value="FRAME">Frame</option>
+                        <option value="LENS">Lens</option>
+                        <option value="SUNGLASSES">Sunglasses</option>
+                        <option value="CONTACT_LENS">Contact Lens</option>
+                        <option value="SOLUTION">Solution</option>
+                        <option value="ACCESSORY">Accessory</option>
+                        <option value="SERVICE">Service</option>
+                      </select>
+                    </div>
 
-                <div className="md:col-span-5">
-                  <input
-                    type="text"
-                    required
-                    placeholder="Description (e.g. Ray-Ban Matte Black)"
-                    value={item.description}
-                    onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none"
-                  />
-                </div>
+                    <div className="md:col-span-5">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Description</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Ray-Ban Matte Black"
+                        value={item.description}
+                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                        className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none"
+                      />
+                    </div>
 
-                <div className="md:col-span-2">
-                  <input
-                    type="number"
-                    required
-                    placeholder="Price (₹)"
-                    value={item.unitPrice}
-                    onChange={(e) => handleItemChange(index, 'unitPrice', e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs bg-white font-mono text-right focus:outline-none"
-                  />
-                </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Price (₹)</label>
+                      <input
+                        type="number"
+                        required
+                        placeholder="0"
+                        value={item.unitPrice}
+                        onChange={(e) => handleItemChange(index, 'unitPrice', e.target.value)}
+                        className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs bg-white font-mono text-right focus:outline-none"
+                      />
+                    </div>
 
-                <div className="md:col-span-2">
-                  <span className="text-xs font-mono font-bold text-slate-700 block text-right">
-                    ₹{(parseFloat(item.unitPrice) || 0).toLocaleString()}
-                  </span>
-                </div>
+                    <div className="md:col-span-2 flex items-center justify-end gap-2 pt-4">
+                      <span className="text-xs font-mono font-bold text-slate-700">
+                        ₹{(parseFloat(item.unitPrice) || 0).toLocaleString()}
+                      </span>
+                      {items.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeItem(index)}
+                          className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
 
-                <div className="md:col-span-1 text-right">
-                  {items.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeItem(index)}
-                      className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
+                  {/* Quick Select from Stock Dropdown & Auto-Add Option */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/60 text-xs">
+                    {matchedStock.length > 0 ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-slate-500">Pick from stock:</span>
+                        <select
+                          onChange={(e) => handleSelectFromStock(index, e.target.value)}
+                          defaultValue=""
+                          className="px-2 py-1 bg-white border border-slate-200 rounded text-[11px] text-indigo-700 font-medium focus:outline-none"
+                        >
+                          <option value="">-- Choose Existing Stock Item --</option>
+                          {matchedStock.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} ({p.brand || 'No brand'}) - ₹{p.selling_price} [Qty: {p.stock_quantity}]
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-slate-400 italic">No {item.itemType.toLowerCase()}s in stock yet</span>
+                    )}
+
+                    {/* Checkbox to automatically register into stock list */}
+                    <label className="inline-flex items-center gap-1.5 text-[11px] font-medium text-indigo-600 cursor-pointer select-none bg-indigo-50/70 px-2 py-1 rounded border border-indigo-100">
+                      <input
+                        type="checkbox"
+                        checked={item.saveToStock || false}
+                        onChange={(e) => handleItemChange(index, 'saveToStock', e.target.checked)}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <Sparkles className="w-3 h-3 text-indigo-500" />
+                      Save this item to stock catalog
+                    </label>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Pricing Summary */}

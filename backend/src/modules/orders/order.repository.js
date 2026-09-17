@@ -2,22 +2,53 @@ import { query, withTransaction } from '../../config/database.js';
 import { ORDER_STATUS } from './order.constants.js';
 
 export const orderRepository = {
-  // Generate next sequential order number for the store (e.g. ORD-1001)
+  async ensureStoreCountersTable(db = query) {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS store_counters (
+        store_id UUID PRIMARY KEY REFERENCES stores(id) ON DELETE CASCADE,
+        customer_code_seq INT NOT NULL DEFAULT 1000,
+        order_number_seq INT NOT NULL DEFAULT 1000,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS idx_store_counters_updated_at
+      ON store_counters(updated_at);
+    `);
+  },
+
+  // Concurrency-safe, store-scoped order number generation.
   async getNextOrderNumber(client, storeId) {
-    const sql = `
-      SELECT order_number 
-      FROM orders 
-      WHERE store_id = $1 AND order_number LIKE 'ORD-%'
-      ORDER BY created_at DESC, order_number DESC 
-      LIMIT 1;
-    `;
-    const res = await client.query(sql, [storeId]);
-    if (res.rows.length === 0 || !res.rows[0].order_number) {
-      return 'ORD-1001';
-    }
-    const lastNum = parseInt(res.rows[0].order_number.replace('ORD-', ''), 10);
-    const nextNum = isNaN(lastNum) ? 1001 : lastNum + 1;
-    return `ORD-${nextNum}`;
+    await this.ensureStoreCountersTable(client);
+
+    await client.query(
+      `
+        INSERT INTO store_counters (store_id, customer_code_seq, order_number_seq)
+        VALUES ($1, 1000, 1000)
+        ON CONFLICT (store_id) DO NOTHING;
+      `,
+      [storeId]
+    );
+
+    const res = await client.query(
+      `
+        UPDATE store_counters
+        SET order_number_seq = GREATEST(
+              order_number_seq,
+              COALESCE((SELECT MAX(CAST(regexp_replace(order_number, '^ORD-','') AS integer))
+                        FROM orders WHERE store_id = $1), 1000)
+            ) + 1,
+            updated_at = NOW()
+        WHERE store_id = $1
+        RETURNING order_number_seq;
+      `,
+      [storeId]
+    );
+
+    const nextSeq = Number(res.rows[0]?.order_number_seq ?? 1001);
+    return `ORD-${nextSeq}`;
   },
 
   // Atomic order creation: Order Header + Order Items + Optional Advance Payment
@@ -107,6 +138,10 @@ export const orderRepository = {
   },
 
   async findByIdWithDetails(storeId, orderId) {
+    return await this.findByIdWithDetailsTx({ query }, storeId, orderId);
+  },
+
+  async findByIdWithDetailsTx(db, storeId, orderId) {
     const orderSql = `
       SELECT 
         o.*,
@@ -120,17 +155,15 @@ export const orderRepository = {
       LEFT JOIN users u ON o.created_by = u.id
       WHERE o.store_id = $1 AND o.id = $2;
     `;
-    const orderRes = await query(orderSql, [storeId, orderId]);
+    const orderRes = await db.query(orderSql, [storeId, orderId]);
     if (orderRes.rows.length === 0) return null;
 
     const order = orderRes.rows[0];
 
-    // Fetch line items
     const itemsSql = `SELECT * FROM order_items WHERE order_id = $1 ORDER BY id ASC;`;
-    const itemsRes = await query(itemsSql, [orderId]);
+    const itemsRes = await db.query(itemsSql, [orderId]);
     order.items = itemsRes.rows;
 
-    // Fetch payments history
     const paymentsSql = `
       SELECT p.*, u.full_name AS recorded_by_name 
       FROM payments p 
@@ -138,10 +171,9 @@ export const orderRepository = {
       WHERE p.order_id = $1 
       ORDER BY p.paid_at DESC;
     `;
-    const paymentsRes = await query(paymentsSql, [orderId]);
+    const paymentsRes = await db.query(paymentsSql, [orderId]);
     order.payments = paymentsRes.rows;
 
-    // Compute outstanding balance
     order.total_amount = parseFloat(order.total_amount);
     order.total_paid = parseFloat(order.total_paid);
     order.balance_due = Math.max(0, order.total_amount - order.total_paid);
@@ -237,6 +269,10 @@ export const orderRepository = {
   },
 
   async updateStatus(storeId, orderId, nextStatus) {
+    return await this.updateStatusTx({ query }, storeId, orderId, nextStatus);
+  },
+
+  async updateStatusTx(db, storeId, orderId, nextStatus) {
     let extraFields = '';
     if (nextStatus === ORDER_STATUS.READY_FOR_PICKUP) {
       extraFields = ', ready_at = NOW()';
@@ -250,7 +286,7 @@ export const orderRepository = {
       WHERE store_id = $1 AND id = $2
       RETURNING *;
     `;
-    const res = await query(sql, [storeId, orderId, nextStatus]);
+    const res = await db.query(sql, [storeId, orderId, nextStatus]);
     return res.rows[0] || null;
   },
 };
