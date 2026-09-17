@@ -15,6 +15,7 @@ router.use(authMiddleware);
 
 // Get next available Customer ID for this store
 router.get('/next-code', customerController.getNextCode);
+router.get('/due-reminders', customerController.getDueReminders);
 
 router.post('/', validate(createCustomerSchema), customerController.create);
 router.get('/', validate(listCustomersSchema), customerController.list);

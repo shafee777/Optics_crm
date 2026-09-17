@@ -65,27 +65,28 @@ export default function CreateOrderPage() {
     }
   }, [selectedCustomerId]);
 
-  const handleItemChange = (index, field, value) => {
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(null);
+
+  const handleDescriptionChange = (index, text) => {
     const updated = [...items];
-    updated[index][field] = value;
+    updated[index].description = text;
+    updated[index].productId = null; // Clear linked product ID if manually typed
     setItems(updated);
+    setActiveSuggestionIndex(index);
   };
 
-  const handleSelectFromStock = (index, productId) => {
-    if (!productId) return;
-    const prod = stockProducts.find((p) => p.id === productId);
-    if (prod) {
-      const updated = [...items];
-      updated[index].productId = prod.id; // <-- Passes real product ID
-      updated[index].description = `${prod.brand ? prod.brand + ' ' : ''}${prod.name}${prod.model_code ? ' (' + prod.model_code + ')' : ''}`;
-      updated[index].unitPrice = prod.selling_price;
-      updated[index].itemType = prod.item_type;
-      setItems(updated);
-    }
+  const handleSelectSuggestion = (index, product) => {
+    const updated = [...items];
+    updated[index].productId = product.id;
+    updated[index].description = `${product.brand ? product.brand + ' ' : ''}${product.name}${product.model_code ? ' (' + product.model_code + ')' : ''}`;
+    updated[index].unitPrice = product.selling_price;
+    updated[index].itemType = product.item_type;
+    setItems(updated);
+    setActiveSuggestionIndex(null);
   };
 
   const addItem = () => {
-    setItems([...items, { itemType: 'ACCESSORY', description: '', quantity: 1, unitPrice: '', discount: 0, saveToStock: false }]);
+    setItems([...items, { productId: null, itemType: 'ACCESSORY', description: '', quantity: 1, unitPrice: '', discount: 0 }]);
   };
 
   const removeItem = (index) => {
@@ -121,23 +122,6 @@ export default function CreateOrderPage() {
     setLoading(true);
 
     try {
-      // 1. Auto-save items to stock inventory if marked
-      for (const item of items) {
-        if (item.saveToStock && item.description && item.unitPrice) {
-          try {
-            await api.post('/products', {
-              itemType: item.itemType,
-              name: item.description,
-              sellingPrice: parseFloat(item.unitPrice),
-              stockQuantity: 0, // Recorded via order
-            });
-          } catch (err) {
-            console.warn('Auto stock save skipped', err);
-          }
-        }
-      }
-
-      // 2. Create the order
       const payload = {
         customerId: selectedCustomerId,
         prescriptionId: selectedPrescriptionId || null,
@@ -145,7 +129,7 @@ export default function CreateOrderPage() {
         items: items.map((i) => ({
           productId: i.productId || null,
           itemType: i.itemType,
-          description: i.description,
+          description: i.description.trim(),
           quantity: parseInt(i.quantity, 10),
           unitPrice: parseFloat(i.unitPrice),
           discount: parseFloat(i.discount) || 0,
@@ -253,19 +237,32 @@ export default function CreateOrderPage() {
 
           <div className="space-y-4">
             {items.map((item, index) => {
-              const matchedStock = stockProducts.filter((p) => p.item_type === item.itemType);
+              const matchedSuggestions = stockProducts.filter(
+                (p) =>
+                  p.item_type === item.itemType &&
+                  (item.description
+                    ? p.name.toLowerCase().includes(item.description.toLowerCase()) ||
+                      (p.brand && p.brand.toLowerCase().includes(item.description.toLowerCase())) ||
+                      (p.model_code && p.model_code.toLowerCase().includes(item.description.toLowerCase()))
+                    : true)
+              );
+
               return (
                 <div
                   key={index}
-                  className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3"
+                  className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3 relative"
                 >
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
                     <div className="md:col-span-3">
                       <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Type</label>
                       <select
                         value={item.itemType}
-                        onChange={(e) => handleItemChange(index, 'itemType', e.target.value)}
-                        className="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs bg-white font-semibold"
+                        onChange={(e) => {
+                          const updated = [...items];
+                          updated[index].itemType = e.target.value;
+                          setItems(updated);
+                        }}
+                        className="w-full px-2 py-2 rounded-lg border border-slate-200 text-xs bg-white font-semibold focus:outline-none"
                       >
                         <option value="FRAME">Frame</option>
                         <option value="LENS">Lens</option>
@@ -277,16 +274,56 @@ export default function CreateOrderPage() {
                       </select>
                     </div>
 
-                    <div className="md:col-span-5">
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Description</label>
+                    <div className="md:col-span-5 relative">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                        Description / Name (Auto-search Stock)
+                      </label>
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Ray-Ban Matte Black"
+                        placeholder={`Type ${item.itemType.toLowerCase()} name...`}
                         value={item.description}
-                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none"
+                        onFocus={() => setActiveSuggestionIndex(index)}
+                        onChange={(e) => handleDescriptionChange(index, e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                       />
+
+                      {/* Live Autocomplete Suggestions Overlay */}
+                      {activeSuggestionIndex === index && matchedSuggestions.length > 0 && (
+                        <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-white border border-slate-200 rounded-xl shadow-xl max-h-48 overflow-y-auto divide-y divide-slate-100">
+                          <div className="p-1.5 text-[10px] font-bold text-slate-400 bg-slate-50 uppercase tracking-wider flex justify-between">
+                            <span>Matching In-Stock Items</span>
+                            <button
+                              type="button"
+                              onClick={() => setActiveSuggestionIndex(null)}
+                              className="text-slate-400 hover:text-slate-600"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                          {matchedSuggestions.map((prod) => (
+                            <button
+                              key={prod.id}
+                              type="button"
+                              onClick={() => handleSelectSuggestion(index, prod)}
+                              className="w-full text-left p-2 hover:bg-indigo-50/80 transition flex items-center justify-between text-xs"
+                            >
+                              <div>
+                                <div className="font-semibold text-slate-900">
+                                  {prod.brand ? `${prod.brand} ` : ''}{prod.name}
+                                </div>
+                                {prod.model_code && (
+                                  <div className="text-[10px] text-slate-400 font-mono">Code: {prod.model_code}</div>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <div className="font-mono font-bold text-indigo-600">₹{parseFloat(prod.selling_price).toLocaleString()}</div>
+                                <div className="text-[10px] text-slate-500 font-medium">Stock: {prod.stock_quantity}</div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div className="md:col-span-2">
@@ -296,8 +333,12 @@ export default function CreateOrderPage() {
                         required
                         placeholder="0"
                         value={item.unitPrice}
-                        onChange={(e) => handleItemChange(index, 'unitPrice', e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs bg-white font-mono text-right focus:outline-none"
+                        onChange={(e) => {
+                          const updated = [...items];
+                          updated[index].unitPrice = e.target.value;
+                          setItems(updated);
+                        }}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white font-mono text-right focus:outline-none"
                       />
                     </div>
 
@@ -315,41 +356,6 @@ export default function CreateOrderPage() {
                         </button>
                       )}
                     </div>
-                  </div>
-
-                  {/* Quick Select from Stock Dropdown & Auto-Add Option */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/60 text-xs">
-                    {matchedStock.length > 0 ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] text-slate-500">Pick from stock:</span>
-                        <select
-                          onChange={(e) => handleSelectFromStock(index, e.target.value)}
-                          defaultValue=""
-                          className="px-2 py-1 bg-white border border-slate-200 rounded text-[11px] text-indigo-700 font-medium focus:outline-none"
-                        >
-                          <option value="">-- Choose Existing Stock Item --</option>
-                          {matchedStock.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name} ({p.brand || 'No brand'}) - ₹{p.selling_price} [Qty: {p.stock_quantity}]
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    ) : (
-                      <span className="text-[11px] text-slate-400 italic">No {item.itemType.toLowerCase()}s in stock yet</span>
-                    )}
-
-                    {/* Checkbox to automatically register into stock list */}
-                    <label className="inline-flex items-center gap-1.5 text-[11px] font-medium text-indigo-600 cursor-pointer select-none bg-indigo-50/70 px-2 py-1 rounded border border-indigo-100">
-                      <input
-                        type="checkbox"
-                        checked={item.saveToStock || false}
-                        onChange={(e) => handleItemChange(index, 'saveToStock', e.target.checked)}
-                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                      <Sparkles className="w-3 h-3 text-indigo-500" />
-                      Save this item to stock catalog
-                    </label>
                   </div>
                 </div>
               );

@@ -4,18 +4,10 @@ import api from '../../services/api.js';
 import OpticalGrid from '../prescriptions/OpticalGrid.jsx';
 import NewPrescriptionModal from '../prescriptions/NewPrescriptionModal.jsx';
 import OrderStatusBadge from '../orders/OrderStatusBadge.jsx';
-import { 
-  ArrowLeft, 
-  Phone, 
-  MapPin, 
-  Calendar, 
-  FileText, 
-  ShoppingBag, 
-  Hash, 
-  PlusCircle, 
-  Clock,
-  ArrowRight
-} from 'lucide-react';
+import { MessageSquare, UserCheck } from 'lucide-react';
+import { openWhatsApp, getGreetingMessage, getAnnualCheckupMessage } from '../../lib/whatsapp.js';
+import { useAuth } from '../auth/AuthContext.jsx';
+import { ArrowLeft, Phone,MapPin,Calendar,FileText,ShoppingBag,Hash,PlusCircle,Clock,ArrowRight} from 'lucide-react';
 
 export default function CustomerDetailsPage() {
   const { id } = useParams();
@@ -126,6 +118,39 @@ export default function CustomerDetailsPage() {
           </button>
         </div>
       </div>
+      <div className="flex gap-2">
+  {customer.phone && (
+    <>
+      <button
+        onClick={() => {
+          const msg = getGreetingMessage({
+            customerName: customer.full_name,
+            storeName: user?.store?.name || 'Optical Store',
+          });
+          openWhatsApp(customer.phone, msg);
+        }}
+        className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-xl border border-indigo-200 flex items-center gap-1"
+      >
+        <MessageSquare className="w-3.5 h-3.5" />
+        Send Welcome Greeting
+      </button>
+      <button
+        onClick={() => {
+          const msg = getAnnualCheckupMessage({
+            customerName: customer.full_name,
+            storeName: user?.store?.name || 'Optical Store',
+            lastTestDate: prescriptions[0]?.tested_at,
+          });
+          openWhatsApp(customer.phone, msg);
+        }}
+        className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-xl border border-emerald-200 flex items-center gap-1"
+      >
+        <UserCheck className="w-3.5 h-3.5" />
+        Send 1-Year Checkup Recall
+      </button>
+    </>
+  )}
+</div>
 
       {/* Main Grid: Eye Test History & Orders */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

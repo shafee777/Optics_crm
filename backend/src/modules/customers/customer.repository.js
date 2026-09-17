@@ -1,8 +1,9 @@
 import { query } from '../../config/database.js';
 
 export const customerRepository = {
-  async ensureStoreCountersTable(db = query) {
-    await db.query(`
+  async ensureStoreCountersTable(client = null) {
+    const run = client ? (sql, params) => client.query(sql, params) : query;
+    await run(`
       CREATE TABLE IF NOT EXISTS store_counters (
         store_id UUID PRIMARY KEY REFERENCES stores(id) ON DELETE CASCADE,
         customer_code_seq INT NOT NULL DEFAULT 1000,
@@ -12,7 +13,7 @@ export const customerRepository = {
       );
     `);
 
-    await db.query(`
+    await run(`
       CREATE INDEX IF NOT EXISTS idx_store_counters_updated_at
       ON store_counters(updated_at);
     `);
@@ -20,11 +21,11 @@ export const customerRepository = {
 
   // Concurrency-safe, store-scoped customer code generation.
   async getNextCustomerCode(storeId, client = null) {
-    const db = client ?? query;
+    const run = client ? (sql, params) => client.query(sql, params) : query;
 
-    await this.ensureStoreCountersTable(db);
+    await this.ensureStoreCountersTable(client);
 
-    await db.query(
+    await run(
       `
         INSERT INTO store_counters (store_id, customer_code_seq, order_number_seq)
         VALUES ($1, 1000, 1000)
@@ -33,7 +34,7 @@ export const customerRepository = {
       [storeId]
     );
 
-    const res = await db.query(
+    const res = await run(
       `
         UPDATE store_counters
         SET customer_code_seq = GREATEST(
@@ -146,6 +147,33 @@ export const customerRepository = {
     const res = await query(sql, values);
     return res.rows[0] || null;
   },
+  async findDueForAnnualCheckup(storeId) {
+    const sql = `
+      WITH latest_prescriptions AS (
+        SELECT 
+          customer_id, 
+          MAX(tested_at) AS last_test_date
+        FROM prescriptions
+        WHERE store_id = $1
+        GROUP BY customer_id
+      )
+      SELECT 
+        c.id,
+        c.customer_code,
+        c.full_name,
+        c.phone,
+        lp.last_test_date,
+        ROUND(EXTRACT(EPOCH FROM (NOW() - lp.last_test_date)) / 86400) AS days_since_test
+      FROM customers c
+      JOIN latest_prescriptions lp ON c.id = lp.customer_id
+      WHERE c.store_id = $1
+        AND c.archived_at IS NULL
+        AND lp.last_test_date <= NOW() - INTERVAL '330 days'
+      ORDER BY lp.last_test_date ASC;
+    `;
+    const { rows } = await query(sql, [storeId]);
+    return rows;
+  },
 
   async list(storeId, { search, page = 1, limit = 10 }) {
     const offset = (page - 1) * limit;
@@ -177,7 +205,7 @@ export const customerRepository = {
     `;
     const dataParams = [...params, limit, offset];
     const dataRes = await query(dataSql, dataParams);
-
+    
     return {
       customers: dataRes.rows,
       meta: {
