@@ -103,6 +103,49 @@ export const orderRepository = {
       const createdOrder = orderRows[0];
 
       for (const item of computedItems) {
+        let resolvedProductId = item.productId || null;
+
+        if (resolvedProductId) {
+          // If explicitly chosen from stock, deduct quantity
+          await client.query(
+            `UPDATE products
+             SET stock_quantity = stock_quantity - $1,
+                 updated_at = NOW()
+             WHERE id = $2 AND store_id = $3;`,
+            [item.quantity, resolvedProductId, storeId]
+          );
+        } else if (item.itemType !== 'SERVICE') {
+          // Check if a product with same name and item_type exists
+          const { rows: existingProd } = await client.query(
+            `SELECT id FROM products 
+             WHERE store_id = $1 AND lower(name) = lower($2) AND item_type = $3 AND archived_at IS NULL 
+             LIMIT 1;`,
+            [storeId, item.description.trim(), item.itemType]
+          );
+
+          if (existingProd.length > 0) {
+            resolvedProductId = existingProd[0].id;
+            await client.query(
+              `UPDATE products
+               SET stock_quantity = stock_quantity - $1,
+                   updated_at = NOW()
+               WHERE id = $2 AND store_id = $3;`,
+              [item.quantity, resolvedProductId, storeId]
+            );
+          } else {
+            // Automatically register new product into store inventory catalog
+            const { rows: newProd } = await client.query(
+              `INSERT INTO products (
+                store_id, item_type, name, selling_price, stock_quantity, min_stock_alert
+              ) VALUES ($1, $2, $3, $4, $5, 3)
+              RETURNING id;`,
+              [storeId, item.itemType, item.description.trim(), item.unitPrice, -item.quantity]
+            );
+            resolvedProductId = newProd[0].id;
+          }
+        }
+
+        // Insert Order Item
         await client.query(
           `
             INSERT INTO order_items (
@@ -113,7 +156,7 @@ export const orderRepository = {
           `,
           [
             createdOrder.id,
-            item.productId || null,
+            resolvedProductId,
             item.itemType,
             item.description,
             item.quantity,
@@ -122,17 +165,6 @@ export const orderRepository = {
             item.totalPrice,
           ]
         );
-
-        if (item.productId) {
-          await client.query(
-            `
-              UPDATE products
-              SET stock_quantity = GREATEST(0, stock_quantity - $1), updated_at = NOW()
-              WHERE id = $2 AND store_id = $3;
-            `,
-            [item.quantity, item.productId, storeId]
-          );
-        }
       }
 
       if (data.advancePayment && data.advancePayment.amount > 0) {

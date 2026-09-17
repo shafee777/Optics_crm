@@ -1,8 +1,20 @@
 import { z } from 'zod';
 
+// Canonical item types shared across all modules
+export const ITEM_TYPES = [
+  'FRAME',
+  'LENS',
+  'SUNGLASSES',
+  'CONTACT_LENS',
+  'SOLUTION',
+  'ACCESSORY',
+  'COATING',
+  'SERVICE',
+];
+
 export const createProductSchema = z.object({
   body: z.object({
-    itemType: z.enum(['FRAME', 'LENS', 'SUNGLASSES', 'CONTACT_LENS', 'SOLUTION', 'ACCESSORY', 'SERVICE']),
+    itemType: z.enum(ITEM_TYPES), // <-- Now includes COATING
     brand: z.string().trim().max(100).optional().nullable(),
     modelCode: z.string().trim().max(100).optional().nullable(),
     name: z.string().trim().min(1, 'Product name is required').max(255),
@@ -26,7 +38,7 @@ export const adjustStockSchema = z.object({
     id: z.string().uuid(),
   }),
   body: z.object({
-    adjustment: z.coerce.number().int(), // can be positive (+5) or negative (-1)
+    adjustment: z.coerce.number().int(),
     reason: z.string().trim().optional(),
   }),
 });

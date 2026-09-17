@@ -1,4 +1,5 @@
 import { customerService } from './customer.service.js';
+import { customerRepository } from './customer.repository.js';
 
 export const customerController = {
   async getNextCode(req, res, next) {
@@ -71,6 +72,15 @@ export const customerController = {
       });
     } catch (error) {
       next(error);
+    }
+  },
+  // Add inside customerController in backend/src/modules/customers/customer.controller.js:
+  async getDueReminders(req, res, next) {
+    try {
+      const dueCustomers = await customerRepository.findDueForAnnualCheckup(req.user.storeId);
+      res.json({ success: true, data: dueCustomers });
+    } catch (err) {
+      next(err);
     }
   },
 };

@@ -4,6 +4,8 @@ import api from '../../services/api.js';
 import OrderStatusBadge from './OrderStatusBadge.jsx';
 import RecordPaymentModal from '../payments/RecordPaymentModal.jsx';
 import PrintOrderInvoice from './PrintOrderInvoice.jsx';
+import { openWhatsApp, getOrderPlacedGreetingMessage, getOrderReadyMessage, getGoogleReviewMessage } from '../../lib/whatsapp.js';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 import { 
   ArrowLeft, 
@@ -14,10 +16,13 @@ import {
   Check, 
   IndianRupee,
   Plus,
-  Printer
+  Printer,
+  MessageSquare,
+  Star
 } from 'lucide-react';
 
 export default function OrderDetailsPage() {
+  const { user } = useAuth();
   const { id } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
@@ -66,6 +71,34 @@ export default function OrderDetailsPage() {
     try {
       await api.patch(`/orders/${id}/status`, { status: nextStatus });
       await fetchOrder();
+
+      // Trigger automatic WhatsApp notifications
+      if (order?.customer_phone) {
+        const storeName = user?.store?.name || 'Optical Store';
+        if (nextStatus === 'PROCESSING') {
+          const msg = getOrderPlacedGreetingMessage({
+            customerName: order.customer_name,
+            storeName,
+            orderNumber: order.order_number,
+            dueDate: order.due_date,
+          });
+          openWhatsApp(order.customer_phone, msg);
+        } else if (nextStatus === 'READY_FOR_PICKUP') {
+          const msg = getOrderReadyMessage({
+            customerName: order.customer_name,
+            storeName,
+            orderNumber: order.order_number,
+          });
+          openWhatsApp(order.customer_phone, msg);
+        } else if (nextStatus === 'DELIVERED') {
+          const msg = getGoogleReviewMessage({
+            customerName: order.customer_name,
+            storeName,
+            googleReviewLink: user?.store?.google_review_link,
+          });
+          openWhatsApp(order.customer_phone, msg);
+        }
+      }
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Status transition failed');
     } finally {
@@ -315,6 +348,44 @@ export default function OrderDetailsPage() {
             </div>
           </div>
         </div>
+      </div>
+      {/* WhatsApp Quick Notification Buttons */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {order.customer_phone && (
+          <>
+            {/* Ready for pickup WhatsApp */}
+            <button
+              onClick={() => {
+                const msg = getOrderReadyMessage({
+                  customerName: order.customer_name,
+                  storeName: user?.store?.name || 'Optical Store',
+                  orderNumber: order.order_number,
+                });
+                openWhatsApp(order.customer_phone, msg);
+              }}
+              className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-xl border border-emerald-200 transition flex items-center gap-1.5"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+              WhatsApp: Ready for Pickup
+            </button>
+
+            {/* Google Review & Feedback WhatsApp */}
+            <button
+              onClick={() => {
+                const msg = getGoogleReviewMessage({
+                  customerName: order.customer_name,
+                  storeName: user?.store?.name || 'Optical Store',
+                  googleReviewLink: user?.store?.google_review_link || 'https://g.page/r/your-shop-review',
+                });
+                openWhatsApp(order.customer_phone, msg);
+              }}
+              className="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-semibold rounded-xl border border-amber-200 transition flex items-center gap-1.5"
+            >
+              <Star className="w-3.5 h-3.5 text-amber-600" />
+              WhatsApp: Google Rating & Feedback
+            </button>
+          </>
+        )}
       </div>
 
       {/* Record Payment Modal */}

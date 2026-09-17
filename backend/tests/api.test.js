@@ -311,3 +311,164 @@ test('Role Operations: Staff can record and view expenses ledger', async () => {
   assert.ok(Array.isArray(listExpRes.body.data));
   assert.ok(listExpRes.body.data.some((e) => e.note === 'Lab edging fee for CUST-1001'));
 });
+
+test('Stage 2: Products CRUD and Stock Adjustment', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  // 1. Create a Product in Stock
+  const createProdRes = await request
+    .post('/api/v1/products')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      itemType: 'FRAME',
+      brand: 'Ray-Ban',
+      modelCode: 'RB3025-GOLD',
+      name: 'Aviator Classic 58mm',
+      sellingPrice: 4500,
+      costPrice: 2800,
+      stockQuantity: 10,
+      minStockAlert: 2,
+    });
+
+  assert.equal(createProdRes.status, 201);
+  assert.equal(createProdRes.body.success, true);
+  const productId = createProdRes.body.data.id;
+  assert.equal(createProdRes.body.data.stock_quantity, 10);
+
+  // 2. Adjust Stock (+5)
+  const adjustRes = await request
+    .patch(`/api/v1/products/${productId}/stock`)
+    .set('Authorization', `Bearer ${token}`)
+    .send({ adjustment: 5 });
+
+  assert.equal(adjustRes.status, 200);
+  assert.equal(adjustRes.body.data.stock_quantity, 15);
+
+  // 3. List Products by Category
+  const listRes = await request
+    .get('/api/v1/products?itemType=FRAME')
+    .set('Authorization', `Bearer ${token}`);
+
+  assert.equal(listRes.status, 200);
+  assert.ok(listRes.body.data.some((p) => p.id === productId));
+});
+
+test('Stage 2: Order Creation decrements stock & auto-registers new products', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  // 1. Create a customer
+  const custRes = await request
+    .post('/api/v1/customers')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      fullName: 'Vikram Singh',
+      phone: '9876500011',
+    });
+  const customerId = custRes.body.data.id;
+
+  // 2. Create in-stock product
+  const prodRes = await request
+    .post('/api/v1/products')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      itemType: 'FRAME',
+      name: 'Fastrack Sporty Black',
+      sellingPrice: 1800,
+      stockQuantity: 5,
+    });
+  const inStockProductId = prodRes.body.data.id;
+
+  // 3. Create Order with 1 in-stock item + 1 on-the-fly custom item
+  const uniqueCustomLens = `Essilor Crizal Sapphire ${Date.now()}`;
+  const orderRes = await request
+    .post('/api/v1/orders')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      customerId,
+      dueDate: '2026-10-01',
+      items: [
+        {
+          productId: inStockProductId,
+          itemType: 'FRAME',
+          description: 'Fastrack Sporty Black',
+          quantity: 2,
+          unitPrice: 1800,
+          discount: 0,
+        },
+        {
+          itemType: 'LENS',
+          description: uniqueCustomLens,
+          quantity: 1,
+          unitPrice: 2500,
+          discount: 0,
+        },
+      ],
+      advancePayment: {
+        amount: 1500,
+        paymentMethod: 'UPI',
+      },
+    });
+
+  assert.equal(orderRes.status, 201);
+  assert.equal(orderRes.body.success, true);
+  assert.equal(orderRes.body.data.total_amount, '6100.00');
+
+  // 4. Verify in-stock product decreased from 5 -> 3
+  const getProdRes = await request
+    .get(`/api/v1/products/${inStockProductId}`)
+    .set('Authorization', `Bearer ${token}`);
+  assert.equal(getProdRes.body.data.stock_quantity, 3);
+
+  // 5. Verify the on-the-fly custom lens was automatically created in catalog
+  const searchProdRes = await request
+    .get(`/api/v1/products?search=${encodeURIComponent(uniqueCustomLens)}`)
+    .set('Authorization', `Bearer ${token}`);
+  assert.equal(searchProdRes.status, 200);
+  assert.ok(searchProdRes.body.data.length > 0);
+  assert.equal(searchProdRes.body.data[0].name, uniqueCustomLens);
+});
+
+test('Stage 2: 1-Year Annual Eye Test Recall endpoint returns eligible customers', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+  const storeId = loginRes.body.data.user.store.id;
+
+  // 1. Create a customer
+  const custRes = await request
+    .post('/api/v1/customers')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      fullName: 'Old Test Customer',
+      phone: '9876549999',
+    });
+  const customerId = custRes.body.data.id;
+
+  // 2. Insert a prescription with tested_at 350 days ago
+  await pool.query(
+    `INSERT INTO prescriptions (
+      store_id, customer_id, r_sph, l_sph, pd, tested_at
+    ) VALUES ($1, $2, -1.50, -1.25, 62, NOW() - INTERVAL '350 days');`,
+    [storeId, customerId]
+  );
+
+  // 3. Call due-reminders endpoint
+  const dueRes = await request
+    .get('/api/v1/customers/due-reminders')
+    .set('Authorization', `Bearer ${token}`);
+
+  assert.equal(dueRes.status, 200);
+  assert.equal(dueRes.body.success, true);
+  assert.ok(Array.isArray(dueRes.body.data));
+  assert.ok(dueRes.body.data.some((c) => c.id === customerId));
+});
