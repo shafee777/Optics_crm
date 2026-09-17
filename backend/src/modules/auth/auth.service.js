@@ -32,6 +32,7 @@ export const authService = {
       { expiresIn: env.JWT_EXPIRES_IN }
     );
 
+    console.log(token);
     return {
       token,
       user: {
