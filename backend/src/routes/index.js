@@ -3,6 +3,11 @@ import healthRoutes from './health.routes.js';
 import authRoutes from '../modules/auth/auth.routes.js';
 import customerRoutes from '../modules/customers/customer.routes.js';
 import prescriptionRoutes from '../modules/prescriptions/prescription.routes.js';
+import orderRoutes from '../modules/orders/order.routes.js';
+import paymentRoutes from '../modules/payments/payment.routes.js';
+import expenseRoutes from '../modules/expenses/expense.routes.js';
+import dashboardRoutes from '../modules/dashboard/dashboard.routes.js';
+import reportRoutes from '../modules/reports/report.routes.js';
 
 const router = Router();
 
@@ -25,5 +30,10 @@ router.get('/api/v1', (_req, res) => {
 router.use('/api/v1/auth', authRoutes);
 router.use('/api/v1/customers', customerRoutes);
 router.use('/api/v1/customers/:customerId/prescriptions', prescriptionRoutes);
+router.use('/api/v1/orders', orderRoutes);
+router.use('/api/v1/orders/:orderId/payments', paymentRoutes);
+router.use('/api/v1/expenses', expenseRoutes);
+router.use('/api/v1/dashboard', dashboardRoutes);
+router.use('/api/v1/reports', reportRoutes);
 
 export default router;

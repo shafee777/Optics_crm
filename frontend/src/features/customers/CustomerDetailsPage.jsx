@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api.js';
 import OpticalGrid from '../prescriptions/OpticalGrid.jsx';
 import NewPrescriptionModal from '../prescriptions/NewPrescriptionModal.jsx';
+import OrderStatusBadge from '../orders/OrderStatusBadge.jsx';
 import { 
   ArrowLeft, 
   Phone, 
@@ -12,7 +13,8 @@ import {
   ShoppingBag, 
   Hash, 
   PlusCircle, 
-  Clock 
+  Clock,
+  ArrowRight
 } from 'lucide-react';
 
 export default function CustomerDetailsPage() {
@@ -20,18 +22,21 @@ export default function CustomerDetailsPage() {
   const navigate = useNavigate();
   const [customer, setCustomer] = useState(null);
   const [prescriptions, setPrescriptions] = useState([]);
+  const [customerOrders, setCustomerOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isPrescriptionModalOpen, setIsPrescriptionModalOpen] = useState(false);
 
   const fetchCustomerData = useCallback(async () => {
     if (!id) return;
     try {
-      const [custRes, prescRes] = await Promise.all([
+      const [custRes, prescRes, ordersRes] = await Promise.all([
         api.get(`/customers/${id}`),
         api.get(`/customers/${id}/prescriptions`),
+        api.get(`/orders?customerId=${id}`),
       ]);
       setCustomer(custRes.data.data);
       setPrescriptions(prescRes.data.data);
+      setCustomerOrders(ordersRes.data.data);
     } catch (err) {
       console.error('Error fetching customer data:', err);
     } finally {
@@ -44,7 +49,7 @@ export default function CustomerDetailsPage() {
   }, [fetchCustomerData]);
 
   if (loading) {
-    return <div className="p-8 text-center text-slate-500">Loading customer profile & prescriptions...</div>;
+    return <div className="p-8 text-center text-slate-500">Loading customer profile & history...</div>;
   }
 
   if (!customer) {
@@ -103,7 +108,7 @@ export default function CustomerDetailsPage() {
           </div>
         </div>
 
-        {/* Quick Action Buttons */}
+        {/* Action Buttons */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsPrescriptionModalOpen(true)}
@@ -113,7 +118,7 @@ export default function CustomerDetailsPage() {
             New Eye Test
           </button>
           <button
-            onClick={() => alert('Order module will be wired up in Step 7!')}
+            onClick={() => navigate(`/orders/new?customerId=${id}`)}
             className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-emerald-600/20 transition flex items-center gap-1.5"
           >
             <ShoppingBag className="w-4 h-4" />
@@ -183,7 +188,6 @@ export default function CustomerDetailsPage() {
                       )}
                     </div>
 
-                    {/* Optical Power Grid */}
                     <OpticalGrid prescription={p} />
                   </div>
                 ))}
@@ -192,16 +196,47 @@ export default function CustomerDetailsPage() {
           </div>
         </div>
 
-        {/* Right 1 Column: Orders Preview (Step 7 placeholder) */}
+        {/* Right 1 Column: Customer Orders List */}
         <div className="space-y-6">
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-            <h3 className="font-bold text-slate-900 flex items-center gap-2">
-              <ShoppingBag className="w-5 h-5 text-emerald-600" />
-              Customer Orders
-            </h3>
-            <p className="text-xs text-slate-500">
-              Orders created with these prescription powers, frames, and delivery statuses will appear here in Step 7.
-            </p>
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-slate-900 flex items-center gap-2 text-sm">
+                <ShoppingBag className="w-4 h-4 text-emerald-600" />
+                Customer Orders ({customerOrders.length})
+              </h3>
+              <button
+                onClick={() => navigate(`/orders/new?customerId=${id}`)}
+                className="text-xs font-semibold text-emerald-600 hover:text-emerald-800"
+              >
+                + New
+              </button>
+            </div>
+
+            {customerOrders.length === 0 ? (
+              <p className="text-xs text-slate-400 py-4 text-center">No orders placed yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {customerOrders.map((ord) => (
+                  <div
+                    key={ord.id}
+                    onClick={() => navigate(`/orders/${ord.id}`)}
+                    className="p-3 rounded-xl border border-slate-100 hover:border-slate-300 hover:bg-slate-50 cursor-pointer transition flex justify-between items-center"
+                  >
+                    <div>
+                      <div className="font-mono font-bold text-xs text-indigo-600">{ord.order_number}</div>
+                      <div className="text-[11px] text-slate-400">{new Date(ord.order_date).toLocaleDateString()}</div>
+                    </div>
+                    <div className="text-right flex items-center gap-2">
+                      <div>
+                        <div className="font-mono font-bold text-xs text-slate-900">₹{ord.total_amount.toLocaleString()}</div>
+                        <OrderStatusBadge status={ord.status} />
+                      </div>
+                      <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
