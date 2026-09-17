@@ -71,7 +71,7 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated }
 
         {error && (
           <div className="mx-6 mt-4 p-3 rounded-lg bg-red-50 border border-red-200 flex items-center gap-2 text-red-700 text-sm">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
@@ -80,7 +80,7 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated }
           {/* Customer ID & Mobile */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
+              <label className="flex items-center gap-1 text-xs font-semibold text-slate-700 mb-1">
                 <Hash className="w-3.5 h-3.5 text-indigo-600" />
                 Customer ID *
               </label>
