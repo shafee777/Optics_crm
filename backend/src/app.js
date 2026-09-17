@@ -15,12 +15,29 @@ export const app = express();
 app.use(helmet());
 
 // CORS config
-app.use(
-  cors({
-    origin: [env.FRONTEND_URL, 'http://localhost:5173'],
-    credentials: true,
-  })
-);
+const allowedOrigins = [
+  'https://optics-crm-1.onrender.com',
+  env.FRONTEND_URL,
+  'http://localhost:5173',
+  'http://localhost:3000',
+];
+
+const corsOptions = {
+  origin(origin, callback) {
+    // Allow requests with no origin, such as mobile apps, curl, or Postman.
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Body parser
 app.use(express.json());
