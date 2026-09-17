@@ -70,7 +70,7 @@ export default function NewPrescriptionModal({ isOpen, onClose, customerId, onPr
 
         {error && (
           <div className="mx-6 mt-4 p-3 rounded-lg bg-red-50 border border-red-200 flex items-center gap-2 text-red-700 text-sm">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
