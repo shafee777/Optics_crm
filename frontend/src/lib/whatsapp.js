@@ -10,6 +10,8 @@
  *    (listener registered once on import).
  */
 
+import api from '../services/api.js';
+
 // ---------------------------------------------------------------------------
 // Offline queue helpers
 // ---------------------------------------------------------------------------
@@ -194,20 +196,43 @@ export function getAnnualCheckupMessage({ customerName, storeName, lastTestDate 
   );
 }
 
+// 5. Payment Reminder for Outstanding Balance
+export function getPaymentReminderMessage({ customerName, storeName, orderNumber, balanceDue }) {
+  const formattedBalance = parseFloat(balanceDue || 0).toLocaleString();
+  return encodeURIComponent(
+    `Hello ${customerName}! 👓\n\n` +
+    `This is a friendly reminder from *${storeName}* regarding your spectacles Order *#${orderNumber}*.\n\n` +
+    `💰 *Outstanding Balance:* ₹${formattedBalance}\n\n` +
+    `Kindly clear the pending balance during your visit or via UPI. Feel free to contact us if you have any questions!\n` +
+    `Thank you!`
+  );
+}
+
 // ---------------------------------------------------------------------------
-// Main entry point — offline-aware
+// Main entry point — offline-aware & audit-logging enabled
 // ---------------------------------------------------------------------------
 /**
  * @param {string} phone       - Raw phone number (10-digit or with country code)
  * @param {string} message     - Already-encoded message (from template functions above)
  * @param {string} [label]     - Human-readable label for the queued item, e.g. "Order Ready"
+ * @param {string} [customerId] - Optional customer UUID to log communication history
+ * @param {string} [messageType] - Optional message type tag: GREETING, ORDER_PLACED, ORDER_READY, GOOGLE_REVIEW, ANNUAL_CHECKUP, PAYMENT_REMINDER
  */
-export function openWhatsApp(phone, message, label = 'WhatsApp message') {
+export function openWhatsApp(phone, message, label = 'WhatsApp message', customerId = null, messageType = null) {
   const formattedPhone = sanitizePhone(phone);
 
   if (!formattedPhone) {
     showBanner('⚠️ Customer has no valid phone number recorded.', 'error');
     return;
+  }
+
+  // ── Audit Log Trigger ───────────────────────────────────────────────────
+  if (customerId && messageType) {
+    api.post('/messages/log', {
+      customerId,
+      messageType,
+      channel: 'WHATSAPP',
+    }).catch((err) => console.warn('Failed to record message audit log:', err));
   }
 
   // ── Offline check ──────────────────────────────────────────────────────────

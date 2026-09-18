@@ -144,4 +144,139 @@ export const reportRepository = {
       months,
     };
   },
+
+  // 4. Custom Date Range Sales & Breakdown
+  async getCustomRangeSales(storeId, startDate, endDate) {
+    const sql = `
+      SELECT 
+        p.id AS payment_id,
+        p.amount,
+        p.payment_method,
+        p.reference,
+        p.paid_at,
+        o.id AS order_id,
+        o.order_number,
+        o.total_amount AS order_total,
+        c.id AS customer_id,
+        c.full_name AS customer_name,
+        c.phone AS customer_phone
+      FROM payments p
+      JOIN orders o ON p.order_id = o.id
+      JOIN customers c ON o.customer_id = c.id
+      WHERE p.store_id = $1 
+        AND p.paid_at::date >= $2::date 
+        AND p.paid_at::date <= $3::date
+      ORDER BY p.paid_at DESC;
+    `;
+    const res = await query(sql, [storeId, startDate, endDate]);
+
+    const transactions = res.rows.map((r) => ({
+      paymentId: r.payment_id,
+      amount: parseFloat(r.amount),
+      paymentMethod: r.payment_method,
+      reference: r.reference,
+      paidAt: r.paid_at,
+      orderId: r.order_id,
+      orderNumber: r.order_number,
+      orderTotal: parseFloat(r.order_total),
+      customerId: r.customer_id,
+      customerName: r.customer_name,
+      customerPhone: r.customer_phone,
+    }));
+
+    const totalSales = transactions.reduce((sum, t) => sum + t.amount, 0);
+
+    const paymentSplit = transactions.reduce(
+      (acc, t) => {
+        const method = t.paymentMethod || 'OTHER';
+        acc[method] = (acc[method] || 0) + t.amount;
+        return acc;
+      },
+      { UPI: 0, CASH: 0, CARD: 0, OTHER: 0 }
+    );
+
+    return {
+      startDate,
+      endDate,
+      totalSales,
+      transactionCount: transactions.length,
+      paymentSplit,
+      transactions,
+    };
+  },
+
+  // 5. Outstanding Customer Dues (Receivables)
+  async getOutstandingDues(storeId) {
+    const sql = `
+      SELECT 
+        o.id AS order_id,
+        o.order_number,
+        o.status,
+        o.total_amount,
+        COALESCE(SUM(p.amount), 0.00) AS total_paid,
+        o.total_amount - COALESCE(SUM(p.amount), 0.00) AS balance_due,
+        o.due_date,
+        o.created_at,
+        c.id AS customer_id,
+        c.full_name AS customer_name,
+        c.phone AS customer_phone,
+        c.customer_code
+      FROM orders o
+      JOIN customers c ON o.customer_id = c.id
+      LEFT JOIN payments p ON p.order_id = o.id
+      WHERE o.store_id = $1 
+        AND o.status != 'CANCELLED'
+      GROUP BY o.id, c.id
+      HAVING (o.total_amount - COALESCE(SUM(p.amount), 0.00)) > 0
+      ORDER BY balance_due DESC, o.created_at DESC;
+    `;
+    const res = await query(sql, [storeId]);
+
+    const dues = res.rows.map((r) => ({
+      orderId: r.order_id,
+      orderNumber: r.order_number,
+      status: r.status,
+      totalAmount: parseFloat(r.total_amount),
+      totalPaid: parseFloat(r.total_paid),
+      balanceDue: parseFloat(r.balance_due),
+      dueDate: r.due_date,
+      createdAt: r.created_at,
+      customerId: r.customer_id,
+      customerName: r.customer_name,
+      customerPhone: r.customer_phone,
+      customerCode: r.customer_code,
+    }));
+
+    const totalOutstanding = dues.reduce((sum, d) => sum + d.balanceDue, 0);
+
+    return {
+      totalOutstanding,
+      count: dues.length,
+      dues,
+    };
+  },
+
+  // 6. Top Selling Products Leaderboard
+  async getTopSellingProducts(storeId, limit = 10) {
+    const sql = `
+      SELECT 
+        oi.description,
+        oi.item_type,
+        SUM(oi.quantity)::int AS units_sold,
+        SUM(oi.total_price)::numeric(12,2) AS total_revenue
+      FROM order_items oi
+      JOIN orders o ON oi.order_id = o.id
+      WHERE o.store_id = $1 AND o.status != 'CANCELLED'
+      GROUP BY oi.description, oi.item_type
+      ORDER BY units_sold DESC, total_revenue DESC
+      LIMIT $2;
+    `;
+    const res = await query(sql, [storeId, limit]);
+    return res.rows.map((r) => ({
+      description: r.description,
+      itemType: r.item_type,
+      unitsSold: parseInt(r.units_sold, 10),
+      totalRevenue: parseFloat(r.total_revenue),
+    }));
+  },
 };

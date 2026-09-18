@@ -15,20 +15,23 @@ export default function CustomerDetailsPage() {
   const [customer, setCustomer] = useState(null);
   const [prescriptions, setPrescriptions] = useState([]);
   const [customerOrders, setCustomerOrders] = useState([]);
+  const [messageLogs, setMessageLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isPrescriptionModalOpen, setIsPrescriptionModalOpen] = useState(false);
 
   const fetchCustomerData = useCallback(async () => {
     if (!id) return;
     try {
-      const [custRes, prescRes, ordersRes] = await Promise.all([
+      const [custRes, prescRes, ordersRes, logsRes] = await Promise.all([
         api.get(`/customers/${id}`),
         api.get(`/customers/${id}/prescriptions`),
         api.get(`/orders?customerId=${id}`),
+        api.get(`/messages/customer/${id}`).catch(() => ({ data: { data: [] } })),
       ]);
       setCustomer(custRes.data.data);
       setPrescriptions(prescRes.data.data);
       setCustomerOrders(ordersRes.data.data);
+      setMessageLogs(logsRes.data?.data || []);
     } catch (err) {
       console.error('Error fetching customer data:', err);
     } finally {
@@ -127,7 +130,7 @@ export default function CustomerDetailsPage() {
             customerName: customer.full_name,
             storeName: user?.store?.name || 'Optical Store',
           });
-          openWhatsApp(customer.phone, msg);
+          openWhatsApp(customer.phone, msg, 'Welcome Greeting', customer.id, 'GREETING');
         }}
         className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-xl border border-indigo-200 flex items-center gap-1"
       >
@@ -141,7 +144,7 @@ export default function CustomerDetailsPage() {
             storeName: user?.store?.name || 'Optical Store',
             lastTestDate: prescriptions[0]?.tested_at,
           });
-          openWhatsApp(customer.phone, msg);
+          openWhatsApp(customer.phone, msg, 'Annual Eye Checkup Recall', customer.id, 'ANNUAL_CHECKUP');
         }}
         className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-xl border border-emerald-200 flex items-center gap-1"
       >
@@ -257,6 +260,32 @@ export default function CustomerDetailsPage() {
                         <OrderStatusBadge status={ord.status} />
                       </div>
                       <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* WhatsApp Message Log Timeline */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+            <h3 className="font-bold text-slate-900 flex items-center gap-2 text-sm">
+              <MessageSquare className="w-4 h-4 text-indigo-600" />
+              WhatsApp Message History ({messageLogs.length})
+            </h3>
+            {messageLogs.length === 0 ? (
+              <p className="text-xs text-slate-400 py-2 text-center">No WhatsApp messages dispatched yet.</p>
+            ) : (
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                {messageLogs.map((log) => (
+                  <div key={log.id} className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs flex justify-between items-center">
+                    <div>
+                      <span className="font-bold text-slate-800 uppercase text-[10px] tracking-wider px-2 py-0.5 rounded bg-indigo-50 text-indigo-700">
+                        {log.message_type?.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono">
+                      {new Date(log.sent_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
                 ))}

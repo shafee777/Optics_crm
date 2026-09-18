@@ -48,10 +48,26 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const updateStore = (updatedStore) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updatedUser = {
+        ...prev,
+        store: {
+          ...prev.store,
+          ...updatedStore,
+        },
+      };
+      localStorage.setItem('optics_user', JSON.stringify(updatedUser));
+      return updatedUser;
+    });
+  };
+
   const value = {
     user,
     login,
     logout,
+    updateStore,
     isAuthenticated: !!user,
     isOwner: user?.role === 'OWNER',
     isStaff: user?.role === 'STAFF',

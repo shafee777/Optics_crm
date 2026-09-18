@@ -25,4 +25,26 @@ export const reportService = {
     }
     return await reportRepository.getYearlySales(storeId, y);
   },
+
+  async getCustomRangeSales(storeId, startDate, endDate) {
+    if (!startDate || !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+      throw new AppError('startDate must be in YYYY-MM-DD format', 400, 'INVALID_START_DATE');
+    }
+    if (!endDate || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+      throw new AppError('endDate must be in YYYY-MM-DD format', 400, 'INVALID_END_DATE');
+    }
+    if (new Date(startDate) > new Date(endDate)) {
+      throw new AppError('startDate cannot be after endDate', 400, 'INVALID_DATE_RANGE');
+    }
+    return await reportRepository.getCustomRangeSales(storeId, startDate, endDate);
+  },
+
+  async getOutstandingDues(storeId) {
+    return await reportRepository.getOutstandingDues(storeId);
+  },
+
+  async getTopSellingProducts(storeId, limit = 10) {
+    const l = parseInt(limit, 10);
+    return await reportRepository.getTopSellingProducts(storeId, isNaN(l) ? 10 : Math.min(l, 50));
+  },
 };
