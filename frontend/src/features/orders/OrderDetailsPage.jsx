@@ -82,21 +82,22 @@ export default function OrderDetailsPage() {
             orderNumber: order.order_number,
             dueDate: order.due_date,
           });
-          openWhatsApp(order.customer_phone, msg);
+          openWhatsApp(order.customer_phone, msg, 'Order Placed Greeting', order.customer_id, 'ORDER_PLACED');
         } else if (nextStatus === 'READY_FOR_PICKUP') {
           const msg = getOrderReadyMessage({
             customerName: order.customer_name,
             storeName,
             orderNumber: order.order_number,
           });
-          openWhatsApp(order.customer_phone, msg);
+          openWhatsApp(order.customer_phone, msg, 'Order Ready for Pickup', order.customer_id, 'ORDER_READY');
         } else if (nextStatus === 'DELIVERED') {
+          const reviewLink = user?.store?.googleReviewLink || user?.store?.google_review_link;
           const msg = getGoogleReviewMessage({
             customerName: order.customer_name,
             storeName,
-            googleReviewLink: user?.store?.google_review_link,
+            googleReviewLink: reviewLink,
           });
-          openWhatsApp(order.customer_phone, msg);
+          openWhatsApp(order.customer_phone, msg, 'Google Review Request', order.customer_id, 'GOOGLE_REVIEW');
         }
       }
     } catch (err) {
@@ -361,7 +362,7 @@ export default function OrderDetailsPage() {
                   storeName: user?.store?.name || 'Optical Store',
                   orderNumber: order.order_number,
                 });
-                openWhatsApp(order.customer_phone, msg);
+                openWhatsApp(order.customer_phone, msg, 'Order Ready for Pickup', order.customer_id, 'ORDER_READY');
               }}
               className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-xl border border-emerald-200 transition flex items-center gap-1.5"
             >
@@ -372,12 +373,13 @@ export default function OrderDetailsPage() {
             {/* Google Review & Feedback WhatsApp */}
             <button
               onClick={() => {
+                const reviewLink = user?.store?.googleReviewLink || user?.store?.google_review_link || 'https://g.page/r/your-shop-review';
                 const msg = getGoogleReviewMessage({
                   customerName: order.customer_name,
                   storeName: user?.store?.name || 'Optical Store',
-                  googleReviewLink: user?.store?.google_review_link || 'https://g.page/r/your-shop-review',
+                  googleReviewLink: reviewLink,
                 });
-                openWhatsApp(order.customer_phone, msg);
+                openWhatsApp(order.customer_phone, msg, 'Google Review Request', order.customer_id, 'GOOGLE_REVIEW');
               }}
               className="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-semibold rounded-xl border border-amber-200 transition flex items-center gap-1.5"
             >

@@ -365,12 +365,13 @@ test('Stage 2: Order Creation decrements stock & auto-registers new products', a
   const token = loginRes.body.data.token;
 
   // 1. Create a customer
+  const dynamicPhone = `98${Math.floor(10000000 + Math.random() * 90000000)}`;
   const custRes = await request
     .post('/api/v1/customers')
     .set('Authorization', `Bearer ${token}`)
     .send({
       fullName: 'Vikram Singh',
-      phone: '9876500011',
+      phone: dynamicPhone,
     });
   const customerId = custRes.body.data.id;
 
@@ -445,12 +446,13 @@ test('Stage 2: 1-Year Annual Eye Test Recall endpoint returns eligible customers
   const storeId = loginRes.body.data.user.store.id;
 
   // 1. Create a customer
+  const recallPhone = `97${Math.floor(10000000 + Math.random() * 90000000)}`;
   const custRes = await request
     .post('/api/v1/customers')
     .set('Authorization', `Bearer ${token}`)
     .send({
       fullName: 'Old Test Customer',
-      phone: '9876549999',
+      phone: recallPhone,
     });
   const customerId = custRes.body.data.id;
 
@@ -472,3 +474,249 @@ test('Stage 2: 1-Year Annual Eye Test Recall endpoint returns eligible customers
   assert.ok(Array.isArray(dueRes.body.data));
   assert.ok(dueRes.body.data.some((c) => c.id === customerId));
 });
+
+test('Stage 3: Store Settings - View store and update store configuration as OWNER', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  // 1. Get current store
+  const getRes = await request
+    .get('/api/v1/stores/current')
+    .set('Authorization', `Bearer ${token}`);
+
+  assert.equal(getRes.status, 200);
+  assert.equal(getRes.body.success, true);
+  assert.ok(getRes.body.data.name);
+
+  // 2. Update store details
+  const updateRes = await request
+    .patch('/api/v1/stores/current')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      phone: '+91 9988776655',
+      address: 'Shop #4, Optical Plaza, MG Road, Bangalore',
+      googleReviewLink: 'https://g.page/r/test-optical/review',
+    });
+
+  assert.equal(updateRes.status, 200);
+  assert.equal(updateRes.body.success, true);
+  assert.equal(updateRes.body.data.phone, '+91 9988776655');
+  assert.equal(updateRes.body.data.address, 'Shop #4, Optical Plaza, MG Road, Bangalore');
+  assert.equal(updateRes.body.data.googleReviewLink, 'https://g.page/r/test-optical/review');
+});
+
+test('Stage 3: Store Settings - STAFF cannot update store configuration (403 Forbidden)', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'staff@visioncare.com',
+    password: 'Password123!',
+  });
+  const staffToken = loginRes.body.data.token;
+
+  const patchRes = await request
+    .patch('/api/v1/stores/current')
+    .set('Authorization', `Bearer ${staffToken}`)
+    .send({
+      name: 'Hacked Store Name',
+    });
+
+  assert.equal(patchRes.status, 403);
+});
+
+test('Stage 3: User Management - List, Create, Deactivate, Reset Password & Login', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const ownerToken = loginRes.body.data.token;
+
+  // 1. List users
+  const listRes = await request
+    .get('/api/v1/users')
+    .set('Authorization', `Bearer ${ownerToken}`);
+
+  assert.equal(listRes.status, 200);
+  assert.ok(Array.isArray(listRes.body.data));
+
+  // 2. Create a new staff user
+  const uniqueStaffEmail = `staff_${Date.now()}@testoptical.com`;
+  const createRes = await request
+    .post('/api/v1/users')
+    .set('Authorization', `Bearer ${ownerToken}`)
+    .send({
+      fullName: 'Rahul Optometrist',
+      email: uniqueStaffEmail,
+      password: 'InitialPassword123!',
+      role: 'STAFF',
+    });
+
+  assert.equal(createRes.status, 201);
+  assert.equal(createRes.body.data.email, uniqueStaffEmail);
+  assert.equal(createRes.body.data.role, 'STAFF');
+  assert.equal(createRes.body.data.active, true);
+  const newUserId = createRes.body.data.id;
+
+  // 3. New staff logs in successfully
+  const firstLogin = await request.post('/api/v1/auth/login').send({
+    email: uniqueStaffEmail,
+    password: 'InitialPassword123!',
+  });
+  assert.equal(firstLogin.status, 200);
+  assert.ok(firstLogin.body.data.token);
+
+  // 4. Owner resets staff password
+  const resetRes = await request
+    .patch(`/api/v1/users/${newUserId}/password`)
+    .set('Authorization', `Bearer ${ownerToken}`)
+    .send({
+      password: 'NewChangedPass456!',
+    });
+  assert.equal(resetRes.status, 200);
+
+  // 5. Old password now fails
+  const failedOldLogin = await request.post('/api/v1/auth/login').send({
+    email: uniqueStaffEmail,
+    password: 'InitialPassword123!',
+  });
+  assert.equal(failedOldLogin.status, 401);
+
+  // 6. New password succeeds
+  const successNewLogin = await request.post('/api/v1/auth/login').send({
+    email: uniqueStaffEmail,
+    password: 'NewChangedPass456!',
+  });
+  assert.equal(successNewLogin.status, 200);
+
+  // 7. Owner deactivates staff account
+  const deactivateRes = await request
+    .patch(`/api/v1/users/${newUserId}/status`)
+    .set('Authorization', `Bearer ${ownerToken}`)
+    .send({ active: false });
+  assert.equal(deactivateRes.status, 200);
+  assert.equal(deactivateRes.body.data.active, false);
+
+  // 8. Deactivated staff cannot log in (403 ACCOUNT_DEACTIVATED)
+  const deactivatedLogin = await request.post('/api/v1/auth/login').send({
+    email: uniqueStaffEmail,
+    password: 'NewChangedPass456!',
+  });
+  assert.equal(deactivatedLogin.status, 403);
+  assert.equal(deactivatedLogin.body.error.code, 'ACCOUNT_DEACTIVATED');
+
+  // 9. Re-activate staff account
+  const reactivateRes = await request
+    .patch(`/api/v1/users/${newUserId}/status`)
+    .set('Authorization', `Bearer ${ownerToken}`)
+    .send({ active: true });
+  assert.equal(reactivateRes.status, 200);
+  assert.equal(reactivateRes.body.data.active, true);
+});
+
+test('Stage 4: Reports - Custom Range Sales, Outstanding Dues & Top Products', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  // 1. Custom date range sales
+  const rangeRes = await request
+    .get('/api/v1/reports/custom-range?startDate=2026-01-01&endDate=2026-12-31')
+    .set('Authorization', `Bearer ${token}`);
+  assert.equal(rangeRes.status, 200);
+  assert.equal(rangeRes.body.success, true);
+  assert.ok(Array.isArray(rangeRes.body.data.transactions));
+
+  // 2. Outstanding dues
+  const duesRes = await request
+    .get('/api/v1/reports/outstanding-dues')
+    .set('Authorization', `Bearer ${token}`);
+  assert.equal(duesRes.status, 200);
+  assert.equal(duesRes.body.success, true);
+  assert.ok(Array.isArray(duesRes.body.data.dues));
+
+  // 3. Top products
+  const topRes = await request
+    .get('/api/v1/reports/top-products?limit=5')
+    .set('Authorization', `Bearer ${token}`);
+  assert.equal(topRes.status, 200);
+  assert.equal(topRes.body.success, true);
+  assert.ok(Array.isArray(topRes.body.data));
+});
+
+test('Stage 4: Customer Messages - Audit Log recording and retrieval', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  // Create a customer
+  const custRes = await request
+    .post('/api/v1/customers')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      fullName: 'Message Audit Customer',
+      phone: `96${Math.floor(10000000 + Math.random() * 90000000)}`,
+    });
+  const customerId = custRes.body.data.id;
+
+  // Log a WhatsApp message
+  const logRes = await request
+    .post('/api/v1/messages/log')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      customerId,
+      messageType: 'ORDER_READY',
+      channel: 'WHATSAPP',
+    });
+  assert.equal(logRes.status, 201);
+  assert.equal(logRes.body.data.message_type, 'ORDER_READY');
+
+  // Retrieve customer message history
+  const getLogsRes = await request
+    .get(`/api/v1/messages/customer/${customerId}`)
+    .set('Authorization', `Bearer ${token}`);
+  assert.equal(getLogsRes.status, 200);
+  assert.ok(getLogsRes.body.data.some((m) => m.message_type === 'ORDER_READY'));
+});
+
+test('Stage 4: Store Data Export - Stream CSV files for Customers, Orders, Inventory, Expenses', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  // 1. Export Customers CSV
+  const custCsvRes = await request
+    .get('/api/v1/exports/customers.csv')
+    .set('Authorization', `Bearer ${token}`);
+  assert.equal(custCsvRes.status, 200);
+  assert.ok(custCsvRes.text.includes('Customer ID'));
+
+  // 2. Export Orders CSV
+  const orderCsvRes = await request
+    .get('/api/v1/exports/orders.csv')
+    .set('Authorization', `Bearer ${token}`);
+  assert.equal(orderCsvRes.status, 200);
+  assert.ok(orderCsvRes.text.includes('Order Number'));
+
+  // 3. Export Inventory CSV
+  const invCsvRes = await request
+    .get('/api/v1/exports/inventory.csv')
+    .set('Authorization', `Bearer ${token}`);
+  assert.equal(invCsvRes.status, 200);
+  assert.ok(invCsvRes.text.includes('Model / Code'));
+
+  // 4. Export Expenses CSV
+  const expCsvRes = await request
+    .get('/api/v1/exports/expenses.csv')
+    .set('Authorization', `Bearer ${token}`);
+  assert.equal(expCsvRes.status, 200);
+  assert.ok(expCsvRes.text.includes('Expense Category'));
+});
+
+

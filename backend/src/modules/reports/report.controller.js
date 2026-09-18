@@ -34,4 +34,46 @@ export const reportController = {
       next(error);
     }
   },
+
+  async getCustomRange(req, res, next) {
+    try {
+      const { startDate, endDate } = req.query;
+      const result = await reportService.getCustomRangeSales(
+        req.user.storeId,
+        startDate,
+        endDate
+      );
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getOutstandingDues(req, res, next) {
+    try {
+      const result = await reportService.getOutstandingDues(req.user.storeId);
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getTopSellingProducts(req, res, next) {
+    try {
+      const limit = req.query.limit || 10;
+      const result = await reportService.getTopSellingProducts(req.user.storeId, limit);
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
 };

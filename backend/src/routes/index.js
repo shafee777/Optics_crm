@@ -9,6 +9,10 @@ import expenseRoutes from '../modules/expenses/expense.routes.js';
 import dashboardRoutes from '../modules/dashboard/dashboard.routes.js';
 import reportRoutes from '../modules/reports/report.routes.js';
 import productRoutes from '../modules/products/product.routes.js';
+import storeRoutes from '../modules/stores/store.routes.js';
+import userRoutes from '../modules/users/user.routes.js';
+import messageRoutes from '../modules/messages/message.routes.js';
+import exportRoutes from '../modules/exports/export.routes.js';
 
 const router = Router();
 
@@ -37,5 +41,9 @@ router.use('/api/v1/expenses', expenseRoutes);
 router.use('/api/v1/dashboard', dashboardRoutes);
 router.use('/api/v1/reports', reportRoutes);
 router.use('/api/v1/products', productRoutes);
+router.use('/api/v1/stores', storeRoutes);
+router.use('/api/v1/users', userRoutes);
+router.use('/api/v1/messages', messageRoutes);
+router.use('/api/v1/exports', exportRoutes);
 
 export default router;

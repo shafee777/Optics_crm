@@ -33,6 +33,9 @@ export default function PrintOrderInvoice({ order, prescription }) {
               <span>{store.name}</span>
             </div>
             <p className="text-slate-500 mt-1">Professional Eye Care & Optical Dispensary</p>
+            {store.address && (
+              <p className="text-slate-600 mt-0.5">{store.address}</p>
+            )}
             {store.phone && (
               <p className="text-slate-500 flex items-center gap-1 mt-0.5">
                 <Phone className="w-3 h-3" /> {store.phone}

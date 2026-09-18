@@ -11,6 +11,8 @@ import OrderDetailsPage from '../features/orders/OrderDetailsPage.jsx';
 import FinancePage from '../features/finance/FinancePage.jsx';
 import DashboardPage from '../features/dashboard/DashboardPage.jsx';
 import ProductsPage from '../features/products/ProductsPage.jsx';
+import SettingsPage from '../features/settings/SettingsPage.jsx';
+import ReportsPage from '../features/reports/ReportsPage.jsx';
 
 export default function AppRouter() {
   return (
@@ -32,6 +34,8 @@ export default function AppRouter() {
         <Route path="orders/:id" element={<OrderDetailsPage />} />
         <Route path="inventory" element={<ProductsPage />} />
         <Route path="finance" element={<FinancePage />} />
+        <Route path="reports" element={<ReportsPage />} />
+        <Route path="settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
