@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api.js';
 import OrderStatusBadge from './OrderStatusBadge.jsx';
+import { SkeletonTable } from '../../components/common/Skeleton.jsx';
 import { Search, Plus, Calendar, AlertTriangle, ArrowRight } from 'lucide-react';
 
 export default function OrdersPage() {
@@ -102,7 +103,7 @@ export default function OrdersPage() {
       {/* Orders Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-slate-400 text-sm">Loading orders...</div>
+          <SkeletonTable rows={6} cols={5} />
         ) : orders.length === 0 ? (
           <div className="p-12 text-center space-y-2">
             <p className="text-slate-600 font-medium text-sm">No orders found in this queue</p>

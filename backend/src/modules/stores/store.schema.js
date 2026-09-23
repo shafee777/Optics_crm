@@ -6,6 +6,7 @@ export const updateStoreSchema = z.object({
     phone: z.string().max(50).nullable().optional(),
     address: z.string().nullable().optional(),
     googleReviewLink: z.string().nullable().optional(),
+    gstin: z.string().max(20).nullable().optional(),
     currency: z.string().max(10).optional(),
     timezone: z.string().max(50).optional(),
   }),

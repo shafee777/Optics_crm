@@ -719,4 +719,92 @@ test('Stage 4: Store Data Export - Stream CSV files for Customers, Orders, Inven
   assert.ok(expCsvRes.text.includes('Expense Category'));
 });
 
+test('Option 1: GST Tax Billing - store GSTIN update & order CGST/SGST calculation', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  // 1. Update store GSTIN
+  const gstinRes = await request
+    .patch('/api/v1/stores/current')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ gstin: '29ABCDE1234F1Z5' });
+
+  assert.equal(gstinRes.status, 200);
+  assert.equal(gstinRes.body.data.gstin, '29ABCDE1234F1Z5');
+
+  // 2. Create customer
+  const custRes = await request
+    .post('/api/v1/customers')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      fullName: 'GST Taxpayer Customer',
+      phone: `95${Math.floor(10000000 + Math.random() * 90000000)}`,
+    });
+  const customerId = custRes.body.data.id;
+
+  // 3. Create GST Order (Frame 12% GST ₹1120 inclusive, Lens 18% GST ₹1180 inclusive)
+  // Frame: total=1120, taxable=1000, tax=120, CGST=60, SGST=60
+  // Lens: total=1180, taxable=1000, tax=180, CGST=90, SGST=90
+  const orderRes = await request
+    .post('/api/v1/orders')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      customerId,
+      dueDate: '2026-10-15',
+      isGstBill: true,
+      items: [
+        {
+          itemType: 'FRAME',
+          description: 'Titan Titanium Frame',
+          quantity: 1,
+          unitPrice: 1120,
+          hsnCode: '9004',
+          gstRate: 12,
+        },
+        {
+          itemType: 'LENS',
+          description: 'Crizal Single Vision Lens',
+          quantity: 1,
+          unitPrice: 1180,
+          hsnCode: '9001',
+          gstRate: 18,
+        },
+      ],
+    });
+
+  assert.equal(orderRes.status, 201);
+  assert.equal(orderRes.body.success, true);
+  assert.equal(orderRes.body.data.total_amount, '2300.00');
+  assert.equal(orderRes.body.data.total_taxable_value, '2000.00');
+  assert.equal(orderRes.body.data.total_cgst, '150.00');
+  assert.equal(orderRes.body.data.total_sgst, '150.00');
+
+  // Fetch order details
+  const getOrderRes = await request
+    .get(`/api/v1/orders/${orderRes.body.data.id}`)
+    .set('Authorization', `Bearer ${token}`);
+
+  assert.equal(getOrderRes.status, 200);
+  assert.equal(getOrderRes.body.data.items.length, 2);
+
+  const frameItem = getOrderRes.body.data.items.find((i) => i.item_type === 'FRAME');
+  const lensItem = getOrderRes.body.data.items.find((i) => i.item_type === 'LENS');
+
+  assert.ok(frameItem);
+  assert.equal(frameItem.hsn_code, '9004');
+  assert.equal(frameItem.taxable_value, '1000.00');
+  assert.equal(frameItem.cgst_amount, '60.00');
+  assert.equal(frameItem.sgst_amount, '60.00');
+
+  assert.ok(lensItem);
+  assert.equal(lensItem.hsn_code, '9001');
+  assert.equal(lensItem.taxable_value, '1000.00');
+  assert.equal(lensItem.cgst_amount, '90.00');
+  assert.equal(lensItem.sgst_amount, '90.00');
+});
+
+
 

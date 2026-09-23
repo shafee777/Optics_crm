@@ -1,14 +1,14 @@
 import { pool } from '../../config/database.js';
 
 export const productRepository = {
-  async create({ storeId, itemType, brand, modelCode, name, description, costPrice, sellingPrice, stockQuantity, minStockAlert }) {
+  async create({ storeId, itemType, brand, modelCode, name, description, costPrice, sellingPrice, stockQuantity, minStockAlert, hsnCode, gstRate }) {
     const query = `
       INSERT INTO products (
-        store_id, item_type, brand, model_code, name, description, cost_price, selling_price, stock_quantity, min_stock_alert
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        store_id, item_type, brand, model_code, name, description, cost_price, selling_price, stock_quantity, min_stock_alert, hsn_code, gst_rate
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *;
     `;
-    const values = [storeId, itemType, brand || null, modelCode || null, name, description || null, costPrice || 0, sellingPrice || 0, stockQuantity || 0, minStockAlert || 3];
+    const values = [storeId, itemType, brand || null, modelCode || null, name, description || null, costPrice || 0, sellingPrice || 0, stockQuantity || 0, minStockAlert || 3, hsnCode || null, gstRate ?? 12.00];
     const { rows } = await pool.query(query, values);
     return rows[0];
   },
@@ -67,6 +67,8 @@ export const productRepository = {
       sellingPrice: 'selling_price',
       stockQuantity: 'stock_quantity',
       minStockAlert: 'min_stock_alert',
+      hsnCode: 'hsn_code',
+      gstRate: 'gst_rate',
     };
 
     for (const [key, dbCol] of Object.entries(map)) {

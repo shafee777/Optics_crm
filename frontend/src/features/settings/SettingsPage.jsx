@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { SkeletonTable, SkeletonCard } from '../../components/common/Skeleton.jsx';
 import AddStaffModal from './AddStaffModal.jsx';
 import ResetPasswordModal from './ResetPasswordModal.jsx';
 import { 
@@ -33,6 +34,7 @@ export default function SettingsPage() {
     name: '',
     phone: '',
     address: '',
+    gstin: '',
     googleReviewLink: '',
     currency: 'INR',
     timezone: 'Asia/Kolkata',
@@ -58,6 +60,7 @@ export default function SettingsPage() {
         name: s.name || '',
         phone: s.phone || '',
         address: s.address || '',
+        gstin: s.gstin || '',
         googleReviewLink: s.googleReviewLink || '',
         currency: s.currency || 'INR',
         timezone: s.timezone || 'Asia/Kolkata',
@@ -108,6 +111,7 @@ export default function SettingsPage() {
         name: res.data.data.name,
         phone: res.data.data.phone,
         address: res.data.data.address,
+        gstin: res.data.data.gstin,
         googleReviewLink: res.data.data.googleReviewLink,
         google_review_link: res.data.data.googleReviewLink,
         currency: res.data.data.currency,
@@ -161,7 +165,7 @@ export default function SettingsPage() {
             Store Settings & Team
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Configure your optical dispensary profile, Google review link, and staff access accounts.
+            Configure your optical dispensary profile, Store GSTIN, Google review link, and staff access accounts.
           </p>
         </div>
 
@@ -212,7 +216,7 @@ export default function SettingsPage() {
       {activeTab === 'store' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 max-w-3xl">
           {loadingStore ? (
-            <div className="py-12 text-center text-slate-400 text-sm">Loading store configuration...</div>
+            <SkeletonCard height="h-64" />
           ) : (
             <form onSubmit={handleSaveStore} className="space-y-5">
               {storeMessage && (
@@ -277,15 +281,17 @@ export default function SettingsPage() {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Base Currency
+                    Store GSTIN / Tax ID
                   </label>
                   <input
                     type="text"
-                    disabled
-                    value={storeData.currency}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50 text-slate-500 font-mono"
+                    disabled={!isOwner}
+                    value={storeData.gstin}
+                    onChange={(e) => setStoreData({ ...storeData, gstin: e.target.value.toUpperCase() })}
+                    placeholder="e.g. 29ABCDE1234F1Z5"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition disabled:bg-slate-50 disabled:text-slate-500 uppercase"
                   />
-                  <span className="text-[11px] text-slate-400 mt-0.5 block">Standard INR (₹)</span>
+                  <span className="text-[11px] text-slate-400 mt-0.5 block">15-digit GST Number printed on Tax Invoices</span>
                 </div>
 
                 <div className="sm:col-span-2">
@@ -388,7 +394,7 @@ export default function SettingsPage() {
 
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             {loadingStaff ? (
-              <div className="p-8 text-center text-slate-400 text-sm">Loading team accounts...</div>
+              <SkeletonTable rows={3} cols={4} />
             ) : staffList.length === 0 ? (
               <div className="p-12 text-center text-slate-400 text-sm">No team members registered yet.</div>
             ) : (

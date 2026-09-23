@@ -13,19 +13,21 @@ import DashboardPage from '../features/dashboard/DashboardPage.jsx';
 import ProductsPage from '../features/products/ProductsPage.jsx';
 import SettingsPage from '../features/settings/SettingsPage.jsx';
 import ReportsPage from '../features/reports/ReportsPage.jsx';
+import ErrorBoundary from '../components/common/ErrorBoundary.jsx';
 
 export default function AppRouter() {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <AppLayout />
-          </ProtectedRoute>
-        }
-      >
+    <ErrorBoundary>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <AppLayout />
+            </ProtectedRoute>
+          }
+        >
         <Route index element={<DashboardPage />} />
         <Route path="customers" element={<CustomersPage />} />
         <Route path="customers/:id" element={<CustomerDetailsPage />} />
@@ -39,5 +41,6 @@ export default function AppRouter() {
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+  </ErrorBoundary>
   );
 }

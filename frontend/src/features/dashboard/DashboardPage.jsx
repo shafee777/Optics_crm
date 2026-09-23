@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api.js';
+import { SkeletonStatGrid, SkeletonTable } from '../../components/common/Skeleton.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
 import OrderStatusBadge from '../orders/OrderStatusBadge.jsx';
 import { 
@@ -43,7 +44,12 @@ export default function DashboardPage() {
   }, [fetchDashboard]);
 
   if (loading) {
-    return <div className="p-8 text-center text-slate-500">Loading store dashboard...</div>;
+    return (
+      <div className="space-y-6">
+        <SkeletonStatGrid count={4} />
+        <SkeletonTable rows={5} cols={5} />
+      </div>
+    );
   }
 
   if (!data) {

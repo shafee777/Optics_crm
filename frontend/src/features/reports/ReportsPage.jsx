@@ -3,6 +3,7 @@ import api from '../../services/api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import OrderStatusBadge from '../orders/OrderStatusBadge.jsx';
 import { openWhatsApp, getPaymentReminderMessage } from '../../lib/whatsapp.js';
+import { SkeletonTable } from '../../components/common/Skeleton.jsx';
 import { 
   BarChart3, 
   Calendar, 
@@ -319,7 +320,7 @@ export default function ReportsPage() {
             </div>
 
             {loadingRange ? (
-              <div className="p-12 text-center text-slate-400 text-sm">Loading custom sales report...</div>
+              <SkeletonTable rows={5} cols={5} />
             ) : !rangeData?.transactions || rangeData.transactions.length === 0 ? (
               <div className="p-12 text-center text-slate-400 text-sm">No sales transactions found for this date range.</div>
             ) : (
@@ -402,7 +403,7 @@ export default function ReportsPage() {
 
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             {loadingDues ? (
-              <div className="p-12 text-center text-slate-400 text-sm">Loading outstanding customer dues...</div>
+              <SkeletonTable rows={5} cols={6} />
             ) : !duesData?.dues || duesData.dues.length === 0 ? (
               <div className="p-12 text-center space-y-1">
                 <p className="font-bold text-emerald-600 text-base">🎉 No outstanding dues!</p>
@@ -498,7 +499,7 @@ export default function ReportsPage() {
 
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             {loadingProducts ? (
-              <div className="p-12 text-center text-slate-400 text-sm">Loading product leaderboard...</div>
+              <SkeletonTable rows={5} cols={4} />
             ) : topProducts.length === 0 ? (
               <div className="p-12 text-center text-slate-400 text-sm">No sales item data recorded yet.</div>
             ) : (

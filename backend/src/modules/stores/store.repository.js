@@ -9,6 +9,7 @@ export const storeRepository = {
         phone, 
         address, 
         google_review_link, 
+        gstin,
         currency, 
         timezone, 
         created_at, 
@@ -41,6 +42,10 @@ export const storeRepository = {
       fields.push(`google_review_link = $${idx++}`);
       values.push(data.googleReviewLink);
     }
+    if (data.gstin !== undefined) {
+      fields.push(`gstin = $${idx++}`);
+      values.push(data.gstin);
+    }
     if (data.currency !== undefined) {
       fields.push(`currency = $${idx++}`);
       values.push(data.currency);
@@ -61,7 +66,7 @@ export const storeRepository = {
       UPDATE stores
       SET ${fields.join(', ')}
       WHERE id = $${idx}
-      RETURNING id, name, phone, address, google_review_link, currency, timezone, created_at, updated_at;
+      RETURNING id, name, phone, address, google_review_link, gstin, currency, timezone, created_at, updated_at;
     `;
 
     const res = await query(sql, values);

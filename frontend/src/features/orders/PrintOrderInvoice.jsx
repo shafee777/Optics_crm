@@ -38,14 +38,19 @@ export default function PrintOrderInvoice({ order, prescription }) {
             )}
             {store.phone && (
               <p className="text-slate-500 flex items-center gap-1 mt-0.5">
-                <Phone className="w-3 h-3" /> {store.phone}
+                <Phone className="w-3 h-3" /> Phone: {store.phone}
+              </p>
+            )}
+            {store.gstin && (
+              <p className="text-slate-900 font-bold font-mono text-[11px] mt-1 bg-slate-100 px-2 py-0.5 rounded inline-block">
+                GSTIN: {store.gstin}
               </p>
             )}
           </div>
 
           <div className="text-right">
             <div className="text-lg font-mono font-extrabold text-slate-900">{order.order_number}</div>
-            <div className="text-[11px] text-slate-500">Order & Tax Invoice</div>
+            <div className="text-xs font-bold text-indigo-600 uppercase tracking-wider">{order.is_gst_bill !== false ? 'OFFICIAL TAX INVOICE' : 'RETAIL INVOICE'}</div>
             <div className="mt-2 inline-block px-2.5 py-0.5 bg-slate-100 rounded text-[10px] font-bold text-slate-700 uppercase">
               Status: {order.status.replace(/_/g, ' ')}
             </div>
@@ -55,7 +60,7 @@ export default function PrintOrderInvoice({ order, prescription }) {
         {/* Customer & Dates Info Grid */}
         <div className="grid grid-cols-2 gap-6 py-4 border-b border-slate-200">
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Customer Details</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Billed To (Customer)</div>
             <div className="font-bold text-slate-900 text-sm">{order.customer_name}</div>
             <div className="text-slate-600 mt-0.5 font-mono">
               Phone: {order.customer_phone || 'N/A'} {order.customer_code ? `• Code: ${order.customer_code}` : ''}
@@ -63,12 +68,12 @@ export default function PrintOrderInvoice({ order, prescription }) {
           </div>
 
           <div className="text-right space-y-1">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Order Timings</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Invoice Details</div>
             <div className="text-slate-700">
-              <strong>Order Date:</strong> {new Date(order.order_date).toLocaleDateString()}
+              <strong>Invoice Date:</strong> {new Date(order.order_date).toLocaleDateString()}
             </div>
             <div className="text-slate-900 font-bold">
-              <strong>Due / Delivery Date:</strong> {new Date(order.due_date).toLocaleDateString()}
+              <strong>Delivery Due:</strong> {new Date(order.due_date).toLocaleDateString()}
             </div>
           </div>
         </div>
@@ -84,8 +89,8 @@ export default function PrintOrderInvoice({ order, prescription }) {
                 <thead className="bg-slate-50 text-[10px] font-bold text-slate-600 uppercase border-b border-slate-200">
                   <tr>
                     <th className="py-1.5 px-3 text-left">Eye</th>
-                    <th className="py-1.5 px-3">SPH (Spherical)</th>
-                    <th className="py-1.5 px-3">CYL (Cylindrical)</th>
+                    <th className="py-1.5 px-3">SPH</th>
+                    <th className="py-1.5 px-3">CYL</th>
                     <th className="py-1.5 px-3">AXIS</th>
                     <th className="py-1.5 px-3">ADD</th>
                     <th className="py-1.5 px-3">PD (Pupillary Dist.)</th>
@@ -117,33 +122,57 @@ export default function PrintOrderInvoice({ order, prescription }) {
 
         {/* Order Items Table */}
         <div className="py-4 border-b border-slate-200">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Order Line Items</div>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Item Particulars & Tax Breakup</div>
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase">
+              <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase bg-slate-50/50">
                 <th className="py-2 px-2">Type</th>
                 <th className="py-2 px-2">Description</th>
+                <th className="py-2 px-2 text-center">HSN</th>
                 <th className="py-2 px-2 text-center">Qty</th>
-                <th className="py-2 px-2 text-right">Unit Price</th>
+                <th className="py-2 px-2 text-right">Taxable Val</th>
+                {order.is_gst_bill !== false && (
+                  <>
+                    <th className="py-2 px-2 text-right">CGST</th>
+                    <th className="py-2 px-2 text-right">SGST</th>
+                  </>
+                )}
                 <th className="py-2 px-2 text-right">Total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {order.items?.map((item) => (
-                <tr key={item.id}>
-                  <td className="py-2.5 px-2 font-bold text-[10px] text-slate-600 uppercase">
-                    {item.item_type}
-                  </td>
-                  <td className="py-2.5 px-2 font-medium text-slate-800">{item.description}</td>
-                  <td className="py-2.5 px-2 text-center font-mono">{item.quantity}</td>
-                  <td className="py-2.5 px-2 text-right font-mono">
-                    ₹{parseFloat(item.unit_price).toLocaleString()}
-                  </td>
-                  <td className="py-2.5 px-2 text-right font-mono font-bold text-slate-900">
-                    ₹{parseFloat(item.total_price).toLocaleString()}
-                  </td>
-                </tr>
-              ))}
+              {order.items?.map((item) => {
+                const taxable = parseFloat(item.taxable_value || item.total_price);
+                const cgst = parseFloat(item.cgst_amount || 0);
+                const sgst = parseFloat(item.sgst_amount || 0);
+                const rate = parseFloat(item.gst_rate || 0);
+                const halfRate = rate / 2;
+
+                return (
+                  <tr key={item.id}>
+                    <td className="py-2.5 px-2 font-bold text-[10px] text-slate-600 uppercase">
+                      {item.item_type}
+                    </td>
+                    <td className="py-2.5 px-2 font-medium text-slate-800">{item.description}</td>
+                    <td className="py-2.5 px-2 text-center font-mono text-[11px]">{item.hsn_code || '—'}</td>
+                    <td className="py-2.5 px-2 text-center font-mono">{item.quantity}</td>
+                    <td className="py-2.5 px-2 text-right font-mono">₹{taxable.toFixed(2)}</td>
+                    {order.is_gst_bill !== false && (
+                      <>
+                        <td className="py-2.5 px-2 text-right font-mono text-[11px]">
+                          ₹{cgst.toFixed(2)} <span className="text-[9px] text-slate-400">({halfRate}%)</span>
+                        </td>
+                        <td className="py-2.5 px-2 text-right font-mono text-[11px]">
+                          ₹{sgst.toFixed(2)} <span className="text-[9px] text-slate-400">({halfRate}%)</span>
+                        </td>
+                      </>
+                    )}
+                    <td className="py-2.5 px-2 text-right font-mono font-bold text-slate-900">
+                      ₹{parseFloat(item.total_price).toFixed(2)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -151,40 +180,55 @@ export default function PrintOrderInvoice({ order, prescription }) {
         {/* Financial Calculation & Payment Summary */}
         <div className="py-4 flex justify-between items-start">
           <div className="max-w-xs text-[11px] text-slate-500 space-y-2">
-            <p className="font-semibold text-slate-700">Important Instructions:</p>
-            <ul className="list-disc pl-4 space-y-0.5">
-              <li>Please present this slip at the counter when collecting your glasses.</li>
-              <li>Spectacles are crafted according to the prescribed parameters recorded above.</li>
+            <p className="font-semibold text-slate-700">Important Instructions & Terms:</p>
+            <ul className="list-disc pl-4 space-y-0.5 text-[10.5px]">
+              <li>Please present this invoice when collecting your custom optical order.</li>
+              <li>Spectacle lenses are edged to the precise prescription measurements recorded above.</li>
+              <li>Goods once sold are covered under manufacturer optical warranty.</li>
             </ul>
             {order.notes && (
-              <p className="text-slate-600 italic mt-2">
-                <strong>Note:</strong> {order.notes}
+              <p className="text-slate-600 italic mt-2 bg-slate-50 p-2 rounded border border-slate-100">
+                <strong>Notes:</strong> {order.notes}
               </p>
             )}
           </div>
 
-          <div className="w-64 space-y-1.5 text-xs">
-            <div className="flex justify-between text-slate-600">
-              <span>Subtotal:</span>
-              <span className="font-mono">₹{order.subtotal?.toLocaleString()}</span>
-            </div>
+          <div className="w-72 space-y-1.5 text-xs bg-slate-50 p-4 rounded-xl border border-slate-200">
+            {order.is_gst_bill !== false && (
+              <>
+                <div className="flex justify-between text-slate-600 text-xs">
+                  <span>Total Taxable Value:</span>
+                  <span className="font-mono">₹{parseFloat(order.total_taxable_value || order.subtotal).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-slate-500 text-xs">
+                  <span>Total CGST:</span>
+                  <span className="font-mono">₹{parseFloat(order.total_cgst || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-slate-500 text-xs">
+                  <span>Total SGST:</span>
+                  <span className="font-mono">₹{parseFloat(order.total_sgst || 0).toFixed(2)}</span>
+                </div>
+              </>
+            )}
+
             {order.discount > 0 && (
-              <div className="flex justify-between text-emerald-600">
-                <span>Discount:</span>
-                <span className="font-mono">-₹{order.discount?.toLocaleString()}</span>
+              <div className="flex justify-between text-emerald-600 text-xs">
+                <span>Discount Applied:</span>
+                <span className="font-mono">-₹{parseFloat(order.discount).toFixed(2)}</span>
               </div>
             )}
+
             <div className="flex justify-between font-bold text-sm text-slate-900 border-t border-slate-200 pt-1.5">
-              <span>Grand Total:</span>
-              <span className="font-mono">₹{order.total_amount?.toLocaleString()}</span>
+              <span>Net Grand Total:</span>
+              <span className="font-mono">₹{parseFloat(order.total_amount).toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-slate-700 font-medium">
-              <span>Advance Paid:</span>
-              <span className="font-mono">₹{order.total_paid?.toLocaleString()}</span>
+            <div className="flex justify-between text-slate-700 font-medium text-xs">
+              <span>Advance Payment Paid:</span>
+              <span className="font-mono">₹{parseFloat(order.total_paid).toFixed(2)}</span>
             </div>
-            <div className="flex justify-between font-extrabold text-sm border-t border-slate-200 pt-1.5 text-indigo-700 bg-indigo-50 p-2 rounded-lg">
+            <div className="flex justify-between font-extrabold text-sm border-t border-slate-200 pt-1.5 text-indigo-700 bg-white p-2 rounded-lg border border-indigo-100 shadow-sm">
               <span>Balance Due:</span>
-              <span className="font-mono">₹{order.balance_due?.toLocaleString()}</span>
+              <span className="font-mono">₹{parseFloat(order.balance_due).toFixed(2)}</span>
             </div>
           </div>
         </div>

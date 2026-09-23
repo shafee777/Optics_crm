@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../services/api.js';
-import { ArrowLeft, Plus, Trash2, ShoppingBag, AlertCircle, Sparkles } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, ShoppingBag, AlertCircle } from 'lucide-react';
 
 export default function CreateOrderPage() {
   const [searchParams] = useSearchParams();
@@ -17,10 +17,26 @@ export default function CreateOrderPage() {
   // Products stock catalog (for quick select)
   const [stockProducts, setStockProducts] = useState([]);
 
-  // Items
+  // Helper for default GST rate and HSN Code based on optical item type
+  const getDefaultGstAndHsn = (itemType) => {
+    switch (itemType) {
+      case 'FRAME':
+      case 'SUNGLASSES':
+        return { hsnCode: '9004', gstRate: 12 };
+      case 'LENS':
+      case 'CONTACT_LENS':
+      case 'SOLUTION':
+        return { hsnCode: '9001', gstRate: 18 };
+      default:
+        return { hsnCode: '', gstRate: 0 };
+    }
+  };
+
+  // Items state with GST tax fields
+  const [isGstBill, setIsGstBill] = useState(true);
   const [items, setItems] = useState([
-    { productId: null, itemType: 'FRAME', description: '', quantity: 1, unitPrice: '', discount: 0 },
-    { productId: null, itemType: 'LENS', description: '', quantity: 1, unitPrice: '', discount: 0 },
+    { productId: null, itemType: 'FRAME', description: '', quantity: 1, unitPrice: '', discount: 0, hsnCode: '9004', gstRate: 12 },
+    { productId: null, itemType: 'LENS', description: '', quantity: 1, unitPrice: '', discount: 0, hsnCode: '9001', gstRate: 18 },
   ]);
 
   // Order Settings
@@ -39,6 +55,7 @@ export default function CreateOrderPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(null);
 
   // Fetch customers and stock products
   useEffect(() => {
@@ -65,8 +82,6 @@ export default function CreateOrderPage() {
     }
   }, [selectedCustomerId]);
 
-  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(null);
-
   const handleDescriptionChange = (index, text) => {
     const updated = [...items];
     updated[index].description = text;
@@ -77,16 +92,20 @@ export default function CreateOrderPage() {
 
   const handleSelectSuggestion = (index, product) => {
     const updated = [...items];
+    const { hsnCode, gstRate } = getDefaultGstAndHsn(product.item_type);
     updated[index].productId = product.id;
     updated[index].description = `${product.brand ? product.brand + ' ' : ''}${product.name}${product.model_code ? ' (' + product.model_code + ')' : ''}`;
     updated[index].unitPrice = product.selling_price;
     updated[index].itemType = product.item_type;
+    updated[index].hsnCode = product.hsn_code || hsnCode;
+    updated[index].gstRate = product.gst_rate !== null && product.gst_rate !== undefined ? product.gst_rate : gstRate;
     setItems(updated);
     setActiveSuggestionIndex(null);
   };
 
   const addItem = () => {
-    setItems([...items, { productId: null, itemType: 'ACCESSORY', description: '', quantity: 1, unitPrice: '', discount: 0 }]);
+    const defaults = getDefaultGstAndHsn('ACCESSORY');
+    setItems([...items, { productId: null, itemType: 'ACCESSORY', description: '', quantity: 1, unitPrice: '', discount: 0, hsnCode: defaults.hsnCode, gstRate: defaults.gstRate }]);
   };
 
   const removeItem = (index) => {
@@ -95,13 +114,27 @@ export default function CreateOrderPage() {
     }
   };
 
-  // Compute Subtotal and Total
+  // Compute Subtotal, Taxable, CGST, SGST and Grand Total
   const subtotal = items.reduce((sum, item) => {
     const qty = parseInt(item.quantity, 10) || 0;
     const price = parseFloat(item.unitPrice) || 0;
     const disc = parseFloat(item.discount) || 0;
-    return sum + (qty * price - disc);
+    return sum + Math.max(0, qty * price - disc);
   }, 0);
+
+  const totalTaxable = items.reduce((sum, item) => {
+    const qty = parseInt(item.quantity, 10) || 0;
+    const price = parseFloat(item.unitPrice) || 0;
+    const disc = parseFloat(item.discount) || 0;
+    const itemTotal = Math.max(0, qty * price - disc);
+    const rate = isGstBill ? (parseFloat(item.gstRate) || 0) : 0;
+    const taxable = rate > 0 ? itemTotal / (1 + rate / 100) : itemTotal;
+    return sum + taxable;
+  }, 0);
+
+  const totalTax = isGstBill ? subtotal - totalTaxable : 0;
+  const totalCgst = totalTax / 2;
+  const totalSgst = totalTax / 2;
 
   const grandTotal = Math.max(0, subtotal - (parseFloat(orderDiscount) || 0));
 
@@ -126,6 +159,7 @@ export default function CreateOrderPage() {
         customerId: selectedCustomerId,
         prescriptionId: selectedPrescriptionId || null,
         dueDate,
+        isGstBill,
         items: items.map((i) => ({
           productId: i.productId || null,
           itemType: i.itemType,
@@ -133,6 +167,8 @@ export default function CreateOrderPage() {
           quantity: parseInt(i.quantity, 10),
           unitPrice: parseFloat(i.unitPrice),
           discount: parseFloat(i.discount) || 0,
+          hsnCode: i.hsnCode || null,
+          gstRate: isGstBill ? (parseFloat(i.gstRate) || 0) : 0,
         })),
         discount: parseFloat(orderDiscount) || 0,
         notes,
@@ -224,15 +260,29 @@ export default function CreateOrderPage() {
 
         {/* Step 2: Line items */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="font-bold text-slate-900 text-base">2. Order Items</h2>
-            <button
-              type="button"
-              onClick={addItem}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800"
-            >
-              <Plus className="w-3.5 h-3.5" /> Add Another Item
-            </button>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+            <div>
+              <h2 className="font-bold text-slate-900 text-base">2. Order Items</h2>
+              <p className="text-xs text-slate-500">Configure item specs, HSN codes, and GST tax rates</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+                <input
+                  type="checkbox"
+                  checked={isGstBill}
+                  onChange={(e) => setIsGstBill(e.target.checked)}
+                  className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                />
+                <span>Generate Official Indian GST Tax Invoice</span>
+              </label>
+              <button
+                type="button"
+                onClick={addItem}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Item
+              </button>
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -253,13 +303,17 @@ export default function CreateOrderPage() {
                   className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3 relative"
                 >
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                    <div className="md:col-span-3">
+                    <div className="md:col-span-2">
                       <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Type</label>
                       <select
                         value={item.itemType}
                         onChange={(e) => {
                           const updated = [...items];
-                          updated[index].itemType = e.target.value;
+                          const newType = e.target.value;
+                          const { hsnCode, gstRate } = getDefaultGstAndHsn(newType);
+                          updated[index].itemType = newType;
+                          updated[index].hsnCode = hsnCode;
+                          updated[index].gstRate = gstRate;
                           setItems(updated);
                         }}
                         className="w-full px-2 py-2 rounded-lg border border-slate-200 text-xs bg-white font-semibold focus:outline-none"
@@ -274,9 +328,9 @@ export default function CreateOrderPage() {
                       </select>
                     </div>
 
-                    <div className="md:col-span-5 relative">
+                    <div className="md:col-span-4 relative">
                       <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                        Description / Name (Auto-search Stock)
+                        Description / Name (Auto-search Catalog)
                       </label>
                       <input
                         type="text"
@@ -327,34 +381,66 @@ export default function CreateOrderPage() {
                     </div>
 
                     <div className="md:col-span-2">
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Price (₹)</label>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">HSN Code</label>
                       <input
-                        type="number"
-                        required
-                        placeholder="0"
-                        value={item.unitPrice}
+                        type="text"
+                        placeholder="e.g. 9004"
+                        value={item.hsnCode || ''}
                         onChange={(e) => {
                           const updated = [...items];
-                          updated[index].unitPrice = e.target.value;
+                          updated[index].hsnCode = e.target.value;
                           setItems(updated);
                         }}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white font-mono text-right focus:outline-none"
+                        className="w-full px-2 py-2 rounded-lg border border-slate-200 text-xs bg-white font-mono focus:outline-none uppercase"
                       />
                     </div>
 
-                    <div className="md:col-span-2 flex items-center justify-end gap-2 pt-4">
-                      <span className="text-xs font-mono font-bold text-slate-700">
-                        ₹{(parseFloat(item.unitPrice) || 0).toLocaleString()}
-                      </span>
-                      {items.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeItem(index)}
-                          className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg"
+                    {isGstBill && (
+                      <div className="md:col-span-2">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">GST Rate</label>
+                        <select
+                          value={item.gstRate}
+                          onChange={(e) => {
+                            const updated = [...items];
+                            updated[index].gstRate = e.target.value;
+                            setItems(updated);
+                          }}
+                          className="w-full px-2 py-2 rounded-lg border border-slate-200 text-xs bg-white font-semibold focus:outline-none"
                         >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
+                          <option value="0">0% GST</option>
+                          <option value="5">5% GST</option>
+                          <option value="12">12% GST</option>
+                          <option value="18">18% GST</option>
+                          <option value="28">28% GST</option>
+                        </select>
+                      </div>
+                    )}
+
+                    <div className={isGstBill ? "md:col-span-2" : "md:col-span-4"}>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Total Price (₹)</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          required
+                          placeholder="0"
+                          value={item.unitPrice}
+                          onChange={(e) => {
+                            const updated = [...items];
+                            updated[index].unitPrice = e.target.value;
+                            setItems(updated);
+                          }}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white font-mono text-right focus:outline-none"
+                        />
+                        {items.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeItem(index)}
+                            className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg shrink-0"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -364,23 +450,42 @@ export default function CreateOrderPage() {
 
           {/* Pricing Summary */}
           <div className="pt-4 border-t border-slate-100 flex justify-end">
-            <div className="w-64 space-y-2 text-sm">
-              <div className="flex justify-between text-slate-600">
-                <span>Subtotal:</span>
-                <span className="font-mono">₹{subtotal.toLocaleString()}</span>
+            <div className="w-80 space-y-2 text-sm bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <div className="flex justify-between text-slate-600 text-xs">
+                <span>Subtotal (Incl. Taxes):</span>
+                <span className="font-mono font-semibold">₹{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
-              <div className="flex justify-between items-center text-slate-600">
-                <span>Discount:</span>
+
+              {isGstBill && (
+                <>
+                  <div className="flex justify-between text-slate-500 text-xs">
+                    <span>Taxable Amount (Net):</span>
+                    <span className="font-mono">₹{totalTaxable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-500 text-xs">
+                    <span>CGST Total:</span>
+                    <span className="font-mono">₹{totalCgst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-500 text-xs">
+                    <span>SGST Total:</span>
+                    <span className="font-mono">₹{totalSgst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                </>
+              )}
+
+              <div className="flex justify-between items-center text-slate-600 text-xs pt-1 border-t border-slate-200">
+                <span>Additional Order Discount:</span>
                 <input
                   type="number"
                   value={orderDiscount}
                   onChange={(e) => setOrderDiscount(e.target.value)}
-                  className="w-24 px-2 py-1 rounded border border-slate-200 text-right font-mono text-xs"
+                  className="w-24 px-2 py-1 rounded border border-slate-200 text-right font-mono text-xs bg-white"
                 />
               </div>
+
               <div className="flex justify-between font-bold text-base text-slate-900 border-t border-slate-200 pt-2">
-                <span>Grand Total:</span>
-                <span className="font-mono text-indigo-600">₹{grandTotal.toLocaleString()}</span>
+                <span>Grand Total Payable:</span>
+                <span className="font-mono text-indigo-600">₹{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
             </div>
           </div>
@@ -426,6 +531,19 @@ export default function CreateOrderPage() {
               </select>
             </div>
           </div>
+
+          {paymentMethod !== 'CASH' && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Payment Reference / Txn ID</label>
+              <input
+                type="text"
+                placeholder="e.g. UPI Ref / Cheque No."
+                value={paymentRef}
+                onChange={(e) => setPaymentRef(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none"
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">Order Notes</label>

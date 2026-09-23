@@ -57,11 +57,41 @@ export const orderRepository = {
       const orderNumber = await this.getNextOrderNumber(client, storeId);
 
       let subtotal = 0;
+      let totalTaxableValue = 0;
+      let totalCgst = 0;
+      let totalSgst = 0;
+      const isGstBill = data.isGstBill !== false;
+
       const computedItems = data.items.map((item) => {
         const itemSubtotal = item.quantity * item.unitPrice;
         const itemTotal = Math.max(0, itemSubtotal - (item.discount || 0));
         subtotal += itemTotal;
-        return { ...item, totalPrice: itemTotal };
+
+        const gstRate = isGstBill ? (parseFloat(item.gstRate) || 0) : 0;
+        let taxableValue = itemTotal;
+        let cgstAmount = 0;
+        let sgstAmount = 0;
+
+        if (gstRate > 0) {
+          taxableValue = Math.round((itemTotal / (1 + gstRate / 100)) * 100) / 100;
+          const totalTax = Math.round((itemTotal - taxableValue) * 100) / 100;
+          cgstAmount = Math.round((totalTax / 2) * 100) / 100;
+          sgstAmount = Math.round((totalTax - cgstAmount) * 100) / 100;
+        }
+
+        totalTaxableValue += taxableValue;
+        totalCgst += cgstAmount;
+        totalSgst += sgstAmount;
+
+        return {
+          ...item,
+          totalPrice: itemTotal,
+          hsnCode: item.hsnCode || null,
+          gstRate,
+          taxableValue,
+          cgstAmount,
+          sgstAmount,
+        };
       });
 
       const discount = data.discount || 0;
@@ -81,9 +111,10 @@ export const orderRepository = {
           store_id, customer_id, prescription_id, order_number,
           order_date, due_date, status,
           subtotal, discount, tax, total_amount,
+          is_gst_bill, total_taxable_value, total_cgst, total_sgst,
           notes, created_by
         )
-        VALUES ($1, $2, $3, $4, CURRENT_DATE, $5, $6, $7, $8, $9, $10, $11, $12)
+        VALUES ($1, $2, $3, $4, CURRENT_DATE, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
         RETURNING *;
       `;
       const { rows: orderRows } = await client.query(orderQuery, [
@@ -97,6 +128,10 @@ export const orderRepository = {
         discount,
         tax,
         totalAmount,
+        isGstBill,
+        Math.round(totalTaxableValue * 100) / 100,
+        Math.round(totalCgst * 100) / 100,
+        Math.round(totalSgst * 100) / 100,
         data.notes || null,
         userId,
       ]);
@@ -136,10 +171,10 @@ export const orderRepository = {
             // Automatically register new product into store inventory catalog
             const { rows: newProd } = await client.query(
               `INSERT INTO products (
-                store_id, item_type, name, selling_price, stock_quantity, min_stock_alert
-              ) VALUES ($1, $2, $3, $4, $5, 3)
+                store_id, item_type, name, selling_price, stock_quantity, min_stock_alert, hsn_code, gst_rate
+              ) VALUES ($1, $2, $3, $4, $5, 3, $6, $7)
               RETURNING id;`,
-              [storeId, item.itemType, item.description.trim(), item.unitPrice, -item.quantity]
+              [storeId, item.itemType, item.description.trim(), item.unitPrice, -item.quantity, item.hsnCode, item.gstRate]
             );
             resolvedProductId = newProd[0].id;
           }
@@ -150,9 +185,9 @@ export const orderRepository = {
           `
             INSERT INTO order_items (
               order_id, product_id, item_type, description, quantity,
-              unit_price, discount, total_price
+              unit_price, discount, total_price, hsn_code, gst_rate, taxable_value, cgst_amount, sgst_amount
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);
           `,
           [
             createdOrder.id,
@@ -163,6 +198,11 @@ export const orderRepository = {
             item.unitPrice,
             item.discount || 0,
             item.totalPrice,
+            item.hsnCode,
+            item.gstRate,
+            item.taxableValue,
+            item.cgstAmount,
+            item.sgstAmount,
           ]
         );
       }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api.js';
+import { SkeletonTable } from '../../components/common/Skeleton.jsx';
 import { 
   Package, 
   Plus, 
@@ -142,7 +143,7 @@ export default function ProductsPage() {
       {/* Products Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-slate-400 text-sm">Loading stock inventory...</div>
+          <SkeletonTable rows={6} cols={5} />
         ) : products.length === 0 ? (
           <div className="p-12 text-center space-y-3">
             <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto">

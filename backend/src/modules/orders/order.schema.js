@@ -26,15 +26,18 @@ export const createOrderSchema = z.object({
     customerId: z.string().uuid(),
     prescriptionId: z.string().uuid().optional().nullable(),
     dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Due date must be YYYY-MM-DD'),
+    isGstBill: z.boolean().default(true),
     items: z
       .array(
         z.object({
-          productId: z.string().uuid().optional().nullable(), // <-- NEW: Link to inventory
+          productId: z.string().uuid().optional().nullable(),
           itemType: z.enum(ITEM_TYPES),
           description: z.string().trim().min(1, 'Item description is required'),
           quantity: z.coerce.number().int().min(1, 'Quantity must be at least 1'),
           unitPrice: z.coerce.number().min(0, 'Unit price cannot be negative'),
           discount: z.coerce.number().min(0).default(0),
+          hsnCode: z.string().trim().max(20).optional().nullable(),
+          gstRate: z.coerce.number().min(0).max(100).default(0),
         })
       )
       .min(1, 'At least one item is required'),

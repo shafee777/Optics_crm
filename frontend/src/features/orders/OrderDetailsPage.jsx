@@ -6,6 +6,7 @@ import RecordPaymentModal from '../payments/RecordPaymentModal.jsx';
 import PrintOrderInvoice from './PrintOrderInvoice.jsx';
 import { openWhatsApp, getOrderPlacedGreetingMessage, getOrderReadyMessage, getGoogleReviewMessage } from '../../lib/whatsapp.js';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { SkeletonCard, SkeletonTable } from '../../components/common/Skeleton.jsx';
 
 import { 
   ArrowLeft, 
@@ -108,7 +109,13 @@ export default function OrderDetailsPage() {
   };
 
   if (loading) {
-    return <div className="p-8 text-center text-slate-500">Loading order details...</div>;
+    return (
+      <div className="space-y-6 max-w-5xl mx-auto">
+        <SkeletonCard height="h-6" className="max-w-md" />
+        <SkeletonCard height="h-24" />
+        <SkeletonTable rows={4} cols={4} />
+      </div>
+    );
   }
 
   if (!order) {
