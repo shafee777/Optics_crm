@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { SkeletonTable, SkeletonCard } from '../../components/common/Skeleton.jsx';
 import AddStaffModal from './AddStaffModal.jsx';
 import ResetPasswordModal from './ResetPasswordModal.jsx';
+import WhatsAppTemplatesTab from './WhatsAppTemplatesTab.jsx';
 import { 
   Store, 
   Users, 
@@ -194,6 +195,18 @@ export default function SettingsPage() {
               >
                 <Users className="w-3.5 h-3.5" />
                 Staff & Team ({staffList.length})
+              </button>
+
+              <button
+                onClick={() => setActiveTab('whatsapp')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition ${
+                  activeTab === 'whatsapp'
+                    ? 'bg-white text-indigo-600 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+                WhatsApp Templates
               </button>
 
               <button
@@ -498,7 +511,10 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* TAB 3: Data Backup & Export */}
+      {/* TAB 3: WhatsApp Message Templates */}
+      {activeTab === 'whatsapp' && isOwner && <WhatsAppTemplatesTab />}
+
+      {/* TAB 4: Data Backup & Export */}
       {activeTab === 'export' && isOwner && (
         <div className="space-y-6">
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">

@@ -17,12 +17,20 @@ export default function AnnualRemindersTab() {
   }, []);
 
   const handleSendReminder = (customer) => {
+    const templates = user?.store?.whatsapp_templates || user?.store?.whatsappTemplates;
     const msg = getAnnualCheckupMessage({
       customerName: customer.full_name,
       storeName: user?.store?.name || 'Optical Store',
       lastTestDate: customer.last_test_date,
+      customTemplate: templates?.ANNUAL_CHECKUP,
     });
-    openWhatsApp(customer.phone, msg);
+    openWhatsApp(
+      customer.phone,
+      msg,
+      `Annual Recall - ${customer.full_name}`,
+      customer.id,
+      'ANNUAL_CHECKUP'
+    );
   };
 
   return (

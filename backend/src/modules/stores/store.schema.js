@@ -9,5 +9,6 @@ export const updateStoreSchema = z.object({
     gstin: z.string().max(20).nullable().optional(),
     currency: z.string().max(10).optional(),
     timezone: z.string().max(50).optional(),
+    whatsappTemplates: z.record(z.string()).optional().nullable(),
   }),
 });

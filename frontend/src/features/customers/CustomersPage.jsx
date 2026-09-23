@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../services/api.js';
 import CustomerFormModal from './CustomerFormModal.jsx';
 import AnnualRemindersTab from './AnnualRemindersTab.jsx';
+import { SkeletonTable } from '../../components/common/Skeleton.jsx';
 import { Search, UserPlus, Phone, Eye, UserCheck, Hash, Clock, Users } from 'lucide-react';
 
 export default function CustomersPage() {
@@ -103,7 +104,7 @@ export default function CustomersPage() {
           {/* Customers Table */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-slate-400 text-sm">Loading customers...</div>
+          <SkeletonTable rows={6} cols={5} />
         ) : customers.length === 0 ? (
           <div className="p-12 text-center space-y-3">
             <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">

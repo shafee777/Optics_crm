@@ -76,12 +76,15 @@ export default function OrderDetailsPage() {
       // Trigger automatic WhatsApp notifications
       if (order?.customer_phone) {
         const storeName = user?.store?.name || 'Optical Store';
+        const templates = user?.store?.whatsapp_templates || user?.store?.whatsappTemplates;
+
         if (nextStatus === 'PROCESSING') {
           const msg = getOrderPlacedGreetingMessage({
             customerName: order.customer_name,
             storeName,
             orderNumber: order.order_number,
             dueDate: order.due_date,
+            customTemplate: templates?.ORDER_PLACED,
           });
           openWhatsApp(order.customer_phone, msg, 'Order Placed Greeting', order.customer_id, 'ORDER_PLACED');
         } else if (nextStatus === 'READY_FOR_PICKUP') {
@@ -89,6 +92,7 @@ export default function OrderDetailsPage() {
             customerName: order.customer_name,
             storeName,
             orderNumber: order.order_number,
+            customTemplate: templates?.ORDER_READY,
           });
           openWhatsApp(order.customer_phone, msg, 'Order Ready for Pickup', order.customer_id, 'ORDER_READY');
         } else if (nextStatus === 'DELIVERED') {
@@ -97,6 +101,7 @@ export default function OrderDetailsPage() {
             customerName: order.customer_name,
             storeName,
             googleReviewLink: reviewLink,
+            customTemplate: templates?.GOOGLE_REVIEW,
           });
           openWhatsApp(order.customer_phone, msg, 'Google Review Request', order.customer_id, 'GOOGLE_REVIEW');
         }

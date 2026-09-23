@@ -13,6 +13,8 @@ import storeRoutes from '../modules/stores/store.routes.js';
 import userRoutes from '../modules/users/user.routes.js';
 import messageRoutes from '../modules/messages/message.routes.js';
 import exportRoutes from '../modules/exports/export.routes.js';
+import supplierRoutes from '../modules/suppliers/supplier.routes.js';
+import purchaseRoutes from '../modules/purchases/purchase.routes.js';
 
 const router = Router();
 
@@ -45,5 +47,7 @@ router.use('/api/v1/stores', storeRoutes);
 router.use('/api/v1/users', userRoutes);
 router.use('/api/v1/messages', messageRoutes);
 router.use('/api/v1/exports', exportRoutes);
+router.use('/api/v1/suppliers', supplierRoutes);
+router.use('/api/v1/purchases', purchaseRoutes);
 
 export default router;

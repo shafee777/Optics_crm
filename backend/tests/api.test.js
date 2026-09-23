@@ -806,5 +806,119 @@ test('Option 1: GST Tax Billing - store GSTIN update & order CGST/SGST calculati
   assert.equal(lensItem.sgst_amount, '90.00');
 });
 
+test('Suppliers & Inward Purchase Orders - complete procurement workflow', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  // 1. Create a Supplier (Lens Lab)
+  const supplierRes = await request
+    .post('/api/v1/suppliers')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      name: 'Essilor Lab India',
+      contactPerson: 'Vikram Mehta',
+      phone: '9888877777',
+      email: 'orders@essilorlab.com',
+      gstin: '29AABCU9603R1ZM',
+      category: 'LENS_LAB',
+    });
+
+  assert.equal(supplierRes.status, 201);
+  assert.equal(supplierRes.body.success, true);
+  const supplierId = supplierRes.body.data.id;
+  assert.equal(supplierRes.body.data.name, 'Essilor Lab India');
+
+  // 2. Log an Inward Purchase Order with stock
+  const poRes = await request
+    .post('/api/v1/purchases')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      supplierId,
+      invoiceNumber: 'INV-2026-889',
+      notes: 'Urgent stock inward for new frames & lenses',
+      items: [
+        {
+          itemName: 'Ray-Ban Aviator Gold RB3025',
+          itemType: 'SUNGLASSES',
+          brand: 'Ray-Ban',
+          modelCode: 'RB3025',
+          quantity: 10,
+          unitCost: 2500,
+          gstRate: 12,
+        },
+        {
+          itemName: 'Crizal Easy Pro Lenses',
+          itemType: 'LENS',
+          brand: 'Essilor',
+          quantity: 20,
+          unitCost: 800,
+          gstRate: 18,
+        },
+      ],
+      initialPayment: {
+        amount: 15000,
+        paymentMethod: 'UPI',
+        referenceNote: 'Advance paid on delivery',
+      },
+    });
+
+  assert.equal(poRes.status, 201);
+  assert.equal(poRes.body.success, true);
+  const poData = poRes.body.data;
+  assert.ok(poData.po_number.startsWith('PO-'));
+  // Total cost: 10 * 2500 * 1.12 = 28000 + 20 * 800 * 1.18 = 18880 => Total = 46880
+  assert.equal(poData.total_amount, '46880.00');
+  assert.equal(poData.paid_amount, '15000.00');
+  assert.equal(poData.balance_due, '31880.00');
+  assert.equal(poData.items.length, 2);
+
+  // 3. Verify that products were auto-created / stock added to inventory
+  const productsRes = await request
+    .get('/api/v1/products')
+    .set('Authorization', `Bearer ${token}`);
+
+  assert.equal(productsRes.status, 200);
+  const rayban = productsRes.body.data.find((p) => p.name === 'Ray-Ban Aviator Gold RB3025');
+  assert.ok(rayban);
+  assert.equal(rayban.stock_quantity, 10);
+  assert.equal(rayban.cost_price, '2500.00');
+
+  // 4. Record a second payment to settle part of the supplier due
+  const payRes = await request
+    .post(`/api/v1/purchases/${poData.id}/payments`)
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      amount: 10000,
+      paymentMethod: 'BANK_TRANSFER',
+      referenceNote: 'NEFT Trans Ref #493021',
+    });
+
+  assert.equal(payRes.status, 201);
+
+  // 5. Fetch PO details and verify updated dues
+  const updatedPoRes = await request
+    .get(`/api/v1/purchases/${poData.id}`)
+    .set('Authorization', `Bearer ${token}`);
+
+  assert.equal(updatedPoRes.status, 200);
+  assert.equal(updatedPoRes.body.data.paid_amount, '25000.00');
+  assert.equal(updatedPoRes.body.data.balance_due, '21880.00');
+  assert.equal(updatedPoRes.body.data.payments.length, 2);
+
+  // 6. Check supplier dues summary
+  const duesRes = await request
+    .get('/api/v1/suppliers/dues-summary')
+    .set('Authorization', `Bearer ${token}`);
+
+  assert.equal(duesRes.status, 200);
+  assert.ok(parseFloat(duesRes.body.data.total_outstanding_payables) >= 21880.00);
+  assert.ok(duesRes.body.data.suppliers_with_dues_count >= 1);
+});
+
+
+
 
 

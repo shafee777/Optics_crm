@@ -1,13 +1,6 @@
 /**
  * WhatsApp message template engine & wa.me URL generator
- *
- * Offline handling:
- *  - If navigator.onLine is false, the message is saved to localStorage under
- *    'wa_pending_queue' so it can be retried when internet comes back.
- *  - A custom in-page notification (no external deps needed) is shown instead
- *    of silently opening a blank tab.
- *  - When the browser comes back online the queue is flushed automatically
- *    (listener registered once on import).
+ * Supports custom store templates with placeholder interpolation.
  */
 
 import api from '../services/api.js';
@@ -35,11 +28,10 @@ function enqueue(phone, message, label = '') {
   saveQueue(queue);
 }
 
-/** Flush saved messages when back online (called once per session) */
+/** Flush saved messages when back online */
 function flushQueueOnline() {
   const queue = loadQueue();
   if (!queue.length) return;
-  // Keep items that fail (unlikely, but safe)
   const remaining = [];
   queue.forEach(({ phone, message }) => {
     try {
@@ -58,16 +50,14 @@ function flushQueueOnline() {
   }
 }
 
-// Register once when this module is first imported
 if (typeof window !== 'undefined') {
   window.addEventListener('online', flushQueueOnline);
 }
 
 // ---------------------------------------------------------------------------
-// Banner notification (no external toast library needed)
+// Banner notification
 // ---------------------------------------------------------------------------
 function showBanner(text, type = 'warning') {
-  // Remove existing banner if any
   document.getElementById('wa-offline-banner')?.remove();
 
   const colors = {
@@ -88,7 +78,6 @@ function showBanner(text, type = 'warning') {
     animation: wa-slide-in 0.3s ease;
   `;
 
-  // Inject keyframe once
   if (!document.getElementById('wa-banner-style')) {
     const style = document.createElement('style');
     style.id = 'wa-banner-style';
@@ -102,8 +91,6 @@ function showBanner(text, type = 'warning') {
   }
 
   banner.textContent = text;
-
-  // Close button
   const close = document.createElement('button');
   close.textContent = ' ✕';
   close.style.cssText = 'margin-left:12px; background:none; border:none; cursor:pointer; font-size:15px; color:inherit;';
@@ -134,90 +121,84 @@ export function sanitizePhone(phone, defaultCountryCode = '91') {
 }
 
 // ---------------------------------------------------------------------------
-// Message templates
+// Interpolate Placeholders: replaces {key} with value
 // ---------------------------------------------------------------------------
-
-// 1. Welcome Greeting Message
-export function getGreetingMessage({ customerName, storeName }) {
-  return encodeURIComponent(
-    `Hello ${customerName}! 👓\n\n` +
-    `Thank you for visiting *${storeName}*.\n` +
-    `We are delighted to assist you with your eyewear and eye care needs. Please feel free to reach out to us anytime for any adjustments or assistance.\n\n` +
-    `Have a wonderful day!`
-  );
+export function interpolateTemplate(tpl, vars = {}) {
+  if (!tpl) return '';
+  return tpl.replace(/\{(\w+)\}/g, (match, key) => {
+    return vars[key] !== undefined && vars[key] !== null ? vars[key] : match;
+  });
 }
 
-// 1b. Order Confirmed & Greetings with Delivery Date (Sent on Order Placement)
-export function getOrderPlacedGreetingMessage({ customerName, storeName, orderNumber, dueDate }) {
+// ---------------------------------------------------------------------------
+// Default Templates Definition
+// ---------------------------------------------------------------------------
+export const DEFAULT_TEMPLATES = {
+  GREETING: `Hello {customerName}! 👓\n\nThank you for visiting *{storeName}*.\nWe are delighted to assist you with your eyewear and eye care needs. Please feel free to reach out anytime for any adjustments or assistance.\n\nHave a wonderful day!`,
+  
+  ORDER_PLACED: `Hello {customerName}! 👓✨\n\nThank you for choosing *{storeName}*.\nYour optical order *#{orderNumber}* is confirmed and sent to our lab for lens fitting.\n\n📅 *Expected Delivery Date:* {expectedDate}\n\nWe will notify you immediately once your spectacles are ready for collection. Have a great day!`,
+  
+  ORDER_READY: `Hello {customerName}! ✨\n\nGood news! Your spectacles for Order *#{orderNumber}* are crafted and *READY FOR PICKUP* at *{storeName}*.\n\n📍 You can visit our store anytime during business hours to collect your eyewear.\nWe look forward to seeing you!`,
+  
+  GOOGLE_REVIEW: `Hello {customerName}! 👓\n\nThank you for collecting your spectacles from *{storeName}*.\nWe hope you are enjoying crystal-clear vision! Your feedback means the world to our team.\n\n⭐ *Please take 30 seconds to rate us on Google:*\n{googleReviewLink}\n\nThank you for choosing us!`,
+  
+  ANNUAL_CHECKUP: `Hello {customerName}! 🩺\n\nThis is a friendly reminder from *{storeName}*.\nIt has been *1 year* since your last vision test on *{lastTestDate}*.\n\nAnnual eye checkups are essential to ensure your vision remains sharp and your eyes stay healthy.\n\n👓 *Visit us this week for your routine eye checkup & power test!*`,
+  
+  PAYMENT_REMINDER: `Hello {customerName}! 👓\n\nThis is a friendly reminder from *{storeName}* regarding your spectacles Order *#{orderNumber}*.\n\n💰 *Outstanding Balance:* ₹{balanceDue}\n\nKindly clear the pending balance during your visit or via UPI. Feel free to contact us if you have any questions!\nThank you!`,
+};
+
+// ---------------------------------------------------------------------------
+// Message template builders (supports custom store override)
+// ---------------------------------------------------------------------------
+
+export function getGreetingMessage({ customerName, storeName, customTemplate }) {
+  const tpl = customTemplate || DEFAULT_TEMPLATES.GREETING;
+  return encodeURIComponent(interpolateTemplate(tpl, { customerName, storeName }));
+}
+
+export function getOrderPlacedGreetingMessage({ customerName, storeName, orderNumber, dueDate, customTemplate }) {
   const formattedDueDate = dueDate ? new Date(dueDate).toLocaleDateString() : 'soon';
+  const tpl = customTemplate || DEFAULT_TEMPLATES.ORDER_PLACED;
   return encodeURIComponent(
-    `Hello ${customerName}! 👓✨\n\n` +
-    `Thank you for choosing *${storeName}*.\n` +
-    `Your optical order *#${orderNumber}* is confirmed and sent to our lab for lens fitting.\n\n` +
-    `📅 *Expected Delivery Date:* ${formattedDueDate}\n\n` +
-    `We will notify you immediately once your spectacles are ready for collection. Have a great day!`
+    interpolateTemplate(tpl, { customerName, storeName, orderNumber, expectedDate: formattedDueDate })
   );
 }
 
-// 2. Order Status: Ready for Pickup Message
-export function getOrderReadyMessage({ customerName, storeName, orderNumber }) {
+export function getOrderReadyMessage({ customerName, storeName, orderNumber, customTemplate }) {
+  const tpl = customTemplate || DEFAULT_TEMPLATES.ORDER_READY;
+  return encodeURIComponent(interpolateTemplate(tpl, { customerName, storeName, orderNumber }));
+}
+
+export function getGoogleReviewMessage({ customerName, storeName, googleReviewLink, customTemplate }) {
+  const tpl = customTemplate || DEFAULT_TEMPLATES.GOOGLE_REVIEW;
   return encodeURIComponent(
-    `Hello ${customerName}! ✨\n\n` +
-    `Good news! Your spectacles for Order *#${orderNumber}* are crafted and *READY FOR PICKUP* at *${storeName}*.\n\n` +
-    `📍 You can visit our store anytime during business hours to collect your eyewear.\n` +
-    `We look forward to seeing you!`
+    interpolateTemplate(tpl, {
+      customerName,
+      storeName,
+      googleReviewLink: googleReviewLink || 'https://maps.google.com',
+    })
   );
 }
 
-// 3. Google Rating & Review Request
-export function getGoogleReviewMessage({ customerName, storeName, googleReviewLink }) {
-  const reviewPart = googleReviewLink
-    ? `\n\n⭐ *Please take 30 seconds to rate us on Google:*\n${googleReviewLink}`
-    : '';
-
-  return encodeURIComponent(
-    `Hello ${customerName}! 👓\n\n` +
-    `Thank you for collecting your spectacles from *${storeName}*.\n` +
-    `We hope you are enjoying crystal-clear vision! Your feedback means the world to our team.${reviewPart}\n\n` +
-    `Thank you for choosing us!`
-  );
-}
-
-// 4. 1-Year Annual Eye Test Reminder
-export function getAnnualCheckupMessage({ customerName, storeName, lastTestDate }) {
+export function getAnnualCheckupMessage({ customerName, storeName, lastTestDate, customTemplate }) {
   const formattedDate = lastTestDate ? new Date(lastTestDate).toLocaleDateString() : 'one year ago';
-
+  const tpl = customTemplate || DEFAULT_TEMPLATES.ANNUAL_CHECKUP;
   return encodeURIComponent(
-    `Hello ${customerName}! 🩺\n\n` +
-    `This is a friendly reminder from *${storeName}*.\n` +
-    `It has been *1 year* since your last vision test on *${formattedDate}*.\n\n` +
-    `Annual eye checkups are essential to ensure your vision remains sharp and your eyes stay healthy.\n\n` +
-    `👓 *Visit us this week for your routine eye checkup & power test!*`
+    interpolateTemplate(tpl, { customerName, storeName, lastTestDate: formattedDate })
   );
 }
 
-// 5. Payment Reminder for Outstanding Balance
-export function getPaymentReminderMessage({ customerName, storeName, orderNumber, balanceDue }) {
+export function getPaymentReminderMessage({ customerName, storeName, orderNumber, balanceDue, customTemplate }) {
   const formattedBalance = parseFloat(balanceDue || 0).toLocaleString();
+  const tpl = customTemplate || DEFAULT_TEMPLATES.PAYMENT_REMINDER;
   return encodeURIComponent(
-    `Hello ${customerName}! 👓\n\n` +
-    `This is a friendly reminder from *${storeName}* regarding your spectacles Order *#${orderNumber}*.\n\n` +
-    `💰 *Outstanding Balance:* ₹${formattedBalance}\n\n` +
-    `Kindly clear the pending balance during your visit or via UPI. Feel free to contact us if you have any questions!\n` +
-    `Thank you!`
+    interpolateTemplate(tpl, { customerName, storeName, orderNumber, balanceDue: formattedBalance })
   );
 }
 
 // ---------------------------------------------------------------------------
-// Main entry point — offline-aware & audit-logging enabled
+// Main entry point
 // ---------------------------------------------------------------------------
-/**
- * @param {string} phone       - Raw phone number (10-digit or with country code)
- * @param {string} message     - Already-encoded message (from template functions above)
- * @param {string} [label]     - Human-readable label for the queued item, e.g. "Order Ready"
- * @param {string} [customerId] - Optional customer UUID to log communication history
- * @param {string} [messageType] - Optional message type tag: GREETING, ORDER_PLACED, ORDER_READY, GOOGLE_REVIEW, ANNUAL_CHECKUP, PAYMENT_REMINDER
- */
 export function openWhatsApp(phone, message, label = 'WhatsApp message', customerId = null, messageType = null) {
   const formattedPhone = sanitizePhone(phone);
 
@@ -226,7 +207,7 @@ export function openWhatsApp(phone, message, label = 'WhatsApp message', custome
     return;
   }
 
-  // ── Audit Log Trigger ───────────────────────────────────────────────────
+  // Audit Log Trigger
   if (customerId && messageType) {
     api.post('/messages/log', {
       customerId,
@@ -235,7 +216,7 @@ export function openWhatsApp(phone, message, label = 'WhatsApp message', custome
     }).catch((err) => console.warn('Failed to record message audit log:', err));
   }
 
-  // ── Offline check ──────────────────────────────────────────────────────────
+  // Offline check
   if (!navigator.onLine) {
     enqueue(formattedPhone, message, label);
     showBanner(
@@ -245,11 +226,10 @@ export function openWhatsApp(phone, message, label = 'WhatsApp message', custome
     return;
   }
 
-  // ── Online: open normally ─────────────────────────────────────────────────
+  // Online: open wa.me
   const url = buildUrl(formattedPhone, message);
   const opened = window.open(url, '_blank', 'noopener,noreferrer');
 
-  // Some browsers block window.open even when online (popup blocker)
   if (!opened) {
     showBanner(
       `🚫 Popup blocked by browser.\nAllow popups for this site, then try again — or click: ${url}`,
@@ -258,9 +238,6 @@ export function openWhatsApp(phone, message, label = 'WhatsApp message', custome
   }
 }
 
-// ---------------------------------------------------------------------------
-// Expose queue status for UI (e.g. show badge on nav)
-// ---------------------------------------------------------------------------
 export function getPendingQueueCount() {
   return loadQueue().length;
 }

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import api from '../../services/api.js';
 import AddExpenseModal from './AddExpenseModal.jsx';
+import { SkeletonTable, SkeletonStatGrid } from '../../components/common/Skeleton.jsx';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -416,7 +417,7 @@ export default function FinancePage() {
             </div>
 
             {loading ? (
-              <div className="p-12 text-center text-slate-400 text-sm">Loading daily transactions...</div>
+              <SkeletonTable rows={5} cols={5} />
             ) : !dailyData?.transactions || dailyData.transactions.length === 0 ? (
               <div className="p-12 text-center space-y-2">
                 <p className="text-slate-600 font-medium text-sm">No payment transactions found for this date</p>
@@ -587,7 +588,7 @@ export default function FinancePage() {
             </div>
 
             {loading ? (
-              <div className="p-12 text-center text-slate-400 text-sm">Loading monthly calendar data...</div>
+              <SkeletonTable rows={7} cols={5} />
             ) : !monthlyData?.days || monthlyData.days.length === 0 ? (
               <div className="p-12 text-center text-slate-400 text-sm">No days found for this month</div>
             ) : (
