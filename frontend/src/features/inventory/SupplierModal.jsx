@@ -86,26 +86,26 @@ export default function SupplierModal({ isOpen, onClose, supplierToEdit, onSuppl
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#203A36]/40 backdrop-blur-xs p-4 overflow-y-auto">
+      <div className="bg-[#FEFEFC] w-full max-w-lg rounded-2xl shadow-2xl border border-[#E2E7E3] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
+        <div className="px-6 py-4 bg-[#203A36] text-white flex justify-between items-center">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30">
+            <div className="w-8 h-8 rounded-xl bg-[#28766B]/30 text-white flex items-center justify-center border border-white/10">
               <Building2 className="w-4 h-4" />
             </div>
             <h2 className="font-bold text-white text-base">
               {supplierToEdit ? 'Edit Supplier / Lab' : 'Add New Supplier / Lens Lab'}
             </h2>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <button onClick={onClose} className="p-1 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mx-6 mt-4 p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-center gap-2 text-red-700 text-xs">
+          <div className="mx-6 mt-4 p-3.5 rounded-xl bg-red-50/80 border border-red-200 flex items-center gap-2 text-red-700 text-xs">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -113,7 +113,7 @@ export default function SupplierModal({ isOpen, onClose, supplierToEdit, onSuppl
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Company / Supplier Name *</label>
+            <label className="block text-xs font-semibold text-[#66746F] mb-1">Company / Supplier Name *</label>
             <input
               type="text"
               required
@@ -121,18 +121,18 @@ export default function SupplierModal({ isOpen, onClose, supplierToEdit, onSuppl
               placeholder="e.g. Essilor Lens Lab / Titan Eye Distribution"
               value={formData.name}
               onChange={handleChange}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs bg-[#FEFEFC] text-[#202D2B] focus:border-[#28766B] focus:ring-1 focus:ring-[#28766B] focus:outline-none"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Category *</label>
+              <label className="block text-xs font-semibold text-[#66746F] mb-1">Category *</label>
               <select
                 name="category"
                 value={formData.category}
                 onChange={handleChange}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+                className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs bg-[#FEFEFC] text-[#202D2B] focus:border-[#28766B] focus:ring-1 focus:ring-[#28766B] focus:outline-none font-medium"
               >
                 {CATEGORIES.map((c) => (
                   <option key={c.value} value={c.value}>
@@ -143,80 +143,80 @@ export default function SupplierModal({ isOpen, onClose, supplierToEdit, onSuppl
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Contact Person</label>
+              <label className="block text-xs font-semibold text-[#66746F] mb-1">Contact Person</label>
               <input
                 type="text"
                 name="contactPerson"
                 placeholder="e.g. Vikram Mehta (Sales Mgr)"
                 value={formData.contactPerson}
                 onChange={handleChange}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs bg-[#FEFEFC] text-[#202D2B] focus:border-[#28766B] focus:ring-1 focus:ring-[#28766B] focus:outline-none"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Phone Number</label>
+              <label className="block text-xs font-semibold text-[#66746F] mb-1">Phone Number</label>
               <input
                 type="text"
                 name="phone"
                 placeholder="e.g. 9888877777"
                 value={formData.phone}
                 onChange={handleChange}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs bg-[#FEFEFC] text-[#202D2B] focus:border-[#28766B] focus:ring-1 focus:ring-[#28766B] focus:outline-none font-mono tabular-nums"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Supplier GSTIN</label>
+              <label className="block text-xs font-semibold text-[#66746F] mb-1">Supplier GSTIN</label>
               <input
                 type="text"
                 name="gstin"
                 placeholder="e.g. 29AABCU9603R1ZM"
                 value={formData.gstin}
                 onChange={handleChange}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono uppercase focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs font-mono uppercase bg-[#FEFEFC] text-[#202D2B] focus:border-[#28766B] focus:ring-1 focus:ring-[#28766B] focus:outline-none"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Email Address</label>
+            <label className="block text-xs font-semibold text-[#66746F] mb-1">Email Address</label>
             <input
               type="email"
               name="email"
               placeholder="e.g. laborders@supplier.com"
               value={formData.email}
               onChange={handleChange}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs bg-[#FEFEFC] text-[#202D2B] focus:border-[#28766B] focus:ring-1 focus:ring-[#28766B] focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Office / Lab Address</label>
+            <label className="block text-xs font-semibold text-[#66746F] mb-1">Office / Lab Address</label>
             <textarea
               rows={2}
               name="address"
               placeholder="e.g. Industrial Area, Phase 2, Bangalore"
               value={formData.address}
               onChange={handleChange}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs bg-[#FEFEFC] text-[#202D2B] focus:border-[#28766B] focus:ring-1 focus:ring-[#28766B] focus:outline-none"
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+          <div className="flex justify-end gap-3 pt-4 border-t border-[#E2E7E3]">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+              className="px-4 py-2 text-xs font-semibold text-[#66746F] hover:text-[#202D2B] bg-[#FEFEFC] border border-[#E2E7E3] hover:bg-[#F5F7F3] rounded-xl transition"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/20 disabled:opacity-50 transition"
+              className="px-5 py-2 bg-[#28766B] hover:bg-[#1E5C53] text-white text-xs font-semibold rounded-xl shadow-xs disabled:opacity-50 transition"
             >
               {loading ? 'Saving...' : supplierToEdit ? 'Update Supplier' : 'Save Supplier'}
             </button>

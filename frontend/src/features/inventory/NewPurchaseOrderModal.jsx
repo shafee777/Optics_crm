@@ -189,27 +189,27 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#203A36]/40 backdrop-blur-xs p-4 overflow-y-auto">
+      <div className="bg-[#FEFEFC] w-full max-w-4xl rounded-2xl shadow-2xl border border-[#E2E7E3] overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-8">
         
         {/* Header */}
-        <div className="px-6 py-4 bg-slate-900 text-white flex justify-between items-center">
+        <div className="px-6 py-4 bg-[#203A36] text-white flex justify-between items-center">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30">
+            <div className="w-8 h-8 rounded-xl bg-[#28766B]/30 text-white flex items-center justify-center border border-white/10">
               <ShoppingBag className="w-4 h-4" />
             </div>
             <div>
               <h2 className="font-bold text-white text-base">Inward Stock / Purchase Order Entry</h2>
-              <p className="text-xs text-slate-400">Receive stock from lens labs & frame vendors (auto-increments inventory)</p>
+              <p className="text-xs text-white/70">Receive stock from lens labs & frame vendors (auto-increments inventory)</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <button onClick={onClose} className="p-1 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mx-6 mt-4 p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-center gap-2 text-red-700 text-xs">
+          <div className="mx-6 mt-4 p-3.5 rounded-xl bg-red-50/80 border border-red-200 flex items-center gap-2 text-red-700 text-xs">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -218,15 +218,15 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
 
           {/* PO Header Details */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-[#F5F7F3] p-4 rounded-2xl border border-[#E2E7E3]">
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className="block text-xs font-semibold text-slate-700">Select Supplier / Lab *</label>
+                <label className="block text-xs font-semibold text-[#66746F]">Select Supplier / Lab *</label>
                 {onOpenAddSupplier && (
                   <button
                     type="button"
                     onClick={onOpenAddSupplier}
-                    className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold"
+                    className="text-[11px] text-[#28766B] hover:text-[#1E5C53] font-semibold"
                   >
                     + New
                   </button>
@@ -236,7 +236,7 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
                 required
                 value={supplierId}
                 onChange={(e) => setSupplierId(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+                className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs font-semibold text-[#202D2B] focus:border-[#28766B] focus:ring-1 focus:ring-[#28766B] focus:outline-none bg-[#FEFEFC]"
               >
                 <option value="">-- Choose Supplier --</option>
                 {suppliers.map((s) => (
@@ -248,24 +248,24 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Supplier Bill / Invoice #</label>
+              <label className="block text-xs font-semibold text-[#66746F] mb-1">Supplier Bill / Invoice #</label>
               <input
                 type="text"
                 placeholder="e.g. INV-2026-904"
                 value={invoiceNumber}
                 onChange={(e) => setInvoiceNumber(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+                className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs font-mono focus:border-[#28766B] focus:ring-1 focus:ring-[#28766B] focus:outline-none bg-[#FEFEFC] text-[#202D2B]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Inward Date *</label>
+              <label className="block text-xs font-semibold text-[#66746F] mb-1">Inward Date *</label>
               <input
                 type="date"
                 required
                 value={orderDate}
                 onChange={(e) => setOrderDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+                className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs focus:border-[#28766B] focus:ring-1 focus:ring-[#28766B] focus:outline-none bg-[#FEFEFC] text-[#202D2B]"
               />
             </div>
           </div>
@@ -273,22 +273,22 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
           {/* Items Inward Table */}
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                <Calculator className="w-4 h-4 text-indigo-600" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#202D2B] flex items-center gap-1.5">
+                <Calculator className="w-4 h-4 text-[#28766B]" />
                 Inward Items & Cost Pricing
               </h3>
               <button
                 type="button"
                 onClick={handleAddItem}
-                className="px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-xl border border-indigo-200 transition flex items-center gap-1"
+                className="px-3 py-1 bg-[#EBF3F1] hover:bg-[#DCEAE7] text-[#28766B] text-xs font-semibold rounded-xl border border-[#28766B]/20 transition flex items-center gap-1"
               >
                 <Plus className="w-3.5 h-3.5" /> Add Row
               </button>
             </div>
 
-            <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+            <div className="border border-[#E2E7E3] rounded-2xl overflow-hidden shadow-xs bg-[#FEFEFC]">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-100 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
+                <thead className="bg-[#F5F7F3] text-[#66746F] font-semibold uppercase tracking-wider text-[11px] border-b border-[#E2E7E3]">
                   <tr>
                     <th className="py-2.5 px-3">Item / Catalog</th>
                     <th className="py-2.5 px-3">Type</th>
@@ -299,7 +299,7 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
                     <th className="py-2.5 px-2 w-10"></th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-[#E2E7E3]">
                   {items.map((item, idx) => {
                     const qty = parseInt(item.quantity, 10) || 0;
                     const cost = parseFloat(item.unitCost) || 0;
@@ -307,7 +307,7 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
                     const lineTot = (qty * cost) * (1 + gst / 100);
 
                     return (
-                      <tr key={idx} className="hover:bg-slate-50/50">
+                      <tr key={idx} className="hover:bg-[#F5F7F3]/60 transition-colors">
                         <td className="p-2 space-y-1">
                           <input
                             type="text"
@@ -315,7 +315,7 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
                             placeholder="Item name (e.g. Ray-Ban RB5228)"
                             value={item.itemName}
                             onChange={(e) => handleItemChange(idx, 'itemName', e.target.value)}
-                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-[#E2E7E3] text-xs font-semibold bg-[#FEFEFC] text-[#202D2B] focus:border-[#28766B] focus:outline-none"
                           />
                           <div className="flex gap-1.5">
                             <input
@@ -323,14 +323,14 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
                               placeholder="Brand"
                               value={item.brand}
                               onChange={(e) => handleItemChange(idx, 'brand', e.target.value)}
-                              className="w-1/2 px-2 py-1 rounded border border-slate-200 text-[11px] text-slate-600 focus:outline-none"
+                              className="w-1/2 px-2 py-1 rounded border border-[#E2E7E3] text-[11px] text-[#66746F] bg-[#FEFEFC] focus:outline-none"
                             />
                             <input
                               type="text"
                               placeholder="Model / Code"
                               value={item.modelCode}
                               onChange={(e) => handleItemChange(idx, 'modelCode', e.target.value)}
-                              className="w-1/2 px-2 py-1 rounded border border-slate-200 text-[11px] text-slate-600 focus:outline-none"
+                              className="w-1/2 px-2 py-1 rounded border border-[#E2E7E3] text-[11px] text-[#66746F] bg-[#FEFEFC] focus:outline-none"
                             />
                           </div>
                         </td>
@@ -339,7 +339,7 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
                           <select
                             value={item.itemType}
                             onChange={(e) => handleItemChange(idx, 'itemType', e.target.value)}
-                            className="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none bg-white"
+                            className="w-full px-2 py-1.5 rounded-lg border border-[#E2E7E3] text-xs bg-[#FEFEFC] text-[#202D2B] focus:outline-none font-medium"
                           >
                             {ITEM_TYPES.map((t) => (
                               <option key={t.value} value={t.value}>
@@ -356,7 +356,7 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
                             required
                             value={item.quantity}
                             onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)}
-                            className="w-full text-center px-1.5 py-1.5 rounded-lg border border-slate-200 text-xs font-mono font-bold focus:outline-none"
+                            className="w-full text-center px-1.5 py-1.5 rounded-lg border border-[#E2E7E3] text-xs font-mono font-bold tabular-nums bg-[#FEFEFC] text-[#202D2B] focus:outline-none"
                           />
                         </td>
 
@@ -369,7 +369,7 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
                             placeholder="0.00"
                             value={item.unitCost}
                             onChange={(e) => handleItemChange(idx, 'unitCost', e.target.value)}
-                            className="w-full text-right px-2 py-1.5 rounded-lg border border-slate-200 text-xs font-mono font-bold text-slate-900 focus:outline-none"
+                            className="w-full text-right px-2 py-1.5 rounded-lg border border-[#E2E7E3] text-xs font-mono font-bold tabular-nums text-[#202D2B] bg-[#FEFEFC] focus:outline-none"
                           />
                         </td>
 
@@ -377,7 +377,7 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
                           <select
                             value={item.gstRate}
                             onChange={(e) => handleItemChange(idx, 'gstRate', e.target.value)}
-                            className="w-full text-center px-1 py-1.5 rounded-lg border border-slate-200 text-xs font-mono focus:outline-none bg-white"
+                            className="w-full text-center px-1 py-1.5 rounded-lg border border-[#E2E7E3] text-xs font-mono tabular-nums bg-[#FEFEFC] text-[#202D2B] focus:outline-none"
                           >
                             <option value="0">0%</option>
                             <option value="12">12% (Frames)</option>
@@ -385,7 +385,7 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
                           </select>
                         </td>
 
-                        <td className="p-2 align-top text-right font-mono font-bold text-slate-900 pt-3">
+                        <td className="p-2 align-top text-right font-mono font-bold text-[#202D2B] tabular-nums pt-3">
                           ₹{lineTot.toFixed(2)}
                         </td>
 
@@ -394,7 +394,7 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
                             type="button"
                             onClick={() => handleRemoveItem(idx)}
                             disabled={items.length <= 1}
-                            className="text-slate-400 hover:text-red-600 disabled:opacity-30 p-1"
+                            className="text-[#66746F] hover:text-red-600 disabled:opacity-30 p-1 transition"
                             title="Remove row"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -411,7 +411,7 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
           {/* Pricing Summary & Downpayment */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Left: Downpayment on delivery */}
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+            <div className="bg-[#F5F7F3] p-4 rounded-2xl border border-[#E2E7E3] space-y-3">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -422,33 +422,33 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
                       setPaymentAmount(grandTotal.toFixed(2));
                     }
                   }}
-                  className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                  className="rounded text-[#28766B] focus:ring-[#28766B] w-4 h-4 border-[#E2E7E3]"
                 />
-                <span className="text-xs font-bold text-slate-800">
+                <span className="text-xs font-bold text-[#202D2B]">
                   Record Down-Payment / Cash Paid to Supplier Now
                 </span>
               </label>
 
               {hasInitialPayment && (
-                <div className="space-y-3 pt-2 border-t border-slate-200">
+                <div className="space-y-3 pt-2 border-t border-[#E2E7E3]">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">Paid Amount (₹)</label>
+                      <label className="block text-[11px] font-semibold text-[#66746F] mb-1">Paid Amount (₹)</label>
                       <input
                         type="number"
                         step="0.01"
                         placeholder="e.g. 5000"
                         value={paymentAmount}
                         onChange={(e) => setPaymentAmount(e.target.value)}
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-mono font-bold bg-white focus:outline-none"
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#E2E7E3] text-xs font-mono font-bold tabular-nums bg-[#FEFEFC] text-[#202D2B] focus:border-[#28766B] focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">Payment Method</label>
+                      <label className="block text-[11px] font-semibold text-[#66746F] mb-1">Payment Method</label>
                       <select
                         value={paymentMethod}
                         onChange={(e) => setPaymentMethod(e.target.value)}
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none"
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-[#E2E7E3] text-xs bg-[#FEFEFC] text-[#202D2B] focus:border-[#28766B] focus:outline-none"
                       >
                         <option value="UPI">UPI / GPay / PhonePe</option>
                         <option value="BANK_TRANSFER">Bank Transfer (NEFT/RTGS)</option>
@@ -463,7 +463,7 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
                       placeholder="Payment note / Reference (e.g. UPI Ref #4930)"
                       value={paymentRef}
                       onChange={(e) => setPaymentRef(e.target.value)}
-                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none"
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-[#E2E7E3] text-xs bg-[#FEFEFC] text-[#202D2B] focus:border-[#28766B] focus:outline-none"
                     />
                   </div>
                 </div>
@@ -471,23 +471,23 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
             </div>
 
             {/* Right: Cost Calculations */}
-            <div className="bg-slate-900 text-white p-4 rounded-2xl space-y-2 text-xs">
-              <div className="flex justify-between text-slate-300">
+            <div className="bg-[#203A36] text-white p-4 rounded-2xl space-y-2 text-xs border border-[#182C29]">
+              <div className="flex justify-between text-white/80">
                 <span>Subtotal (Base Cost):</span>
-                <span className="font-mono">₹{subtotal.toFixed(2)}</span>
+                <span className="font-mono tabular-nums">₹{subtotal.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-slate-300">
+              <div className="flex justify-between text-white/80">
                 <span>Total Input GST:</span>
-                <span className="font-mono">+₹{totalTax.toFixed(2)}</span>
+                <span className="font-mono tabular-nums">+₹{totalTax.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-base font-bold text-white pt-2 border-t border-slate-800">
+              <div className="flex justify-between text-base font-bold text-white pt-2 border-t border-white/10">
                 <span>Grand Total Inward:</span>
-                <span className="font-mono text-emerald-400">₹{grandTotal.toFixed(2)}</span>
+                <span className="font-mono tabular-nums text-emerald-400">₹{grandTotal.toFixed(2)}</span>
               </div>
               {hasInitialPayment && (
                 <div className="flex justify-between text-xs text-amber-300 pt-1">
                   <span>Balance Payable to Supplier:</span>
-                  <span className="font-mono">
+                  <span className="font-mono tabular-nums">
                     ₹{Math.max(0, grandTotal - (parseFloat(paymentAmount) || 0)).toFixed(2)}
                   </span>
                 </div>
@@ -496,33 +496,33 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Internal Purchase Order Notes</label>
+            <label className="block text-xs font-semibold text-[#66746F] mb-1">Internal Purchase Order Notes</label>
             <input
               type="text"
               placeholder="e.g. Received via courier box #2, lenses inspected and verified"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs bg-[#FEFEFC] text-[#202D2B] focus:border-[#28766B] focus:ring-1 focus:ring-[#28766B] focus:outline-none"
             />
           </div>
 
           {/* Modal Footer */}
-          <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-            <span className="text-xs text-slate-400">
+          <div className="flex items-center justify-between pt-4 border-t border-[#E2E7E3]">
+            <span className="text-xs text-[#66746F]">
               Inward stock will be added directly to your inventory quantities
             </span>
             <div className="flex gap-3">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                className="px-4 py-2.5 text-xs font-semibold text-[#66746F] hover:text-[#202D2B] bg-[#FEFEFC] border border-[#E2E7E3] hover:bg-[#F5F7F3] rounded-xl transition"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/20 disabled:opacity-50 transition flex items-center gap-2"
+                className="px-6 py-2.5 bg-[#28766B] hover:bg-[#1E5C53] text-white text-xs font-semibold rounded-xl shadow-xs disabled:opacity-50 transition flex items-center gap-2"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 {loading ? 'Processing Inward...' : 'Confirm & Inward Stock'}

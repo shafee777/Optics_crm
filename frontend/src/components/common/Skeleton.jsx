@@ -3,14 +3,14 @@ import React from 'react';
 export function SkeletonBlock({ className = '' }) {
   return (
     <div
-      className={`animate-pulse bg-slate-200/80 rounded-xl ${className}`}
+      className={`animate-pulse bg-[#E2E7E3] rounded-xl ${className}`}
     />
   );
 }
 
 export function SkeletonCard({ height = 'h-32', className = '' }) {
   return (
-    <div className={`bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 ${className}`}>
+    <div className={`bg-[#FEFEFC] p-5 rounded-2xl border border-[#E2E7E3] shadow-xs space-y-3 ${className}`}>
       <div className="flex justify-between items-center">
         <SkeletonBlock className="h-4 w-28" />
         <SkeletonBlock className="h-8 w-8 rounded-lg" />
@@ -26,9 +26,9 @@ export function SkeletonCard({ height = 'h-32', className = '' }) {
 
 export function SkeletonTable({ rows = 5, cols = 4 }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="p-4 border-b border-slate-100 flex justify-between items-center">
-        <SkeletonBlock className="h-5 w-36" />
+    <div className="bg-[#FEFEFC] rounded-2xl border border-[#E2E7E3] shadow-xs overflow-hidden">
+      <div className="p-4 border-b border-[#E2E7E3] flex justify-between items-center bg-[#F5F7F3]">
+        <SkeletonBlock className="h-4 w-36" />
         <SkeletonBlock className="h-8 w-24 rounded-lg" />
       </div>
       <div className="p-4 space-y-3">
@@ -56,3 +56,4 @@ export function SkeletonStatGrid({ count = 4 }) {
     </div>
   );
 }
+

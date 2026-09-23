@@ -11,6 +11,7 @@ export const storeRepository = {
         google_review_link, 
         gstin,
         whatsapp_templates,
+        whatsapp_config,
         currency, 
         timezone, 
         created_at, 
@@ -51,6 +52,10 @@ export const storeRepository = {
       fields.push(`whatsapp_templates = $${idx++}`);
       values.push(JSON.stringify(data.whatsappTemplates));
     }
+    if (data.whatsappConfig !== undefined) {
+      fields.push(`whatsapp_config = $${idx++}`);
+      values.push(JSON.stringify(data.whatsappConfig));
+    }
     if (data.currency !== undefined) {
       fields.push(`currency = $${idx++}`);
       values.push(data.currency);
@@ -71,7 +76,7 @@ export const storeRepository = {
       UPDATE stores
       SET ${fields.join(', ')}
       WHERE id = $${idx}
-      RETURNING id, name, phone, address, google_review_link, gstin, whatsapp_templates, currency, timezone, created_at, updated_at;
+      RETURNING id, name, phone, address, google_review_link, gstin, whatsapp_templates, whatsapp_config, currency, timezone, created_at, updated_at;
     `;
 
     const res = await query(sql, values);

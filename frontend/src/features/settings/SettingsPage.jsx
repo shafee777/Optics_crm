@@ -20,15 +20,15 @@ import {
   MapPin,
   Star,
   Shield,
-  Clock,
   Download,
-  Database
+  Database,
+  MessageSquare
 } from 'lucide-react';
 
 export default function SettingsPage() {
   const { user, isOwner, updateStore } = useAuth();
 
-  const [activeTab, setActiveTab] = useState('store'); // 'store' | 'staff'
+  const [activeTab, setActiveTab] = useState('store'); // 'store' | 'staff' | 'whatsapp' | 'export'
 
   // Store form state
   const [storeData, setStoreData] = useState({
@@ -159,25 +159,25 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#FEFEFC] p-6 rounded-2xl border border-[#E2E7E3] shadow-xs">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2.5">
-            <Store className="w-6 h-6 text-indigo-600" />
+          <h1 className="text-2xl font-bold text-[#202D2B] flex items-center gap-2.5">
+            <Store className="w-6 h-6 text-[#28766B]" />
             Store Settings & Team
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-[#66746F] mt-1">
             Configure your optical dispensary profile, Store GSTIN, Google review link, and staff access accounts.
           </p>
         </div>
 
         {/* Tab switcher */}
-        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+        <div className="flex bg-[#F5F7F3] p-1 rounded-xl border border-[#E2E7E3]">
           <button
             onClick={() => setActiveTab('store')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition ${
               activeTab === 'store'
-                ? 'bg-white text-indigo-600 shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-[#FEFEFC] text-[#28766B] shadow-xs'
+                : 'text-[#66746F] hover:text-[#202D2B]'
             }`}
           >
             <Store className="w-3.5 h-3.5" />
@@ -187,10 +187,10 @@ export default function SettingsPage() {
             <>
               <button
                 onClick={() => setActiveTab('staff')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition ${
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition ${
                   activeTab === 'staff'
-                    ? 'bg-white text-indigo-600 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-[#FEFEFC] text-[#28766B] shadow-xs'
+                    : 'text-[#66746F] hover:text-[#202D2B]'
                 }`}
               >
                 <Users className="w-3.5 h-3.5" />
@@ -199,26 +199,26 @@ export default function SettingsPage() {
 
               <button
                 onClick={() => setActiveTab('whatsapp')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition ${
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition ${
                   activeTab === 'whatsapp'
-                    ? 'bg-white text-indigo-600 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-[#FEFEFC] text-[#28766B] shadow-xs'
+                    : 'text-[#66746F] hover:text-[#202D2B]'
                 }`}
               >
-                <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+                <MessageSquare className="w-3.5 h-3.5 text-[#28766B]" />
                 WhatsApp Templates
               </button>
 
               <button
                 onClick={() => setActiveTab('export')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition ${
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition ${
                   activeTab === 'export'
-                    ? 'bg-white text-indigo-600 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-[#FEFEFC] text-[#28766B] shadow-xs'
+                    : 'text-[#66746F] hover:text-[#202D2B]'
                 }`}
               >
                 <Database className="w-3.5 h-3.5" />
-                Data Backup & Export
+                Data Backup
               </button>
             </>
           )}
@@ -227,7 +227,7 @@ export default function SettingsPage() {
 
       {/* TAB 1: Store Profile */}
       {activeTab === 'store' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 max-w-3xl">
+        <div className="bg-[#FEFEFC] rounded-2xl border border-[#E2E7E3] shadow-xs p-6 max-w-3xl">
           {loadingStore ? (
             <SkeletonCard height="h-64" />
           ) : (
@@ -236,21 +236,21 @@ export default function SettingsPage() {
                 <div
                   className={`p-3.5 rounded-xl text-xs flex items-center gap-2 font-medium ${
                     storeMessage.type === 'success'
-                      ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
-                      : 'bg-red-50 border border-red-200 text-red-800'
+                      ? 'bg-emerald-50/80 border border-emerald-200 text-emerald-800'
+                      : 'bg-rose-50/80 border border-rose-200 text-rose-800'
                   }`}
                 >
                   {storeMessage.type === 'success' ? (
                     <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
                   ) : (
-                    <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
                   )}
                   <span>{storeMessage.text}</span>
                 </div>
               )}
 
               {!isOwner && (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center gap-2">
+                <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>You are signed in as STAFF. Store settings can only be edited by the store OWNER.</span>
                 </div>
@@ -258,7 +258,7 @@ export default function SettingsPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
                     Store Name *
                   </label>
                   <input
@@ -268,16 +268,16 @@ export default function SettingsPage() {
                     value={storeData.name}
                     onChange={(e) => setStoreData({ ...storeData, name: e.target.value })}
                     placeholder="e.g. Vision Care Opticals"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition disabled:bg-slate-50 disabled:text-slate-500"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E7E3] text-sm bg-[#FEFEFC] text-[#202D2B] focus:outline-none focus:border-[#28766B] focus:ring-1 focus:ring-[#28766B] transition disabled:bg-[#F5F7F3] disabled:text-[#66746F]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
                     Contact Phone
                   </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#66746F]">
                       <Phone className="w-4 h-4" />
                     </div>
                     <input
@@ -286,14 +286,14 @@ export default function SettingsPage() {
                       value={storeData.phone}
                       onChange={(e) => setStoreData({ ...storeData, phone: e.target.value })}
                       placeholder="+91 9876543210"
-                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition disabled:bg-slate-50 disabled:text-slate-500"
+                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-[#E2E7E3] text-sm font-mono tabular-nums bg-[#FEFEFC] text-[#202D2B] focus:outline-none focus:border-[#28766B] focus:ring-1 focus:ring-[#28766B] transition disabled:bg-[#F5F7F3] disabled:text-[#66746F]"
                     />
                   </div>
-                  <span className="text-[11px] text-slate-400 mt-0.5 block">Prints on receipts & customer invoices</span>
+                  <span className="text-[11px] text-[#66746F] mt-0.5 block">Prints on receipts & customer invoices</span>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
                     Store GSTIN / Tax ID
                   </label>
                   <input
@@ -302,17 +302,17 @@ export default function SettingsPage() {
                     value={storeData.gstin}
                     onChange={(e) => setStoreData({ ...storeData, gstin: e.target.value.toUpperCase() })}
                     placeholder="e.g. 29ABCDE1234F1Z5"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition disabled:bg-slate-50 disabled:text-slate-500 uppercase"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E7E3] text-sm font-mono bg-[#FEFEFC] text-[#202D2B] focus:outline-none focus:border-[#28766B] focus:ring-1 focus:ring-[#28766B] transition disabled:bg-[#F5F7F3] disabled:text-[#66746F] uppercase"
                   />
-                  <span className="text-[11px] text-slate-400 mt-0.5 block">15-digit GST Number printed on Tax Invoices</span>
+                  <span className="text-[11px] text-[#66746F] mt-0.5 block">15-digit GST Number printed on Tax Invoices</span>
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
                     Store Physical Address
                   </label>
                   <div className="relative">
-                    <div className="absolute top-3 left-3 flex items-start pointer-events-none text-slate-400">
+                    <div className="absolute top-3 left-3 flex items-start pointer-events-none text-[#66746F]">
                       <MapPin className="w-4 h-4" />
                     </div>
                     <textarea
@@ -321,14 +321,14 @@ export default function SettingsPage() {
                       value={storeData.address}
                       onChange={(e) => setStoreData({ ...storeData, address: e.target.value })}
                       placeholder="e.g. Shop #12, Ground Floor, Grand Optical Mall, MG Road, Bengaluru - 560001"
-                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition disabled:bg-slate-50 disabled:text-slate-500"
+                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-[#E2E7E3] text-sm bg-[#FEFEFC] text-[#202D2B] focus:outline-none focus:border-[#28766B] focus:ring-1 focus:ring-[#28766B] transition disabled:bg-[#F5F7F3] disabled:text-[#66746F]"
                     />
                   </div>
-                  <span className="text-[11px] text-slate-400 mt-0.5 block">Printed at the top of A4 customer invoices & optical job slips</span>
+                  <span className="text-[11px] text-[#66746F] mt-0.5 block">Printed at the top of A4 customer invoices & optical job slips</span>
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
                     Google Review / Maps Link
                   </label>
                   <div className="relative">
@@ -341,7 +341,7 @@ export default function SettingsPage() {
                       value={storeData.googleReviewLink}
                       onChange={(e) => setStoreData({ ...storeData, googleReviewLink: e.target.value })}
                       placeholder="https://g.page/r/your-google-place-id/review"
-                      className="w-full pl-9 pr-24 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition disabled:bg-slate-50 disabled:text-slate-500 font-mono text-xs"
+                      className="w-full pl-9 pr-24 py-2.5 rounded-xl border border-[#E2E7E3] text-sm bg-[#FEFEFC] text-[#202D2B] focus:outline-none focus:border-[#28766B] focus:ring-1 focus:ring-[#28766B] transition disabled:bg-[#F5F7F3] disabled:text-[#66746F] font-mono text-xs"
                     />
                     {storeData.googleReviewLink && (
                       <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
@@ -349,14 +349,14 @@ export default function SettingsPage() {
                           href={storeData.googleReviewLink}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1"
+                          className="text-xs text-[#28766B] hover:text-[#1E5C53] font-semibold flex items-center gap-1"
                         >
                           Test <ExternalLink className="w-3 h-3" />
                         </a>
                       </div>
                     )}
                   </div>
-                  <span className="text-[11px] text-slate-400 mt-0.5 block">
+                  <span className="text-[11px] text-[#66746F] mt-0.5 block">
                     Automatically attached in WhatsApp messages when orders are marked as DELIVERED to collect Google 5-star ratings.
                   </span>
                 </div>
@@ -367,7 +367,7 @@ export default function SettingsPage() {
                   <button
                     type="submit"
                     disabled={savingStore}
-                    className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-indigo-600/20 transition flex items-center gap-2 disabled:opacity-50"
+                    className="px-5 py-2.5 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold shadow-xs transition flex items-center gap-2 disabled:opacity-50"
                   >
                     <Save className="w-4 h-4" />
                     {savingStore ? 'Saving Changes...' : 'Save Store Details'}
@@ -382,16 +382,16 @@ export default function SettingsPage() {
       {/* TAB 2: Staff & Team Management */}
       {activeTab === 'staff' && isOwner && (
         <div className="space-y-4">
-          <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <div className="flex justify-between items-center bg-[#FEFEFC] p-4 rounded-2xl border border-[#E2E7E3] shadow-xs">
             <div>
-              <h2 className="font-bold text-slate-900 text-base">Store Team Accounts</h2>
-              <p className="text-xs text-slate-500">
+              <h2 className="font-bold text-[#202D2B] text-base">Store Team Accounts</h2>
+              <p className="text-xs text-[#66746F]">
                 Staff accounts can create orders, record payments, and manage customer records.
               </p>
             </div>
             <button
               onClick={() => setIsAddStaffOpen(true)}
-              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-indigo-600/20 transition flex items-center gap-2"
+              className="px-4 py-2.5 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold shadow-xs transition flex items-center gap-2"
             >
               <UserPlus className="w-4 h-4" />
               Add Team Member
@@ -399,21 +399,21 @@ export default function SettingsPage() {
           </div>
 
           {staffError && (
-            <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+            <div className="p-3.5 rounded-xl bg-rose-50/80 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{staffError}</span>
             </div>
           )}
 
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-[#FEFEFC] rounded-2xl border border-[#E2E7E3] shadow-xs overflow-hidden">
             {loadingStaff ? (
               <SkeletonTable rows={3} cols={4} />
             ) : staffList.length === 0 ? (
-              <div className="p-12 text-center text-slate-400 text-sm">No team members registered yet.</div>
+              <div className="p-12 text-center text-[#66746F] text-xs">No team members registered yet.</div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-600">
-                  <thead className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                <table className="w-full text-left text-xs text-[#202D2B]">
+                  <thead className="bg-[#F5F7F3] border-b border-[#E2E7E3] text-[11px] font-bold uppercase tracking-wider text-[#66746F]">
                     <tr>
                       <th className="py-3 px-4">Member</th>
                       <th className="py-3 px-4">Role</th>
@@ -422,21 +422,21 @@ export default function SettingsPage() {
                       <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-[#E2E7E3]">
                     {staffList.map((member) => {
                       const isSelf = member.id === user?.id;
                       return (
-                        <tr key={member.id} className="hover:bg-slate-50/60 transition">
+                        <tr key={member.id} className="hover:bg-[#F5F7F3]/60 transition">
                           <td className="py-3.5 px-4">
-                            <div className="font-bold text-slate-900">{member.full_name}</div>
-                            <div className="text-[11px] text-slate-400 font-mono">{member.email}</div>
+                            <div className="font-bold text-[#202D2B]">{member.full_name}</div>
+                            <div className="text-[11px] text-[#66746F] font-mono">{member.email}</div>
                           </td>
                           <td className="py-3.5 px-4">
                             <span
                               className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                                 member.role === 'OWNER'
-                                  ? 'bg-purple-50 text-purple-700 border border-purple-200'
-                                  : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                  ? 'bg-[#203A36] text-white'
+                                  : 'bg-[#EBF3F1] text-[#28766B] border border-[#28766B]/20'
                               }`}
                             >
                               <Shield className="w-3 h-3" />
@@ -447,8 +447,8 @@ export default function SettingsPage() {
                             <span
                               className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                                 member.active
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                  : 'bg-red-50 text-red-700 border border-red-200'
+                                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                  : 'bg-rose-50 text-rose-800 border border-rose-200'
                               }`}
                             >
                               {member.active ? (
@@ -462,7 +462,7 @@ export default function SettingsPage() {
                               )}
                             </span>
                           </td>
-                          <td className="py-3.5 px-4 font-mono text-[11px] text-slate-500">
+                          <td className="py-3.5 px-4 font-mono text-[11px] text-[#66746F] tabular-nums">
                             {new Date(member.created_at).toLocaleDateString()}
                           </td>
                           <td className="py-3.5 px-4 text-right">
@@ -470,9 +470,9 @@ export default function SettingsPage() {
                               <button
                                 onClick={() => setResetTargetUser(member)}
                                 title="Reset login password"
-                                className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 transition flex items-center gap-1 text-[11px] font-semibold"
+                                className="p-1.5 rounded-lg border border-[#E2E7E3] hover:bg-[#F5F7F3] text-[#202D2B] transition flex items-center gap-1 text-[11px] font-semibold"
                               >
-                                <KeyRound className="w-3.5 h-3.5" />
+                                <KeyRound className="w-3.5 h-3.5 text-[#66746F]" />
                                 <span className="hidden sm:inline">Reset Password</span>
                               </button>
 
@@ -481,8 +481,8 @@ export default function SettingsPage() {
                                   onClick={() => handleToggleStatus(member)}
                                   className={`p-1.5 rounded-lg border transition text-[11px] font-semibold flex items-center gap-1 ${
                                     member.active
-                                      ? 'border-red-200 text-red-600 hover:bg-red-50'
-                                      : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'
+                                      ? 'border-rose-200 text-rose-700 hover:bg-rose-50'
+                                      : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
                                   }`}
                                 >
                                   {member.active ? (
@@ -517,25 +517,25 @@ export default function SettingsPage() {
       {/* TAB 4: Data Backup & Export */}
       {activeTab === 'export' && isOwner && (
         <div className="space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <h2 className="font-bold text-slate-900 text-base flex items-center gap-2">
-              <Database className="w-5 h-5 text-indigo-600" />
+          <div className="bg-[#FEFEFC] p-6 rounded-2xl border border-[#E2E7E3] shadow-xs">
+            <h2 className="font-bold text-[#202D2B] text-base flex items-center gap-2">
+              <Database className="w-5 h-5 text-[#28766B]" />
               Store Data Export & Backup (CSV)
             </h2>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-[#66746F] mt-1">
               Download complete, uncompressed CSV spreadsheets of your store records for tax filing, accounting, or offline backups.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* 1. Customer Directory Export */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between">
+            <div className="bg-[#FEFEFC] p-5 rounded-2xl border border-[#E2E7E3] shadow-xs space-y-3 flex flex-col justify-between">
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="font-bold text-slate-900 text-sm">Customer Directory</span>
-                  <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded-full uppercase">CSV</span>
+                  <span className="font-bold text-[#202D2B] text-sm">Customer Directory</span>
+                  <span className="px-2 py-0.5 bg-[#EBF3F1] text-[#28766B] text-[10px] font-bold rounded-full uppercase">CSV</span>
                 </div>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[#66746F]">
                   Full list of registered customers, contact numbers, email addresses, age, gender, address, and total order count.
                 </p>
               </div>
@@ -543,20 +543,20 @@ export default function SettingsPage() {
                 href={`${api.defaults.baseURL}/exports/customers.csv`}
                 target="_blank"
                 rel="noreferrer"
-                className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2"
+                className="w-full py-2.5 px-4 bg-[#203A36] hover:bg-[#182C29] text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2"
               >
                 <Download className="w-4 h-4" /> Download Customers CSV
               </a>
             </div>
 
             {/* 2. Orders & Sales Register Export */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between">
+            <div className="bg-[#FEFEFC] p-5 rounded-2xl border border-[#E2E7E3] shadow-xs space-y-3 flex flex-col justify-between">
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="font-bold text-slate-900 text-sm">Orders & Sales Register</span>
-                  <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full uppercase">CSV</span>
+                  <span className="font-bold text-[#202D2B] text-sm">Orders & Sales Register</span>
+                  <span className="px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold rounded-full uppercase">CSV</span>
                 </div>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[#66746F]">
                   Detailed order history, customer names, status, total amounts, payments received, and outstanding balance dues.
                 </p>
               </div>
@@ -564,20 +564,20 @@ export default function SettingsPage() {
                 href={`${api.defaults.baseURL}/exports/orders.csv`}
                 target="_blank"
                 rel="noreferrer"
-                className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-sm"
+                className="w-full py-2.5 px-4 bg-[#28766B] hover:bg-[#1E5C53] text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs"
               >
                 <Download className="w-4 h-4" /> Download Sales Orders CSV
               </a>
             </div>
 
             {/* 3. Stock Inventory Catalog Export */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between">
+            <div className="bg-[#FEFEFC] p-5 rounded-2xl border border-[#E2E7E3] shadow-xs space-y-3 flex flex-col justify-between">
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="font-bold text-slate-900 text-sm">Stock Inventory Catalog</span>
-                  <span className="px-2 py-0.5 bg-purple-50 text-purple-700 text-[10px] font-bold rounded-full uppercase">CSV</span>
+                  <span className="font-bold text-[#202D2B] text-sm">Stock Inventory Catalog</span>
+                  <span className="px-2 py-0.5 bg-[#EBF3F1] text-[#28766B] border border-[#28766B]/20 text-[10px] font-bold rounded-full uppercase">CSV</span>
                 </div>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[#66746F]">
                   Complete product catalog including frames, lenses, sunglasses, solutions, selling prices, cost prices, and current stock levels.
                 </p>
               </div>
@@ -585,20 +585,20 @@ export default function SettingsPage() {
                 href={`${api.defaults.baseURL}/exports/inventory.csv`}
                 target="_blank"
                 rel="noreferrer"
-                className="w-full py-2.5 px-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-sm"
+                className="w-full py-2.5 px-4 bg-[#203A36] hover:bg-[#182C29] text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs"
               >
                 <Download className="w-4 h-4" /> Download Inventory CSV
               </a>
             </div>
 
             {/* 4. Store Expense Ledger Export */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between">
+            <div className="bg-[#FEFEFC] p-5 rounded-2xl border border-[#E2E7E3] shadow-xs space-y-3 flex flex-col justify-between">
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="font-bold text-slate-900 text-sm">Operational Expense Ledger</span>
-                  <span className="px-2 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-bold rounded-full uppercase">CSV</span>
+                  <span className="font-bold text-[#202D2B] text-sm">Operational Expense Ledger</span>
+                  <span className="px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold rounded-full uppercase">CSV</span>
                 </div>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[#66746F]">
                   Recorded shop expense transactions categorized by tea/coffee, utilities, lab fees, rent, and maintenance.
                 </p>
               </div>
@@ -606,7 +606,7 @@ export default function SettingsPage() {
                 href={`${api.defaults.baseURL}/exports/expenses.csv`}
                 target="_blank"
                 rel="noreferrer"
-                className="w-full py-2.5 px-4 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-sm"
+                className="w-full py-2.5 px-4 bg-amber-700 hover:bg-amber-800 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs"
               >
                 <Download className="w-4 h-4" /> Download Expenses CSV
               </a>

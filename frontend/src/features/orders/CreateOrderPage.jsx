@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../services/api.js';
+import { useAuth } from '../auth/AuthContext.jsx';
+import { sendWhatsApp, getOrderPlacedGreetingMessage } from '../../lib/whatsapp.js';
 import { ArrowLeft, Plus, Trash2, ShoppingBag, AlertCircle } from 'lucide-react';
 
 export default function CreateOrderPage() {
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const preselectedCustomerId = searchParams.get('customerId');
   const navigate = useNavigate();
@@ -183,7 +186,28 @@ export default function CreateOrderPage() {
       };
 
       const response = await api.post('/orders', payload);
-      navigate(`/orders/${response.data.data.id}`);
+      const createdOrder = response.data.data;
+
+      // Auto-send WhatsApp order confirmation silently in background
+      const customer = customers.find((c) => c.id === selectedCustomerId);
+      if (customer?.phone) {
+        const msg = getOrderPlacedGreetingMessage({
+          customerName: customer.full_name,
+          storeName: user?.store?.name || 'Optical Store',
+          orderNumber: createdOrder.order_number,
+          dueDate: createdOrder.due_date,
+        });
+
+        sendWhatsApp({
+          phone: customer.phone,
+          message: msg,
+          label: 'Order Placed Confirmation',
+          customerId: customer.id,
+          messageType: 'ORDER_PLACED',
+        }).catch((err) => console.warn('Background WhatsApp send failed:', err));
+      }
+
+      navigate(`/orders/${createdOrder.id}`);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Failed to create order');
     } finally {
@@ -195,41 +219,41 @@ export default function CreateOrderPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       <button
         onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 transition"
+        className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#66746F] hover:text-[#202D2B] transition"
       >
         <ArrowLeft className="w-4 h-4" />
         Back
       </button>
 
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20">
+        <div className="w-10 h-10 rounded-xl bg-[#28766B] text-white flex items-center justify-center shadow-sm">
           <ShoppingBag className="w-5 h-5" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">New Optical Order</h1>
-          <p className="text-xs text-slate-500">Select stock items or enter custom frames & lenses</p>
+          <h1 className="text-xl font-bold text-[#202D2B]">New Optical Order</h1>
+          <p className="text-xs text-[#66746F]">Select stock items or enter custom frames & lenses</p>
         </div>
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-center gap-2 text-red-700 text-sm">
-          <AlertCircle className="w-5 h-5 shrink-0" />
+        <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 flex items-center gap-2 text-rose-800 text-xs font-medium">
+          <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
           <span>{error}</span>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Step 1: Customer & Prescription */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <h2 className="font-bold text-slate-900 text-base">1. Customer & Eye Power</h2>
+        <div className="bg-[#FEFEFC] p-6 rounded-2xl border border-[#E2E7E3] shadow-sm space-y-4">
+          <h2 className="font-bold text-[#202D2B] text-sm">1. Customer & Eye Power</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Select Customer *</label>
+              <label className="block text-xs font-semibold text-[#202D2B] mb-1">Select Customer *</label>
               <select
                 required
                 value={selectedCustomerId}
                 onChange={(e) => setSelectedCustomerId(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+                className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs text-[#202D2B] focus:ring-2 focus:ring-[#28766B]/30 focus:border-[#28766B] focus:outline-none bg-white"
               >
                 <option value="">-- Choose Customer --</option>
                 {customers.map((c) => (
@@ -241,11 +265,11 @@ export default function CreateOrderPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Link Prescription</label>
+              <label className="block text-xs font-semibold text-[#202D2B] mb-1">Link Prescription</label>
               <select
                 value={selectedPrescriptionId}
                 onChange={(e) => setSelectedPrescriptionId(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+                className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs text-[#202D2B] focus:ring-2 focus:ring-[#28766B]/30 focus:border-[#28766B] focus:outline-none bg-white"
               >
                 <option value="">-- No linked prescription --</option>
                 {prescriptions.map((p, index) => (
@@ -259,33 +283,33 @@ export default function CreateOrderPage() {
         </div>
 
         {/* Step 2: Line items */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+        <div className="bg-[#FEFEFC] p-6 rounded-2xl border border-[#E2E7E3] shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#E2E7E3]">
             <div>
-              <h2 className="font-bold text-slate-900 text-base">2. Order Items</h2>
-              <p className="text-xs text-slate-500">Configure item specs, HSN codes, and GST tax rates</p>
+              <h2 className="font-bold text-[#202D2B] text-sm">2. Order Items</h2>
+              <p className="text-xs text-[#66746F]">Configure item specs, HSN codes, and GST tax rates</p>
             </div>
-            <div className="flex items-center gap-4">
-              <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+            <div className="flex items-center gap-3">
+              <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#202D2B] bg-[#F5F7F3] px-3 py-1.5 rounded-xl border border-[#E2E7E3]">
                 <input
                   type="checkbox"
                   checked={isGstBill}
                   onChange={(e) => setIsGstBill(e.target.checked)}
-                  className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                  className="w-4 h-4 text-[#28766B] rounded focus:ring-[#28766B]"
                 />
                 <span>Generate Official Indian GST Tax Invoice</span>
               </label>
               <button
                 type="button"
                 onClick={addItem}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-[#28766B] hover:underline"
               >
                 <Plus className="w-3.5 h-3.5" /> Add Item
               </button>
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {items.map((item, index) => {
               const matchedSuggestions = stockProducts.filter(
                 (p) =>
@@ -300,11 +324,11 @@ export default function CreateOrderPage() {
               return (
                 <div
                   key={index}
-                  className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3 relative"
+                  className="p-4 bg-[#F5F7F3] border border-[#E2E7E3] rounded-xl space-y-3 relative"
                 >
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
                     <div className="md:col-span-2">
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Type</label>
+                      <label className="block text-[10px] font-bold text-[#66746F] uppercase mb-1">Type</label>
                       <select
                         value={item.itemType}
                         onChange={(e) => {
@@ -316,7 +340,7 @@ export default function CreateOrderPage() {
                           updated[index].gstRate = gstRate;
                           setItems(updated);
                         }}
-                        className="w-full px-2 py-2 rounded-lg border border-slate-200 text-xs bg-white font-semibold focus:outline-none"
+                        className="w-full px-2 py-2 rounded-xl border border-[#E2E7E3] text-xs bg-white text-[#202D2B] font-semibold focus:outline-none"
                       >
                         <option value="FRAME">Frame</option>
                         <option value="LENS">Lens</option>
@@ -329,7 +353,7 @@ export default function CreateOrderPage() {
                     </div>
 
                     <div className="md:col-span-4 relative">
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                      <label className="block text-[10px] font-bold text-[#66746F] uppercase mb-1">
                         Description / Name (Auto-search Catalog)
                       </label>
                       <input
@@ -339,18 +363,18 @@ export default function CreateOrderPage() {
                         value={item.description}
                         onFocus={() => setActiveSuggestionIndex(index)}
                         onChange={(e) => handleDescriptionChange(index, e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs text-[#202D2B] bg-white focus:ring-2 focus:ring-[#28766B]/30 focus:border-[#28766B] focus:outline-none"
                       />
 
                       {/* Live Autocomplete Suggestions Overlay */}
                       {activeSuggestionIndex === index && matchedSuggestions.length > 0 && (
-                        <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-white border border-slate-200 rounded-xl shadow-xl max-h-48 overflow-y-auto divide-y divide-slate-100">
-                          <div className="p-1.5 text-[10px] font-bold text-slate-400 bg-slate-50 uppercase tracking-wider flex justify-between">
+                        <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-[#FEFEFC] border border-[#E2E7E3] rounded-xl shadow-xl max-h-48 overflow-y-auto divide-y divide-[#E2E7E3]">
+                          <div className="p-1.5 text-[10px] font-bold text-[#66746F] bg-[#F5F7F3] uppercase tracking-wider flex justify-between">
                             <span>Matching In-Stock Items</span>
                             <button
                               type="button"
                               onClick={() => setActiveSuggestionIndex(null)}
-                              className="text-slate-400 hover:text-slate-600"
+                              className="text-[#66746F] hover:text-[#202D2B]"
                             >
                               ✕
                             </button>
@@ -360,19 +384,19 @@ export default function CreateOrderPage() {
                               key={prod.id}
                               type="button"
                               onClick={() => handleSelectSuggestion(index, prod)}
-                              className="w-full text-left p-2 hover:bg-indigo-50/80 transition flex items-center justify-between text-xs"
+                              className="w-full text-left p-2.5 hover:bg-[#EBF3F1] transition flex items-center justify-between text-xs"
                             >
                               <div>
-                                <div className="font-semibold text-slate-900">
+                                <div className="font-semibold text-[#202D2B]">
                                   {prod.brand ? `${prod.brand} ` : ''}{prod.name}
                                 </div>
                                 {prod.model_code && (
-                                  <div className="text-[10px] text-slate-400 font-mono">Code: {prod.model_code}</div>
+                                  <div className="text-[10px] text-[#66746F] tabular-nums">Code: {prod.model_code}</div>
                                 )}
                               </div>
                               <div className="text-right">
-                                <div className="font-mono font-bold text-indigo-600">₹{parseFloat(prod.selling_price).toLocaleString()}</div>
-                                <div className="text-[10px] text-slate-500 font-medium">Stock: {prod.stock_quantity}</div>
+                                <div className="tabular-nums font-bold text-[#28766B]">₹{parseFloat(prod.selling_price).toLocaleString()}</div>
+                                <div className="text-[10px] text-[#66746F] font-medium">Stock: {prod.stock_quantity}</div>
                               </div>
                             </button>
                           ))}
@@ -381,7 +405,7 @@ export default function CreateOrderPage() {
                     </div>
 
                     <div className="md:col-span-2">
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">HSN Code</label>
+                      <label className="block text-[10px] font-bold text-[#66746F] uppercase mb-1">HSN Code</label>
                       <input
                         type="text"
                         placeholder="e.g. 9004"
@@ -391,13 +415,13 @@ export default function CreateOrderPage() {
                           updated[index].hsnCode = e.target.value;
                           setItems(updated);
                         }}
-                        className="w-full px-2 py-2 rounded-lg border border-slate-200 text-xs bg-white font-mono focus:outline-none uppercase"
+                        className="w-full px-2 py-2 rounded-xl border border-[#E2E7E3] text-xs bg-white text-[#202D2B] tabular-nums focus:outline-none uppercase"
                       />
                     </div>
 
                     {isGstBill && (
                       <div className="md:col-span-2">
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">GST Rate</label>
+                        <label className="block text-[10px] font-bold text-[#66746F] uppercase mb-1">GST Rate</label>
                         <select
                           value={item.gstRate}
                           onChange={(e) => {
@@ -405,7 +429,7 @@ export default function CreateOrderPage() {
                             updated[index].gstRate = e.target.value;
                             setItems(updated);
                           }}
-                          className="w-full px-2 py-2 rounded-lg border border-slate-200 text-xs bg-white font-semibold focus:outline-none"
+                          className="w-full px-2 py-2 rounded-xl border border-[#E2E7E3] text-xs bg-white text-[#202D2B] font-semibold focus:outline-none"
                         >
                           <option value="0">0% GST</option>
                           <option value="5">5% GST</option>
@@ -417,7 +441,7 @@ export default function CreateOrderPage() {
                     )}
 
                     <div className={isGstBill ? "md:col-span-2" : "md:col-span-4"}>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Total Price (₹)</label>
+                      <label className="block text-[10px] font-bold text-[#66746F] uppercase mb-1">Total Price (₹)</label>
                       <div className="flex items-center gap-2">
                         <input
                           type="number"
@@ -429,13 +453,13 @@ export default function CreateOrderPage() {
                             updated[index].unitPrice = e.target.value;
                             setItems(updated);
                           }}
-                          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white font-mono text-right focus:outline-none"
+                          className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs bg-white text-[#202D2B] tabular-nums font-bold text-right focus:outline-none"
                         />
                         {items.length > 1 && (
                           <button
                             type="button"
                             onClick={() => removeItem(index)}
-                            className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg shrink-0"
+                            className="p-1.5 text-[#66746F] hover:text-rose-700 rounded-lg shrink-0"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -449,80 +473,80 @@ export default function CreateOrderPage() {
           </div>
 
           {/* Pricing Summary */}
-          <div className="pt-4 border-t border-slate-100 flex justify-end">
-            <div className="w-80 space-y-2 text-sm bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <div className="flex justify-between text-slate-600 text-xs">
+          <div className="pt-4 border-t border-[#E2E7E3] flex justify-end">
+            <div className="w-80 space-y-2 text-xs bg-[#F5F7F3] p-4 rounded-xl border border-[#E2E7E3]">
+              <div className="flex justify-between text-[#66746F]">
                 <span>Subtotal (Incl. Taxes):</span>
-                <span className="font-mono font-semibold">₹{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span className="tabular-nums font-bold text-[#202D2B]">₹{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
 
               {isGstBill && (
                 <>
-                  <div className="flex justify-between text-slate-500 text-xs">
+                  <div className="flex justify-between text-[#66746F]">
                     <span>Taxable Amount (Net):</span>
-                    <span className="font-mono">₹{totalTaxable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="tabular-nums">₹{totalTaxable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
-                  <div className="flex justify-between text-slate-500 text-xs">
+                  <div className="flex justify-between text-[#66746F]">
                     <span>CGST Total:</span>
-                    <span className="font-mono">₹{totalCgst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="tabular-nums">₹{totalCgst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
-                  <div className="flex justify-between text-slate-500 text-xs">
+                  <div className="flex justify-between text-[#66746F]">
                     <span>SGST Total:</span>
-                    <span className="font-mono">₹{totalSgst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="tabular-nums">₹{totalSgst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                 </>
               )}
 
-              <div className="flex justify-between items-center text-slate-600 text-xs pt-1 border-t border-slate-200">
+              <div className="flex justify-between items-center text-[#66746F] pt-1 border-t border-[#E2E7E3]">
                 <span>Additional Order Discount:</span>
                 <input
                   type="number"
                   value={orderDiscount}
                   onChange={(e) => setOrderDiscount(e.target.value)}
-                  className="w-24 px-2 py-1 rounded border border-slate-200 text-right font-mono text-xs bg-white"
+                  className="w-24 px-2 py-1 rounded-lg border border-[#E2E7E3] text-right tabular-nums text-xs bg-white text-[#202D2B]"
                 />
               </div>
 
-              <div className="flex justify-between font-bold text-base text-slate-900 border-t border-slate-200 pt-2">
+              <div className="flex justify-between font-bold text-sm text-[#202D2B] border-t border-[#E2E7E3] pt-2">
                 <span>Grand Total Payable:</span>
-                <span className="font-mono text-indigo-600">₹{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span className="tabular-nums text-[#28766B]">₹{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Step 3: Advance Payment & Due Date */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <h2 className="font-bold text-slate-900 text-base">3. Advance Payment & Due Date</h2>
+        <div className="bg-[#FEFEFC] p-6 rounded-2xl border border-[#E2E7E3] shadow-sm space-y-4">
+          <h2 className="font-bold text-[#202D2B] text-sm">3. Advance Payment & Due Date</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Expected Delivery Date *</label>
+              <label className="block text-xs font-semibold text-[#202D2B] mb-1">Expected Delivery Date *</label>
               <input
                 type="date"
                 required
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none"
+                className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs text-[#202D2B] focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Advance Amount (₹)</label>
+              <label className="block text-xs font-semibold text-[#202D2B] mb-1">Advance Amount (₹)</label>
               <input
                 type="number"
                 placeholder="e.g. 1000"
                 value={advanceAmount}
                 onChange={(e) => setAdvanceAmount(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-mono focus:outline-none"
+                className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs tabular-nums text-[#202D2B] focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Payment Method</label>
+              <label className="block text-xs font-semibold text-[#202D2B] mb-1">Payment Method</label>
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none"
+                className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs text-[#202D2B] bg-white focus:outline-none"
               >
                 <option value="UPI">Google Pay / PhonePe (UPI)</option>
                 <option value="CASH">Cash</option>
@@ -534,42 +558,42 @@ export default function CreateOrderPage() {
 
           {paymentMethod !== 'CASH' && (
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Payment Reference / Txn ID</label>
+              <label className="block text-xs font-semibold text-[#202D2B] mb-1">Payment Reference / Txn ID</label>
               <input
                 type="text"
                 placeholder="e.g. UPI Ref / Cheque No."
                 value={paymentRef}
                 onChange={(e) => setPaymentRef(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none"
+                className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs text-[#202D2B] focus:outline-none"
               />
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Order Notes</label>
+            <label className="block text-xs font-semibold text-[#202D2B] mb-1">Order Notes</label>
             <input
               type="text"
               placeholder="e.g. Needs delivery by Saturday afternoon"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none"
+              className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs text-[#202D2B] placeholder:text-[#9AA8A3] focus:outline-none"
             />
           </div>
         </div>
 
         {/* Submit button */}
-        <div className="flex justify-end gap-3">
+        <div className="flex justify-end gap-2.5">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            className="px-4 py-2.5 rounded-xl border border-[#E2E7E3] text-xs font-semibold text-[#66746F] hover:bg-[#F5F7F3] transition"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-indigo-600/20 disabled:opacity-50"
+            className="px-6 py-2.5 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold shadow-sm disabled:opacity-50 transition"
           >
             {loading ? 'Creating Order...' : 'Confirm & Create Order'}
           </button>

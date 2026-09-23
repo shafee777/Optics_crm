@@ -152,8 +152,8 @@ export default function ProductsPage() {
       {/* Top Header & Tab Navigation */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Inventory & Procurement</h1>
-          <p className="text-xs text-slate-500 mt-1">
+          <h1 className="text-xl font-bold text-[#202D2B]">Inventory & Procurement</h1>
+          <p className="text-xs text-[#66746F] mt-0.5">
             Manage stock catalog, receive supplier purchase orders, and track lens lab payables
           </p>
         </div>
@@ -166,7 +166,7 @@ export default function ProductsPage() {
                 setEditingProduct(null);
                 setIsProductModalOpen(true);
               }}
-              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 transition"
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold shadow-sm transition"
             >
               <Plus className="w-4 h-4" /> Add Product
             </button>
@@ -175,7 +175,7 @@ export default function ProductsPage() {
           {activeTab === 'purchases' && (
             <button
               onClick={() => setIsPoModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 transition"
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold shadow-sm transition"
             >
               <Truck className="w-4 h-4" /> Inward Stock / PO
             </button>
@@ -187,7 +187,7 @@ export default function ProductsPage() {
                 setEditingSupplier(null);
                 setIsSupplierModalOpen(true);
               }}
-              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 transition"
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold shadow-sm transition"
             >
               <Building2 className="w-4 h-4" /> Add Supplier / Lab
             </button>
@@ -196,13 +196,13 @@ export default function ProductsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-200">
+      <div className="flex border-b border-[#E2E7E3]">
         <button
           onClick={() => setActiveTab('inventory')}
           className={`px-5 py-3 text-xs font-bold border-b-2 flex items-center gap-2 transition ${
             activeTab === 'inventory'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
+              ? 'border-[#28766B] text-[#28766B]'
+              : 'border-transparent text-[#66746F] hover:text-[#202D2B]'
           }`}
         >
           <Package className="w-4 h-4" />
@@ -213,8 +213,8 @@ export default function ProductsPage() {
           onClick={() => setActiveTab('purchases')}
           className={`px-5 py-3 text-xs font-bold border-b-2 flex items-center gap-2 transition ${
             activeTab === 'purchases'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
+              ? 'border-[#28766B] text-[#28766B]'
+              : 'border-transparent text-[#66746F] hover:text-[#202D2B]'
           }`}
         >
           <Truck className="w-4 h-4" />
@@ -225,8 +225,8 @@ export default function ProductsPage() {
           onClick={() => setActiveTab('suppliers')}
           className={`px-5 py-3 text-xs font-bold border-b-2 flex items-center gap-2 transition ${
             activeTab === 'suppliers'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
+              ? 'border-[#28766B] text-[#28766B]'
+              : 'border-transparent text-[#66746F] hover:text-[#202D2B]'
           }`}
         >
           <Building2 className="w-4 h-4" />
@@ -238,15 +238,15 @@ export default function ProductsPage() {
       {activeTab === 'inventory' && (
         <div className="space-y-4">
           {/* Filters */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
+          <div className="bg-[#FEFEFC] p-4 rounded-2xl border border-[#E2E7E3] shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
             <div className="relative w-full sm:w-80">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#66746F]" />
               <input
                 type="text"
                 placeholder="Search by item name, brand, model..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full pl-9 pr-4 py-2 bg-[#F5F7F3] border border-[#E2E7E3] rounded-xl text-xs text-[#202D2B] placeholder:text-[#9AA8A3] focus:ring-2 focus:ring-[#28766B]/30 focus:border-[#28766B] focus:outline-none"
               />
             </div>
 
@@ -254,7 +254,7 @@ export default function ProductsPage() {
               <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
-                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none"
+                className="px-3 py-2 bg-[#F5F7F3] border border-[#E2E7E3] rounded-xl text-xs font-semibold text-[#202D2B] focus:outline-none"
               >
                 <option value="">All Categories</option>
                 <option value="FRAME">Frames</option>
@@ -269,33 +269,33 @@ export default function ProductsPage() {
                 onClick={() => setLowStockOnly(!lowStockOnly)}
                 className={`px-3 py-2 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition ${
                   lowStockOnly
-                    ? 'bg-red-50 text-red-700 border-red-200'
-                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    ? 'bg-rose-50 text-rose-800 border-rose-200'
+                    : 'bg-[#F5F7F3] text-[#66746F] border-[#E2E7E3] hover:bg-[#E2E7E3]'
                 }`}
               >
-                <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
                 Low Stock Alert
               </button>
             </div>
           </div>
 
           {/* Products Table */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-[#FEFEFC] rounded-2xl border border-[#E2E7E3] shadow-sm overflow-hidden">
             {loadingProducts ? (
               <SkeletonTable rows={6} cols={6} />
             ) : products.length === 0 ? (
               <div className="p-12 text-center space-y-3">
-                <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto">
+                <div className="w-12 h-12 bg-[#F5F7F3] text-[#66746F] rounded-full flex items-center justify-center mx-auto">
                   <Glasses className="w-6 h-6" />
                 </div>
-                <p className="text-sm font-semibold text-slate-700">No products found</p>
-                <p className="text-xs text-slate-400">Add a product or log an inward stock purchase order.</p>
+                <p className="text-sm font-semibold text-[#202D2B]">No products found</p>
+                <p className="text-xs text-[#66746F]">Add a product or log an inward stock purchase order.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <tr className="bg-[#F5F7F3] border-b border-[#E2E7E3] text-[11px] font-bold text-[#66746F] uppercase tracking-wider">
                       <th className="py-3 px-4">Item & Brand</th>
                       <th className="py-3 px-4">Category</th>
                       <th className="py-3 px-4">Model / Code</th>
@@ -304,24 +304,24 @@ export default function ProductsPage() {
                       <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                  <tbody className="divide-y divide-[#E2E7E3] text-[#202D2B]">
                     {products.map((p) => {
                       const isLow = p.stock_quantity <= p.min_stock_alert;
                       return (
-                        <tr key={p.id} className="hover:bg-slate-50/60 transition">
+                        <tr key={p.id} className="hover:bg-[#F5F7F3] transition">
                           <td className="py-3 px-4">
-                            <div className="font-semibold text-slate-900">{p.name}</div>
-                            {p.brand && <div className="text-[11px] text-indigo-600 font-medium">{p.brand}</div>}
+                            <div className="font-semibold text-[#202D2B]">{p.name}</div>
+                            {p.brand && <div className="text-[11px] text-[#28766B] font-semibold">{p.brand}</div>}
                           </td>
                           <td className="py-3 px-4">
-                            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-bold">
+                            <span className="px-2 py-0.5 rounded-md bg-[#F5F7F3] text-[#66746F] border border-[#E2E7E3] text-[10px] font-bold">
                               {p.item_type}
                             </span>
                           </td>
-                          <td className="py-3 px-4 font-mono text-slate-500">
+                          <td className="py-3 px-4 tabular-nums text-[#66746F]">
                             {p.model_code || '—'}
                           </td>
-                          <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
+                          <td className="py-3 px-4 text-right tabular-nums font-bold text-[#202D2B]">
                             ₹{parseFloat(p.selling_price).toLocaleString()}
                           </td>
                           <td className="py-3 px-4">
@@ -329,15 +329,15 @@ export default function ProductsPage() {
                               <button
                                 onClick={() => handleAdjustStock(p.id, -1)}
                                 title="Decrease stock by 1"
-                                className="text-slate-400 hover:text-slate-700"
+                                className="text-[#66746F] hover:text-[#202D2B]"
                               >
                                 <MinusCircle className="w-4 h-4" />
                               </button>
                               <span
-                                className={`px-2.5 py-0.5 rounded-full font-mono font-bold text-xs ${
+                                className={`px-2.5 py-0.5 rounded-full tabular-nums font-bold text-xs ${
                                   isLow
-                                    ? 'bg-red-100 text-red-700'
-                                    : 'bg-emerald-100 text-emerald-700'
+                                    ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                                    : 'bg-[#EBF3F1] text-[#28766B] border border-[#28766B]/20'
                                 }`}
                               >
                                 {p.stock_quantity}
@@ -345,25 +345,25 @@ export default function ProductsPage() {
                               <button
                                 onClick={() => handleAdjustStock(p.id, 1)}
                                 title="Increase stock by 1"
-                                className="text-slate-400 hover:text-indigo-600"
+                                className="text-[#66746F] hover:text-[#28766B]"
                               >
                                 <PlusCircle className="w-4 h-4" />
                               </button>
                             </div>
                           </td>
-                          <td className="py-3 px-4 text-right space-x-2">
+                          <td className="py-3 px-4 text-right space-x-1.5">
                             <button
                               onClick={() => {
                                 setEditingProduct(p);
                                 setIsProductModalOpen(true);
                               }}
-                              className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition"
+                              className="p-1.5 text-[#66746F] hover:text-[#28766B] rounded-lg hover:bg-[#EBF3F1] transition"
                             >
                               <Edit className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleDeleteProduct(p.id)}
-                              className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-slate-100 transition"
+                              className="p-1.5 text-[#66746F] hover:text-rose-700 rounded-lg hover:bg-rose-50 transition"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -384,14 +384,14 @@ export default function ProductsPage() {
         <div className="space-y-4">
           {/* Outstanding Payables Banner */}
           {duesSummary && parseFloat(duesSummary.total_outstanding_payables) > 0 && (
-            <div className="bg-amber-500/10 border border-amber-300/60 p-4 rounded-2xl flex justify-between items-center text-amber-900">
+            <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex justify-between items-center text-amber-950">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold">
+                <div className="w-10 h-10 rounded-xl bg-amber-600 text-white flex items-center justify-center font-bold">
                   ₹
                 </div>
                 <div>
-                  <div className="text-xs font-bold uppercase tracking-wider text-amber-800">Total Outstanding Vendor Payables</div>
-                  <div className="text-2xl font-mono font-black text-amber-950">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-amber-800">Total Outstanding Vendor Payables</div>
+                  <div className="text-xl font-bold tabular-nums text-amber-950">
                     ₹{parseFloat(duesSummary.total_outstanding_payables).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </div>
                 </div>
@@ -403,22 +403,22 @@ export default function ProductsPage() {
           )}
 
           {/* POs Table */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-[#FEFEFC] rounded-2xl border border-[#E2E7E3] shadow-sm overflow-hidden">
             {loadingPurchases ? (
               <SkeletonTable rows={5} cols={6} />
             ) : purchaseOrders.length === 0 ? (
               <div className="p-12 text-center space-y-3">
-                <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto">
+                <div className="w-12 h-12 bg-[#F5F7F3] text-[#66746F] rounded-full flex items-center justify-center mx-auto">
                   <Truck className="w-6 h-6" />
                 </div>
-                <p className="text-sm font-semibold text-slate-700">No purchase orders logged yet</p>
-                <p className="text-xs text-slate-400">Click "Inward Stock / PO" to receive goods from your lens labs and frame suppliers.</p>
+                <p className="text-sm font-semibold text-[#202D2B]">No purchase orders logged yet</p>
+                <p className="text-xs text-[#66746F]">Click "Inward Stock / PO" to receive goods from your lens labs and frame suppliers.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <tr className="bg-[#F5F7F3] border-b border-[#E2E7E3] text-[11px] font-bold text-[#66746F] uppercase tracking-wider">
                       <th className="py-3 px-4">PO # / Bill #</th>
                       <th className="py-3 px-4">Supplier / Lab</th>
                       <th className="py-3 px-4">Inward Date</th>
@@ -429,41 +429,41 @@ export default function ProductsPage() {
                       <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                  <tbody className="divide-y divide-[#E2E7E3] text-[#202D2B]">
                     {purchaseOrders.map((po) => {
                       const balanceDue = parseFloat(po.balance_due || 0);
                       const isSettled = balanceDue <= 0;
 
                       return (
-                        <tr key={po.id} className="hover:bg-slate-50/60 transition">
+                        <tr key={po.id} className="hover:bg-[#F5F7F3] transition">
                           <td className="py-3 px-4">
-                            <div className="font-mono font-bold text-indigo-600">{po.po_number}</div>
+                            <div className="tabular-nums font-bold text-[#28766B]">{po.po_number}</div>
                             {po.invoice_number && (
-                              <div className="text-[10px] text-slate-400 font-mono">Bill: {po.invoice_number}</div>
+                              <div className="text-[10px] text-[#66746F] tabular-nums">Bill: {po.invoice_number}</div>
                             )}
                           </td>
                           <td className="py-3 px-4">
-                            <div className="font-semibold text-slate-900">{po.supplier_name}</div>
-                            <div className="text-[10px] text-slate-400">{po.supplier_category?.replace('_', ' ')}</div>
+                            <div className="font-semibold text-[#202D2B]">{po.supplier_name}</div>
+                            <div className="text-[10px] text-[#66746F]">{po.supplier_category?.replace('_', ' ')}</div>
                           </td>
-                          <td className="py-3 px-4 font-mono text-slate-500">
+                          <td className="py-3 px-4 tabular-nums text-[#66746F]">
                             {new Date(po.order_date).toLocaleDateString('en-US', {
                               month: 'short',
                               day: 'numeric',
                               year: 'numeric',
                             })}
                           </td>
-                          <td className="py-3 px-4 text-center font-mono font-semibold">
+                          <td className="py-3 px-4 text-center tabular-nums font-semibold">
                             {po.items_count || 1} items
                           </td>
-                          <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
+                          <td className="py-3 px-4 text-right tabular-nums font-bold text-[#202D2B]">
                             ₹{parseFloat(po.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                           </td>
-                          <td className="py-3 px-4 text-right font-mono text-emerald-600 font-semibold">
+                          <td className="py-3 px-4 text-right tabular-nums text-emerald-700 font-semibold">
                             ₹{parseFloat(po.paid_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                           </td>
-                          <td className="py-3 px-4 text-right font-mono font-bold">
-                            <span className={isSettled ? 'text-emerald-600' : 'text-amber-600'}>
+                          <td className="py-3 px-4 text-right tabular-nums font-bold">
+                            <span className={isSettled ? 'text-emerald-700' : 'text-amber-700'}>
                               ₹{balanceDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                             </span>
                           </td>
@@ -474,13 +474,13 @@ export default function ProductsPage() {
                                   setSelectedPoForPayment(po);
                                   setIsPaymentModalOpen(true);
                                 }}
-                                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 text-[11px] font-bold rounded-lg border border-amber-200 transition inline-flex items-center gap-1"
+                                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 text-[11px] font-bold rounded-xl border border-amber-200 transition inline-flex items-center gap-1"
                               >
                                 <DollarSign className="w-3.5 h-3.5" /> Pay Due
                               </button>
                             )}
                             {isSettled && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-md">
+                              <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-md border border-emerald-200">
                                 Fully Paid
                               </span>
                             )}
@@ -500,22 +500,22 @@ export default function ProductsPage() {
       {activeTab === 'suppliers' && (
         <div className="space-y-4">
           {/* Supplier filters */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
+          <div className="bg-[#FEFEFC] p-4 rounded-2xl border border-[#E2E7E3] shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
             <div className="relative w-full sm:w-80">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#66746F]" />
               <input
                 type="text"
                 placeholder="Search vendor by name, phone, GSTIN..."
                 value={supplierSearch}
                 onChange={(e) => setSupplierSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full pl-9 pr-4 py-2 bg-[#F5F7F3] border border-[#E2E7E3] rounded-xl text-xs text-[#202D2B] placeholder:text-[#9AA8A3] focus:ring-2 focus:ring-[#28766B]/30 focus:border-[#28766B] focus:outline-none"
               />
             </div>
 
             <select
               value={supplierCategory}
               onChange={(e) => setSupplierCategory(e.target.value)}
-              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none"
+              className="px-3 py-2 bg-[#F5F7F3] border border-[#E2E7E3] rounded-xl text-xs font-semibold text-[#202D2B] focus:outline-none"
             >
               <option value="ALL">All Supplier Types</option>
               <option value="LENS_LAB">Lens Labs</option>
@@ -527,22 +527,22 @@ export default function ProductsPage() {
           </div>
 
           {/* Suppliers Table */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-[#FEFEFC] rounded-2xl border border-[#E2E7E3] shadow-sm overflow-hidden">
             {loadingSuppliers ? (
               <SkeletonTable rows={5} cols={6} />
             ) : suppliers.length === 0 ? (
               <div className="p-12 text-center space-y-3">
-                <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto">
+                <div className="w-12 h-12 bg-[#F5F7F3] text-[#66746F] rounded-full flex items-center justify-center mx-auto">
                   <Building2 className="w-6 h-6" />
                 </div>
-                <p className="text-sm font-semibold text-slate-700">No suppliers registered</p>
-                <p className="text-xs text-slate-400">Click "Add Supplier / Lab" to add your lens fitting laboratories and frame manufacturers.</p>
+                <p className="text-sm font-semibold text-[#202D2B]">No suppliers registered</p>
+                <p className="text-xs text-[#66746F]">Click "Add Supplier / Lab" to add your lens fitting laboratories and frame manufacturers.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <tr className="bg-[#F5F7F3] border-b border-[#E2E7E3] text-[11px] font-bold text-[#66746F] uppercase tracking-wider">
                       <th className="py-3 px-4">Supplier / Lab</th>
                       <th className="py-3 px-4">Category</th>
                       <th className="py-3 px-4">Contact Person & Phone</th>
@@ -552,53 +552,53 @@ export default function ProductsPage() {
                       <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                  <tbody className="divide-y divide-[#E2E7E3] text-[#202D2B]">
                     {suppliers.map((s) => {
                       const balanceDue = parseFloat(s.balance_due || 0);
 
                       return (
-                        <tr key={s.id} className="hover:bg-slate-50/60 transition">
+                        <tr key={s.id} className="hover:bg-[#F5F7F3] transition">
                           <td className="py-3 px-4">
-                            <div className="font-bold text-slate-900">{s.name}</div>
-                            {s.address && <div className="text-[10px] text-slate-400 truncate max-w-xs">{s.address}</div>}
+                            <div className="font-bold text-[#202D2B]">{s.name}</div>
+                            {s.address && <div className="text-[10px] text-[#66746F] truncate max-w-xs">{s.address}</div>}
                           </td>
                           <td className="py-3 px-4">
-                            <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-[10px] font-bold uppercase">
+                            <span className="px-2 py-0.5 rounded-md bg-[#EBF3F1] text-[#28766B] text-[10px] font-bold uppercase border border-[#28766B]/20">
                               {s.category?.replace('_', ' ')}
                             </span>
                           </td>
                           <td className="py-3 px-4">
-                            <div className="font-medium text-slate-800">{s.contact_person || '—'}</div>
+                            <div className="font-medium text-[#202D2B]">{s.contact_person || '—'}</div>
                             {s.phone && (
-                              <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
-                                <Phone className="w-3 h-3 text-slate-400" /> {s.phone}
+                              <div className="text-[10px] text-[#66746F] tabular-nums flex items-center gap-1">
+                                <Phone className="w-3 h-3 text-[#66746F]" /> {s.phone}
                               </div>
                             )}
                           </td>
-                          <td className="py-3 px-4 font-mono font-semibold text-slate-600">
+                          <td className="py-3 px-4 tabular-nums font-semibold text-[#66746F]">
                             {s.gstin || '—'}
                           </td>
-                          <td className="py-3 px-4 text-center font-mono font-semibold">
+                          <td className="py-3 px-4 text-center tabular-nums font-semibold">
                             {s.po_count || 0} POs
                           </td>
-                          <td className="py-3 px-4 text-right font-mono font-bold">
-                            <span className={balanceDue > 0 ? 'text-amber-600' : 'text-slate-400'}>
+                          <td className="py-3 px-4 text-right tabular-nums font-bold">
+                            <span className={balanceDue > 0 ? 'text-amber-700' : 'text-[#66746F]'}>
                               ₹{balanceDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-right space-x-2">
+                          <td className="py-3 px-4 text-right space-x-1.5">
                             <button
                               onClick={() => {
                                 setEditingSupplier(s);
                                 setIsSupplierModalOpen(true);
                               }}
-                              className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition"
+                              className="p-1.5 text-[#66746F] hover:text-[#28766B] rounded-lg hover:bg-[#EBF3F1] transition"
                             >
                               <Edit className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleDeleteSupplier(s.id)}
-                              className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-slate-100 transition"
+                              className="p-1.5 text-[#66746F] hover:text-rose-700 rounded-lg hover:bg-rose-50 transition"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>

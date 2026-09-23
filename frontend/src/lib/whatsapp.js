@@ -1,6 +1,7 @@
 /**
- * WhatsApp message template engine & wa.me URL generator
- * Supports custom store templates with placeholder interpolation.
+ * WhatsApp message template engine & Automated Background WhatsApp Dispatcher
+ * Dispatches WhatsApp messages in the background via Meta Cloud API / Twilio / Webhook / Gateway
+ * without opening extra tabs or redirecting away from the CRM page.
  */
 
 import api from '../services/api.js';
@@ -29,22 +30,27 @@ function enqueue(phone, message, label = '') {
 }
 
 /** Flush saved messages when back online */
-function flushQueueOnline() {
+async function flushQueueOnline() {
   const queue = loadQueue();
   if (!queue.length) return;
   const remaining = [];
-  queue.forEach(({ phone, message }) => {
+
+  for (const item of queue) {
     try {
-      const url = buildUrl(phone, message);
-      window.open(url, '_blank', 'noopener,noreferrer');
+      await api.post('/whatsapp/send', {
+        phone: item.phone,
+        message: item.message,
+      });
     } catch {
-      remaining.push({ phone, message });
+      remaining.push(item);
     }
-  });
+  }
+
   saveQueue(remaining);
-  if (queue.length - remaining.length > 0) {
+  const sentCount = queue.length - remaining.length;
+  if (sentCount > 0) {
     showBanner(
-      `📤 ${queue.length - remaining.length} queued WhatsApp message(s) opened now that you're back online.`,
+      `📤 ${sentCount} queued WhatsApp message(s) delivered now that you're back online.`,
       'success'
     );
   }
@@ -55,57 +61,54 @@ if (typeof window !== 'undefined') {
 }
 
 // ---------------------------------------------------------------------------
-// Banner notification
+// Non-blocking Toast Banner notification (Calm Sage / Forest Theme)
 // ---------------------------------------------------------------------------
-function showBanner(text, type = 'warning') {
-  document.getElementById('wa-offline-banner')?.remove();
+export function showBanner(text, type = 'success') {
+  document.getElementById('wa-crm-banner')?.remove();
 
   const colors = {
     warning: { bg: '#FEF3C7', border: '#F59E0B', text: '#92400E' },
     error:   { bg: '#FEE2E2', border: '#EF4444', text: '#7F1D1D' },
-    success: { bg: '#D1FAE5', border: '#10B981', text: '#065F46' },
+    success: { bg: '#EBF3F1', border: '#28766B', text: '#203A36' },
   };
-  const c = colors[type] || colors.warning;
+  const c = colors[type] || colors.success;
 
   const banner = document.createElement('div');
-  banner.id = 'wa-offline-banner';
+  banner.id = 'wa-crm-banner';
   banner.style.cssText = `
-    position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+    position: fixed; bottom: 24px; right: 24px;
     background: ${c.bg}; border: 1px solid ${c.border}; color: ${c.text};
-    padding: 12px 20px; border-radius: 10px; font-size: 14px; font-weight: 500;
-    z-index: 99999; box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    max-width: 90vw; text-align: center; white-space: pre-line;
-    animation: wa-slide-in 0.3s ease;
+    padding: 12px 18px; border-radius: 12px; font-size: 13px; font-weight: 600;
+    z-index: 99999; box-shadow: 0 10px 25px -5px rgba(32,58,54,0.15);
+    max-width: 380px; text-align: left; white-space: pre-line;
+    animation: wa-slide-up 0.25s ease-out; font-family: 'Manrope', system-ui, sans-serif;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
   `;
 
   if (!document.getElementById('wa-banner-style')) {
     const style = document.createElement('style');
     style.id = 'wa-banner-style';
     style.textContent = `
-      @keyframes wa-slide-in {
-        from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
-        to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+      @keyframes wa-slide-up {
+        from { opacity: 0; transform: translateY(16px); }
+        to   { opacity: 1; transform: translateY(0); }
       }
     `;
     document.head.appendChild(style);
   }
 
-  banner.textContent = text;
+  const textNode = document.createElement('span');
+  textNode.textContent = text;
+  banner.appendChild(textNode);
+
   const close = document.createElement('button');
-  close.textContent = ' ✕';
-  close.style.cssText = 'margin-left:12px; background:none; border:none; cursor:pointer; font-size:15px; color:inherit;';
+  close.textContent = '✕';
+  close.style.cssText = 'background:none; border:none; cursor:pointer; font-size:14px; opacity:0.6; color:inherit; padding:0 4px;';
   close.onclick = () => banner.remove();
   banner.appendChild(close);
 
   document.body.appendChild(banner);
-  setTimeout(() => banner?.remove(), 7000);
-}
-
-// ---------------------------------------------------------------------------
-// Core URL builder
-// ---------------------------------------------------------------------------
-function buildUrl(phone, message) {
-  return `https://wa.me/${phone}?text=${message}`;
+  setTimeout(() => banner?.remove(), 5000);
 }
 
 // ---------------------------------------------------------------------------
@@ -113,7 +116,7 @@ function buildUrl(phone, message) {
 // ---------------------------------------------------------------------------
 export function sanitizePhone(phone, defaultCountryCode = '91') {
   if (!phone) return '';
-  let cleaned = phone.replace(/[^0-9]/g, '');
+  let cleaned = phone.toString().replace(/[^0-9]/g, '');
   if (cleaned.length === 10) {
     cleaned = defaultCountryCode + cleaned;
   }
@@ -153,89 +156,104 @@ export const DEFAULT_TEMPLATES = {
 
 export function getGreetingMessage({ customerName, storeName, customTemplate }) {
   const tpl = customTemplate || DEFAULT_TEMPLATES.GREETING;
-  return encodeURIComponent(interpolateTemplate(tpl, { customerName, storeName }));
+  return interpolateTemplate(tpl, { customerName, storeName });
 }
 
 export function getOrderPlacedGreetingMessage({ customerName, storeName, orderNumber, dueDate, customTemplate }) {
   const formattedDueDate = dueDate ? new Date(dueDate).toLocaleDateString() : 'soon';
   const tpl = customTemplate || DEFAULT_TEMPLATES.ORDER_PLACED;
-  return encodeURIComponent(
-    interpolateTemplate(tpl, { customerName, storeName, orderNumber, expectedDate: formattedDueDate })
-  );
+  return interpolateTemplate(tpl, { customerName, storeName, orderNumber, expectedDate: formattedDueDate });
 }
 
 export function getOrderReadyMessage({ customerName, storeName, orderNumber, customTemplate }) {
   const tpl = customTemplate || DEFAULT_TEMPLATES.ORDER_READY;
-  return encodeURIComponent(interpolateTemplate(tpl, { customerName, storeName, orderNumber }));
+  return interpolateTemplate(tpl, { customerName, storeName, orderNumber });
 }
 
 export function getGoogleReviewMessage({ customerName, storeName, googleReviewLink, customTemplate }) {
   const tpl = customTemplate || DEFAULT_TEMPLATES.GOOGLE_REVIEW;
-  return encodeURIComponent(
-    interpolateTemplate(tpl, {
-      customerName,
-      storeName,
-      googleReviewLink: googleReviewLink || 'https://maps.google.com',
-    })
-  );
+  return interpolateTemplate(tpl, {
+    customerName,
+    storeName,
+    googleReviewLink: googleReviewLink || 'https://maps.google.com',
+  });
 }
 
 export function getAnnualCheckupMessage({ customerName, storeName, lastTestDate, customTemplate }) {
   const formattedDate = lastTestDate ? new Date(lastTestDate).toLocaleDateString() : 'one year ago';
   const tpl = customTemplate || DEFAULT_TEMPLATES.ANNUAL_CHECKUP;
-  return encodeURIComponent(
-    interpolateTemplate(tpl, { customerName, storeName, lastTestDate: formattedDate })
-  );
+  return interpolateTemplate(tpl, { customerName, storeName, lastTestDate: formattedDate });
 }
 
 export function getPaymentReminderMessage({ customerName, storeName, orderNumber, balanceDue, customTemplate }) {
   const formattedBalance = parseFloat(balanceDue || 0).toLocaleString();
   const tpl = customTemplate || DEFAULT_TEMPLATES.PAYMENT_REMINDER;
-  return encodeURIComponent(
-    interpolateTemplate(tpl, { customerName, storeName, orderNumber, balanceDue: formattedBalance })
-  );
+  return interpolateTemplate(tpl, { customerName, storeName, orderNumber, balanceDue: formattedBalance });
 }
 
 // ---------------------------------------------------------------------------
-// Main entry point
+// Automated Background Dispatcher (Zero Browser Redirects)
 // ---------------------------------------------------------------------------
-export function openWhatsApp(phone, message, label = 'WhatsApp message', customerId = null, messageType = null) {
+export async function sendWhatsApp({ phone, message, label = 'WhatsApp message', customerId = null, messageType = 'CUSTOM' }) {
   const formattedPhone = sanitizePhone(phone);
 
   if (!formattedPhone) {
     showBanner('⚠️ Customer has no valid phone number recorded.', 'error');
-    return;
+    return { success: false, reason: 'INVALID_PHONE' };
   }
 
-  // Audit Log Trigger
-  if (customerId && messageType) {
-    api.post('/messages/log', {
-      customerId,
-      messageType,
-      channel: 'WHATSAPP',
-    }).catch((err) => console.warn('Failed to record message audit log:', err));
+  // Ensure clean decoded string for backend API
+  let plainMessage = message;
+  try {
+    if (typeof message === 'string' && message.includes('%')) {
+      plainMessage = decodeURIComponent(message);
+    }
+  } catch {
+    plainMessage = message;
   }
 
-  // Offline check
+  // Offline handling
   if (!navigator.onLine) {
-    enqueue(formattedPhone, message, label);
+    enqueue(formattedPhone, plainMessage, label);
     showBanner(
-      `📵 No internet connection.\n"${label}" message saved — it will open automatically when you're back online.`,
+      `📵 Offline: Message queued.\nIt will send automatically when your connection is restored.`,
       'warning'
     );
-    return;
+    return { success: true, queued: true };
   }
 
-  // Online: open wa.me
-  const url = buildUrl(formattedPhone, message);
-  const opened = window.open(url, '_blank', 'noopener,noreferrer');
+  try {
+    const res = await api.post('/whatsapp/send', {
+      phone: formattedPhone,
+      message: plainMessage,
+      customerId,
+      messageType,
+    });
 
-  if (!opened) {
-    showBanner(
-      `🚫 Popup blocked by browser.\nAllow popups for this site, then try again — or click: ${url}`,
-      'error'
-    );
+    if (res.data?.success) {
+      showBanner(`💬 WhatsApp sent automatically to +${formattedPhone}`, 'success');
+      return { success: true, data: res.data.data };
+    } else {
+      throw new Error(res.data?.message || 'Failed to dispatch WhatsApp');
+    }
+  } catch (err) {
+    console.error('Automated WhatsApp dispatch error:', err);
+    showBanner(`⚠️ WhatsApp notification failed: ${err.message || 'Network error'}`, 'error');
+    return { success: false, error: err.message };
   }
+}
+
+/**
+ * Backward compatibility alias: Calls silent background sendWhatsApp
+ */
+export function openWhatsApp(phone, message, label = 'WhatsApp message', customerId = null, messageType = null) {
+  return sendWhatsApp({
+    phone,
+    message,
+    label,
+    customerId,
+    messageType: messageType || 'CUSTOM',
+  });
 }
 
 export function getPendingQueueCount() {
