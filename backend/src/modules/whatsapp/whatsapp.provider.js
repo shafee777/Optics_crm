@@ -1,3 +1,23 @@
+/**
+ * WhatsApp Cloud Providers — FUTURE / CLOUD EDITION ONLY
+ * -------------------------------------------------------
+ * These provider classes (Meta Cloud API, Twilio, custom Webhook, Mock) are
+ * NOT used in the current local desktop edition.
+ *
+ * In the desktop edition, WhatsApp messages are sent as manual wa.me draft
+ * links that open in the user's browser — no API credentials are required.
+ * The whatsapp.routes.js file exists but is intentionally NOT mounted in
+ * backend/src/routes/index.js for this release.
+ *
+ * These providers are retained for a future cloud/SaaS edition where
+ * automatic server-side delivery will be offered.  At that point:
+ *   - Set WHATSAPP_PROVIDER=META (or TWILIO / WEBHOOK) in the server env.
+ *   - Supply the matching credentials as env vars (see each class constructor).
+ *   - Mount whatsapp.routes.js in routes/index.js.
+ *
+ * DO NOT add WHATSAPP_* credentials to .env on a local desktop installation.
+ */
+
 import { logger } from '../../config/logger.js';
 
 export class MetaCloudProvider {

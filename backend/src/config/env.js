@@ -31,4 +31,26 @@ if (!parseResult.success) {
   process.exit(1);
 }
 
+// Refuse to start in production with well-known development secrets.
+// The desktop app always injects freshly-generated random secrets, so this
+// guard only triggers when someone accidentally deploys without configuring
+// JWT_ACCESS_SECRET / JWT_REFRESH_SECRET in their server environment.
+if (parseResult.data.NODE_ENV === 'production') {
+  const DEV_SECRETS = new Set([
+    'dev-access-secret-change-me-please-123456',
+    'dev-refresh-secret-change-me-please-654321',
+  ]);
+  if (
+    DEV_SECRETS.has(parseResult.data.JWT_ACCESS_SECRET) ||
+    DEV_SECRETS.has(parseResult.data.JWT_REFRESH_SECRET)
+  ) {
+    console.error(
+      'FATAL: JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be set to unique, ' +
+      'randomly-generated values in production. The development defaults are publicly ' +
+      'known and must never be used in a live environment.'
+    );
+    process.exit(1);
+  }
+}
+
 export const env = parseResult.data;

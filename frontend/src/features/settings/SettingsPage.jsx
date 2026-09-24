@@ -31,6 +31,29 @@ export default function SettingsPage() {
 
   const [activeTab, setActiveTab] = useState('store'); // 'store' | 'staff' | 'whatsapp' | 'export'
 
+  // CSV download state: key = endpoint path, value = 'idle' | 'loading' | 'error'
+  const [csvStatus, setCsvStatus] = useState({});
+
+  const handleCsvDownload = async (path, filename) => {
+    setCsvStatus(prev => ({ ...prev, [path]: 'loading' }));
+    try {
+      const res = await api.get(path, { responseType: 'blob' });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setCsvStatus(prev => ({ ...prev, [path]: 'idle' }));
+    } catch (err) {
+      console.error('CSV download failed:', err);
+      setCsvStatus(prev => ({ ...prev, [path]: 'error' }));
+      setTimeout(() => setCsvStatus(prev => ({ ...prev, [path]: 'idle' })), 4000);
+    }
+  };
+
   // Store form state
   const [storeData, setStoreData] = useState({
     name: '',
@@ -540,14 +563,16 @@ export default function SettingsPage() {
                   Full list of registered customers, contact numbers, email addresses, age, gender, address, and total order count.
                 </p>
               </div>
-              <a
-                href={`${api.defaults.baseURL}/exports/customers.csv`}
-                target="_blank"
-                rel="noreferrer"
-                className="w-full py-2.5 px-4 bg-[#203A36] hover:bg-[#182C29] text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2"
+              <button
+                onClick={() => handleCsvDownload('/api/v1/exports/customers.csv', 'customers.csv')}
+                disabled={csvStatus['/api/v1/exports/customers.csv'] === 'loading'}
+                className="w-full py-2.5 px-4 bg-[#203A36] hover:bg-[#182C29] text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 disabled:opacity-60"
               >
-                <Download className="w-4 h-4" /> Download Customers CSV
-              </a>
+                <Download className="w-4 h-4" />
+                {csvStatus['/api/v1/exports/customers.csv'] === 'loading' ? 'Downloading…' :
+                 csvStatus['/api/v1/exports/customers.csv'] === 'error' ? 'Download failed – retry' :
+                 'Download Customers CSV'}
+              </button>
             </div>
 
             {/* 2. Orders & Sales Register Export */}
@@ -561,14 +586,16 @@ export default function SettingsPage() {
                   Detailed order history, customer names, status, total amounts, payments received, and outstanding balance dues.
                 </p>
               </div>
-              <a
-                href={`${api.defaults.baseURL}/exports/orders.csv`}
-                target="_blank"
-                rel="noreferrer"
-                className="w-full py-2.5 px-4 bg-[#28766B] hover:bg-[#1E5C53] text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs"
+              <button
+                onClick={() => handleCsvDownload('/api/v1/exports/orders.csv', 'orders.csv')}
+                disabled={csvStatus['/api/v1/exports/orders.csv'] === 'loading'}
+                className="w-full py-2.5 px-4 bg-[#28766B] hover:bg-[#1E5C53] text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs disabled:opacity-60"
               >
-                <Download className="w-4 h-4" /> Download Sales Orders CSV
-              </a>
+                <Download className="w-4 h-4" />
+                {csvStatus['/api/v1/exports/orders.csv'] === 'loading' ? 'Downloading…' :
+                 csvStatus['/api/v1/exports/orders.csv'] === 'error' ? 'Download failed – retry' :
+                 'Download Sales Orders CSV'}
+              </button>
             </div>
 
             {/* 3. Stock Inventory Catalog Export */}
@@ -582,14 +609,16 @@ export default function SettingsPage() {
                   Complete product catalog including frames, lenses, sunglasses, solutions, selling prices, cost prices, and current stock levels.
                 </p>
               </div>
-              <a
-                href={`${api.defaults.baseURL}/exports/inventory.csv`}
-                target="_blank"
-                rel="noreferrer"
-                className="w-full py-2.5 px-4 bg-[#203A36] hover:bg-[#182C29] text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs"
+              <button
+                onClick={() => handleCsvDownload('/api/v1/exports/inventory.csv', 'inventory.csv')}
+                disabled={csvStatus['/api/v1/exports/inventory.csv'] === 'loading'}
+                className="w-full py-2.5 px-4 bg-[#203A36] hover:bg-[#182C29] text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs disabled:opacity-60"
               >
-                <Download className="w-4 h-4" /> Download Inventory CSV
-              </a>
+                <Download className="w-4 h-4" />
+                {csvStatus['/api/v1/exports/inventory.csv'] === 'loading' ? 'Downloading…' :
+                 csvStatus['/api/v1/exports/inventory.csv'] === 'error' ? 'Download failed – retry' :
+                 'Download Inventory CSV'}
+              </button>
             </div>
 
             {/* 4. Store Expense Ledger Export */}
@@ -603,16 +632,19 @@ export default function SettingsPage() {
                   Recorded shop expense transactions categorized by tea/coffee, utilities, lab fees, rent, and maintenance.
                 </p>
               </div>
-              <a
-                href={`${api.defaults.baseURL}/exports/expenses.csv`}
-                target="_blank"
-                rel="noreferrer"
-                className="w-full py-2.5 px-4 bg-amber-700 hover:bg-amber-800 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs"
+              <button
+                onClick={() => handleCsvDownload('/api/v1/exports/expenses.csv', 'expenses.csv')}
+                disabled={csvStatus['/api/v1/exports/expenses.csv'] === 'loading'}
+                className="w-full py-2.5 px-4 bg-amber-700 hover:bg-amber-800 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs disabled:opacity-60"
               >
-                <Download className="w-4 h-4" /> Download Expenses CSV
-              </a>
+                <Download className="w-4 h-4" />
+                {csvStatus['/api/v1/exports/expenses.csv'] === 'loading' ? 'Downloading…' :
+                 csvStatus['/api/v1/exports/expenses.csv'] === 'error' ? 'Download failed – retry' :
+                 'Download Expenses CSV'}
+              </button>
             </div>
           </div>
+
         </div>
       )}
 
