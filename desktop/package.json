@@ -7,8 +7,8 @@
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
-    "pack": "electron-builder --dir --win --x64",
-    "dist": "electron-builder --win nsis --x64",
+    "pack": "npm run prepare && electron-builder --dir --win --x64",
+    "dist": "npm run prepare && electron-builder --win nsis --x64",
     "install:runtime": "node node_modules/electron/install.js",
     "prepare": "node scripts/prepare.cjs",
     "test:database": "node scripts/verify-database.cjs",
@@ -24,6 +24,7 @@
   "build": {
     "appId": "com.opticscrm.desktop",
     "productName": "Optics CRM",
+    "icon": "build/icon.ico",
     "asar": true,
     "npmRebuild": false,
     "directories": {
@@ -36,6 +37,8 @@
       "setup.html",
       "setup.css",
       "setup.js",
+      "icon.png",
+      "icon.ico",
       "package.json"
     ],
     "extraResources": [
@@ -64,6 +67,7 @@
       }
     ],
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         {
           "target": "nsis",
@@ -76,6 +80,8 @@
       "artifactName": "Optics-CRM-Setup-${version}.${ext}"
     },
     "nsis": {
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,

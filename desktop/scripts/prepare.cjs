@@ -29,13 +29,14 @@ async function copy(source, destination) {
   execFileSync(
     process.platform === 'win32' ? 'npm.cmd' : 'npm',
     ['ci', '--omit=dev', '--prefer-offline'],
-    { cwd: path.join(payload, 'backend'), stdio: 'inherit' }
+    { cwd: path.join(payload, 'backend'), stdio: 'inherit', shell: true }
   );
 
   // Copy built frontend and shared types
+  await fs.rm(path.join(payload, 'frontend/dist'), { recursive: true, force: true });
   await copy(path.join(root, 'frontend/dist'), path.join(payload, 'frontend/dist'));
   await copy(path.join(root, 'shared'), path.join(payload, 'shared'));
 
-  console.log('Staged application source, assets, and backend node_modules. No .env, shop records or development seed data copied.');
+  console.log('Staged application source, fresh frontend build, assets, and backend node_modules. No .env, shop records or development seed data copied.');
 })().catch(e => { console.error(e); process.exitCode = 1; });
 

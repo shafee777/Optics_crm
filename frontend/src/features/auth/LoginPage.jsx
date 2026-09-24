@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext.jsx';
+import logo from '../../assets/logo.png';
 import { Glasses, Lock, Mail, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
@@ -40,10 +41,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md bg-[#FEFEFC] rounded-2xl shadow-sm p-8 border border-[#E2E7E3]">
         {/* Brand Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#28766B] text-white shadow-sm mb-3">
-            <Glasses className="w-6 h-6" />
-          </div>
-          <h1 className="text-xl font-bold text-[#202D2B]">Optical Growth CRM</h1>
+          <img src={logo} alt="Optics CRM Logo" className="w-16 h-16 object-contain mx-auto mb-3 drop-shadow-sm" />
+          <h1 className="text-xl font-bold text-[#202D2B]">Optics CRM</h1>
           <p className="text-xs text-[#66746F] mt-1">Optical Store Management System</p>
         </div>
 

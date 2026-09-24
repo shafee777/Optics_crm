@@ -77,6 +77,7 @@ async function startApi() {
 }
 function createWindow() {
   win = new BrowserWindow({ width: 1280, height: 860, minWidth: 900, minHeight: 640, show: false, title: 'Optics CRM',
+    icon: path.join(__dirname, 'icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true } });
   win.webContents.session.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
   win.webContents.setWindowOpenHandler(({ url }) => {

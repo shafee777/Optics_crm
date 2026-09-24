@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthContext.jsx';
+import logo from '../../assets/logo.png';
 import { 
   Glasses, 
   Users, 
@@ -46,10 +47,8 @@ export default function AppLayout() {
             {/* Left: Brand & Store Badge */}
             <div className="flex items-center gap-3 sm:gap-5">
               <Link to="/" className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-[#28766B] text-white flex items-center justify-center shadow-sm">
-                  <Glasses className="w-5 h-5" />
-                </div>
-                <span className="font-bold text-white text-base tracking-tight hidden sm:block">Optical Growth CRM</span>
+                <img src={logo} alt="Optics CRM Logo" className="w-9 h-9 object-contain drop-shadow-sm" />
+                <span className="font-bold text-white text-base tracking-tight hidden sm:block">Optics CRM</span>
               </Link>
 
               {/* Active Tenant / Store Badge */}
