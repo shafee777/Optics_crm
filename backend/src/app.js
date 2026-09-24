@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -22,6 +24,8 @@ const allowedOrigins = [
   env.FRONTEND_URL,
   'http://localhost:5173',
   'http://localhost:3000',
+  'http://localhost:' + env.PORT,
+  'http://127.0.0.1:' + env.PORT,
 ];
 
 const corsOptions = {
@@ -62,6 +66,16 @@ app.use(
 
 // Mount central router
 app.use(routes);
+
+// Serve the built React app from the same local process, without a CDN.
+if (env.NODE_ENV === 'production') {
+  const frontendDist = fileURLToPath(new URL('../../frontend/dist/', import.meta.url));
+  app.use(express.static(frontendDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/') || req.path.startsWith('/health')) return next();
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+}
 
 // 404 and global error handlers
 app.use(notFoundMiddleware);

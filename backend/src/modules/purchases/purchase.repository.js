@@ -7,6 +7,10 @@ export const purchaseRepository = {
     try {
       await client.query('BEGIN');
 
+      // Serialize store purchase numbering and verify tenant ownership inside the transaction.
+      await client.query('SELECT id FROM stores WHERE id = $1 FOR UPDATE', [storeId]);
+      const supplier = await client.query('SELECT id FROM suppliers WHERE store_id = $1 AND id = $2 AND archived_at IS NULL FOR SHARE', [storeId, data.supplierId]);
+      if (!supplier.rowCount) throw new AppError('Supplier not found in this store', 404, 'SUPPLIER_NOT_FOUND');
       // 1. Generate PO Number
       const countRes = await client.query(
         `SELECT COUNT(*) FROM purchase_orders WHERE store_id = $1;`,
@@ -27,7 +31,9 @@ export const purchaseRepository = {
         };
       });
 
-      const initialPaid = data.initialPayment ? Math.min(data.initialPayment.amount, totalAmount) : 0;
+      totalAmount = Math.round(totalAmount * 100) / 100;
+      const initialPaid = data.initialPayment?.amount || 0;
+      if (initialPaid > totalAmount) throw new AppError('Initial payment exceeds purchase total', 400, 'OVERPAYMENT_NOT_ALLOWED');
 
       // 3. Insert Purchase Order
       const insertPoQuery = `
@@ -49,20 +55,23 @@ export const purchaseRepository = {
       const { rows: poRows } = await client.query(insertPoQuery, poValues);
       const purchaseOrder = poRows[0];
 
+      await client.query("SELECT set_config('app.stock_reason', $1, true)", ['PURCHASE ' + purchaseOrder.id]);
       // 4. Process Items & Update Inventory Stock
-      for (const item of processedItems) {
+      for (const item of [...processedItems].sort((a,b) => String(a.productId).localeCompare(String(b.productId)))) {
         let targetProductId = item.productId || null;
 
         if (targetProductId) {
           // Increment stock on existing product & update cost price
-          await client.query(
+          const updatedProduct = await client.query(
             `UPDATE products 
              SET stock_quantity = stock_quantity + $1,
                  cost_price = $2,
                  updated_at = NOW()
-             WHERE store_id = $3 AND id = $4;`,
+             WHERE store_id = $3 AND id = $4 AND archived_at IS NULL RETURNING id;`,
             [item.quantity, item.unitCost, storeId, targetProductId]
           );
+          if (!updatedProduct.rowCount) throw new AppError('Product not found in this store', 404, 'PRODUCT_NOT_FOUND');
+          if (!updatedProduct.rowCount) throw new AppError('Product not found in this store', 404, 'PRODUCT_NOT_FOUND');
         } else {
           // Auto-create product in inventory so it is tracked
           const insertProductQuery = `
@@ -231,7 +240,7 @@ export const purchaseRepository = {
       await client.query('BEGIN');
 
       const { rows: poRows } = await client.query(
-        `SELECT id, total_amount, paid_amount FROM purchase_orders WHERE store_id = $1 AND id = $2 FOR UPDATE;`,
+        `SELECT id, status, total_amount, paid_amount FROM purchase_orders WHERE store_id = $1 AND id = $2 FOR UPDATE;`,
         [storeId, poId]
       );
       if (poRows.length === 0) {
@@ -241,6 +250,10 @@ export const purchaseRepository = {
       const po = poRows[0];
       const newPaid = parseFloat(po.paid_amount) + parseFloat(paymentData.amount);
 
+      if (po.status === 'CANCELLED') throw new AppError('Cannot pay a cancelled purchase', 400, 'PURCHASE_CANCELLED');
+      if (Math.round(newPaid * 100) > Math.round(Number(po.total_amount) * 100)) {
+        throw new AppError('Payment exceeds remaining purchase balance', 400, 'OVERPAYMENT_NOT_ALLOWED');
+      }
       // Insert payment
       const paymentQuery = `
         INSERT INTO supplier_payments (

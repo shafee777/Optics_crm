@@ -7,6 +7,7 @@ import { withTransaction } from '../../config/database.js';
 export const paymentService = {
   async recordPayment(storeId, orderId, userId, data) {
     return await withTransaction(async (client) => {
+      await orderRepository.lockOrderTx(client, storeId, orderId);
       const order = await orderRepository.findByIdWithDetailsTx(client, storeId, orderId);
       if (!order) {
         throw new AppError('Order not found in this store', 404, 'ORDER_NOT_FOUND');

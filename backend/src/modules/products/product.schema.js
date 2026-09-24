@@ -21,7 +21,7 @@ export const createProductSchema = z.object({
     description: z.string().trim().optional().nullable(),
     costPrice: z.coerce.number().min(0).default(0),
     sellingPrice: z.coerce.number().min(0, 'Selling price cannot be negative'),
-    stockQuantity: z.coerce.number().int().default(0),
+    stockQuantity: z.coerce.number().int().min(0).default(0),
     minStockAlert: z.coerce.number().int().min(0).default(3),
     hsnCode: z.string().trim().max(20).optional().nullable(),
     gstRate: z.coerce.number().min(0).max(100).optional().nullable().default(12.00),

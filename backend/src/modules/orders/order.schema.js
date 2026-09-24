@@ -46,7 +46,7 @@ export const createOrderSchema = z.object({
     notes: z.string().trim().optional().nullable(),
     advancePayment: z
       .object({
-        amount: z.coerce.number().min(0.01, 'Advance amount must be greater than 0'),
+        amount: z.coerce.number().multipleOf(0.01).min(0.01, 'Advance amount must be greater than 0'),
         paymentMethod: z.enum(['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'OTHER']),
         reference: z.string().trim().optional().nullable(),
       })

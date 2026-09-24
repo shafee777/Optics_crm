@@ -357,7 +357,7 @@ test('Stage 2: Products CRUD and Stock Adjustment', async () => {
   assert.ok(listRes.body.data.some((p) => p.id === productId));
 });
 
-test('Stage 2: Order Creation decrements stock & auto-registers new products', async () => {
+test('Stage 2: Order Creation decrements selected stock and leaves custom lines untracked', async () => {
   const loginRes = await request.post('/api/v1/auth/login').send({
     email: 'owner@visioncare.com',
     password: 'Password123!',
@@ -428,13 +428,12 @@ test('Stage 2: Order Creation decrements stock & auto-registers new products', a
     .set('Authorization', `Bearer ${token}`);
   assert.equal(getProdRes.body.data.stock_quantity, 3);
 
-  // 5. Verify the on-the-fly custom lens was automatically created in catalog
+  // 5. Custom lines must not silently create negative-stock catalog entries
   const searchProdRes = await request
     .get(`/api/v1/products?search=${encodeURIComponent(uniqueCustomLens)}`)
     .set('Authorization', `Bearer ${token}`);
   assert.equal(searchProdRes.status, 200);
-  assert.ok(searchProdRes.body.data.length > 0);
-  assert.equal(searchProdRes.body.data[0].name, uniqueCustomLens);
+  assert.equal(searchProdRes.body.data.length, 0);
 });
 
 test('Stage 2: 1-Year Annual Eye Test Recall endpoint returns eligible customers', async () => {
@@ -918,88 +917,9 @@ test('Suppliers & Inward Purchase Orders - complete procurement workflow', async
   assert.ok(duesRes.body.data.suppliers_with_dues_count >= 1);
 });
 
-test('Automated WhatsApp Messaging - provider config, test dispatch, auto-send and message audit log', async () => {
-  const loginRes = await request.post('/api/v1/auth/login').send({
-    email: 'owner@visioncare.com',
-    password: 'Password123!',
-  });
-  const token = loginRes.body.data.token;
-
-  // 1. Get WhatsApp config
-  const getConfigRes = await request
-    .get('/api/v1/whatsapp/config')
-    .set('Authorization', `Bearer ${token}`);
-
-  assert.equal(getConfigRes.status, 200);
-  assert.ok(getConfigRes.body.data);
-
-  // 2. Update WhatsApp config (configure Meta Cloud settings)
-  const updateConfigRes = await request
-    .put('/api/v1/whatsapp/config')
-    .set('Authorization', `Bearer ${token}`)
-    .send({
-      provider: 'MOCK',
-      autoSendOrderCreated: true,
-      autoSendOrderReady: true,
-      autoSendGoogleReview: true,
-      metaPhoneNumberId: '109283746501928',
-      metaAccessToken: 'EAAGMockToken123456789',
-    });
-
-  assert.equal(updateConfigRes.status, 200);
-  assert.equal(updateConfigRes.body.data.provider, 'MOCK');
-  assert.equal(updateConfigRes.body.data.autoSendOrderCreated, true);
-
-  // 3. Create a test customer
-  const custRes = await request
-    .post('/api/v1/customers')
-    .set('Authorization', `Bearer ${token}`)
-    .send({
-      fullName: 'WhatsApp Auto Customer',
-      phone: `91${Math.floor(100000000 + Math.random() * 900000000)}`,
-    });
-  assert.equal(custRes.status, 201);
-  const customer = custRes.body.data;
-
-  // 4. Test connection endpoint
-  const testSendRes = await request
-    .post('/api/v1/whatsapp/test')
-    .set('Authorization', `Bearer ${token}`)
-    .send({
-      phone: customer.phone,
-    });
-
-  assert.equal(testSendRes.status, 200);
-  assert.equal(testSendRes.body.success, true);
-  assert.ok(testSendRes.body.data.messageId);
-
-  // 5. Send automated message via API
-  const sendRes = await request
-    .post('/api/v1/whatsapp/send')
-    .set('Authorization', `Bearer ${token}`)
-    .send({
-      phone: customer.phone,
-      message: 'Hello WhatsApp Auto Customer, your glasses are ready for pickup!',
-      customerId: customer.id,
-      messageType: 'ORDER_READY',
-    });
-
-  assert.equal(sendRes.status, 200);
-  assert.equal(sendRes.body.success, true);
-  assert.ok(sendRes.body.data.messageId);
-
-  // 6. Verify audit log was created in customer_messages_log
-  const msgLogRes = await request
-    .get(`/api/v1/messages/customer/${customer.id}`)
-    .set('Authorization', `Bearer ${token}`);
-
-  assert.equal(msgLogRes.status, 200);
-  assert.ok(msgLogRes.body.data.length >= 1);
-  assert.equal(msgLogRes.body.data[0].message_type, 'ORDER_READY');
-  assert.equal(msgLogRes.body.data[0].channel, 'WHATSAPP');
+test('Automatic WhatsApp dispatch endpoints are disabled for the local edition', async () => {
+  for (const endpoint of ['send', 'test']) {
+    const response = await request.post('/api/v1/whatsapp/' + endpoint).send({phone:'919999999999',message:'must not send'});
+    assert.equal(response.status,404);
+  }
 });
-
-
-
-
-

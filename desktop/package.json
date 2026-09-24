@@ -1,0 +1,88 @@
+{
+  "name": "optics-crm-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Offline optical shop billing and CRM",
+  "author": "Optics CRM",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir --win --x64",
+    "dist": "electron-builder --win nsis --x64",
+    "install:runtime": "node node_modules/electron/install.js",
+    "prepare": "node scripts/prepare.cjs",
+    "test:database": "node scripts/verify-database.cjs",
+    "test:desktop": "electron . --smoke-test"
+  },
+  "devDependencies": {
+    "electron": "44.4.5",
+    "electron-builder": "24.13.3"
+  },
+  "dependencies": {
+    "pg": "8.12.0"
+  },
+  "build": {
+    "appId": "com.opticscrm.desktop",
+    "productName": "Optics CRM",
+    "asar": true,
+    "npmRebuild": false,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.cjs",
+      "local-database.cjs",
+      "preload.cjs",
+      "setup.html",
+      "setup.css",
+      "setup.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "payload",
+        "to": "payload",
+        "filter": [
+          "**/*",
+          "!**/.env*",
+          "!**/tests/**",
+          "!**/seeds/**",
+          "!**/*.log",
+          "!**/*.dump"
+        ]
+      },
+      {
+        "from": "vendor/pgsql",
+        "to": "pgsql",
+        "filter": [
+          "bin/**",
+          "lib/**",
+          "share/**",
+          "server_license.txt",
+          "commandlinetools_3rd_party_licenses.txt"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "signAndEditExecutable": false,
+      "artifactName": "Optics-CRM-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": false
+    }
+  }
+}

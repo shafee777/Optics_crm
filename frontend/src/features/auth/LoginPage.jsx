@@ -58,14 +58,14 @@ export default function LoginPage() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-[#202D2B] uppercase tracking-wider mb-1.5">
+            <label htmlFor="LoginPage-field-0" className="block text-xs font-semibold text-[#202D2B] uppercase tracking-wider mb-1.5">
               Staff Email
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#66746F]">
                 <Mail className="w-4 h-4" />
               </div>
-              <input
+              <input id="LoginPage-field-0"
                 type="email"
                 required
                 value={email}
@@ -77,14 +77,14 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#202D2B] uppercase tracking-wider mb-1.5">
+            <label htmlFor="LoginPage-field-1" className="block text-xs font-semibold text-[#202D2B] uppercase tracking-wider mb-1.5">
               Password
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#66746F]">
                 <Lock className="w-4 h-4" />
               </div>
-              <input
+              <input id="LoginPage-field-1"
                 type="password"
                 required
                 value={password}
@@ -104,7 +104,8 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* 1-Click Demo Login Shortcuts */}
+        {/* Demo accounts are available only in development. */}
+        {import.meta.env.DEV && (
         <div className="mt-8 pt-6 border-t border-[#E2E7E3]">
           <p className="text-xs text-[#66746F] text-center font-medium mb-3">Quick Demo Logins</p>
           <div className="grid grid-cols-1 gap-2">
@@ -134,6 +135,7 @@ export default function LoginPage() {
             </button>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

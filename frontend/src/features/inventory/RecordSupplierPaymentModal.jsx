@@ -1,3 +1,4 @@
+import { useModalAccessibility } from '../../hooks/useModalAccessibility.js';
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api.js';
 import { X, DollarSign, AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -17,6 +18,7 @@ export default function RecordSupplierPaymentModal({ isOpen, onClose, purchaseOr
     }
   }, [purchaseOrder, isOpen]);
 
+  const modalRef = useModalAccessibility(isOpen, onClose);
   if (!isOpen || !purchaseOrder) return null;
 
   const handleSubmit = async (e) => {
@@ -47,7 +49,7 @@ export default function RecordSupplierPaymentModal({ isOpen, onClose, purchaseOr
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#203A36]/40 backdrop-blur-xs p-4 overflow-y-auto">
+    <div ref={modalRef} className="fixed inset-0 z-50 flex items-center justify-center bg-[#203A36]/40 backdrop-blur-xs p-4 overflow-y-auto">
       <div className="bg-[#FEFEFC] w-full max-w-md rounded-2xl shadow-2xl border border-[#E2E7E3] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}
@@ -61,7 +63,7 @@ export default function RecordSupplierPaymentModal({ isOpen, onClose, purchaseOr
               <p className="text-xs text-white/70">PO #{purchaseOrder.po_number} • {purchaseOrder.supplier_name}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition">
+          <button aria-label="Close dialog" onClick={onClose} className="p-1 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -89,8 +91,8 @@ export default function RecordSupplierPaymentModal({ isOpen, onClose, purchaseOr
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-[#66746F] mb-1">Payment Amount (₹) *</label>
-            <input
+            <label htmlFor="RecordSupplierPaymentModal-field-0" className="block text-xs font-semibold text-[#66746F] mb-1">Payment Amount (₹) *</label>
+            <input id="RecordSupplierPaymentModal-field-0"
               type="number"
               step="0.01"
               required
@@ -103,8 +105,8 @@ export default function RecordSupplierPaymentModal({ isOpen, onClose, purchaseOr
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#66746F] mb-1">Payment Method *</label>
-            <select
+            <label htmlFor="RecordSupplierPaymentModal-field-1" className="block text-xs font-semibold text-[#66746F] mb-1">Payment Method *</label>
+            <select id="RecordSupplierPaymentModal-field-1"
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}
               className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs font-medium text-[#202D2B] bg-[#FEFEFC] focus:border-[#28766B] focus:ring-1 focus:ring-[#28766B] focus:outline-none"
@@ -117,8 +119,8 @@ export default function RecordSupplierPaymentModal({ isOpen, onClose, purchaseOr
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#66746F] mb-1">Transaction Reference / Cheque No.</label>
-            <input
+            <label htmlFor="RecordSupplierPaymentModal-field-2" className="block text-xs font-semibold text-[#66746F] mb-1">Transaction Reference / Cheque No.</label>
+            <input id="RecordSupplierPaymentModal-field-2"
               type="text"
               placeholder="e.g. UTR / UPI Ref 493021940"
               value={referenceNote}

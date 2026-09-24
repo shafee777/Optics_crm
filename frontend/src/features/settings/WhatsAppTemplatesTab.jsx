@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { DEFAULT_TEMPLATES, interpolateTemplate, showBanner } from '../../lib/whatsapp.js';
+import { DEFAULT_TEMPLATES, interpolateTemplate } from '../../lib/whatsapp.js';
 import { 
   MessageSquare, 
   Sparkles, 
@@ -65,24 +65,6 @@ export default function WhatsAppTemplatesTab() {
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
-  // WhatsApp Gateway Configuration State
-  const [waConfig, setWaConfig] = useState({
-    provider: 'MOCK',
-    autoSendOrderCreated: true,
-    autoSendOrderReady: true,
-    autoSendGoogleReview: false,
-    metaPhoneNumberId: '',
-    metaAccessToken: '',
-    metaWabaId: '',
-    twilioAccountSid: '',
-    twilioAuthToken: '',
-    twilioFromPhone: '',
-    customWebhookUrl: '',
-  });
-  const [savingConfig, setSavingConfig] = useState(false);
-  const [testingConnection, setTestingConnection] = useState(false);
-  const [testPhone, setTestPhone] = useState('');
-
   useEffect(() => {
     fetchData();
   }, []);
@@ -90,68 +72,17 @@ export default function WhatsAppTemplatesTab() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [storeRes, configRes] = await Promise.all([
-        api.get('/stores/current'),
-        api.get('/whatsapp/config').catch(() => ({ data: { data: {} } })),
-      ]);
-
+      const storeRes = await api.get('/stores/current');
       const savedTemplates = storeRes.data.data.whatsappTemplates || storeRes.data.data.whatsapp_templates || {};
       setTemplates({
         ...DEFAULT_TEMPLATES,
         ...savedTemplates,
       });
 
-      if (configRes?.data?.data) {
-        setWaConfig((prev) => ({
-          ...prev,
-          ...configRes.data.data,
-        }));
-      }
     } catch (err) {
       console.error('Failed to load whatsapp settings:', err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleSaveConfig = async () => {
-    if (!isOwner) return;
-    setSavingConfig(true);
-    try {
-      await api.put('/whatsapp/config', waConfig);
-      setFeedback({ type: 'success', message: 'WhatsApp Gateway & Automation settings saved successfully!' });
-      setTimeout(() => setFeedback(null), 4000);
-    } catch (err) {
-      setFeedback({
-        type: 'error',
-        message: err.response?.data?.error?.message || 'Failed to save WhatsApp gateway settings',
-      });
-    } finally {
-      setSavingConfig(false);
-    }
-  };
-
-  const handleTestConnection = async () => {
-    if (!testPhone || testPhone.length < 10) {
-      alert('Please enter a valid 10-digit mobile number for testing.');
-      return;
-    }
-    setTestingConnection(true);
-    try {
-      const res = await api.post('/whatsapp/test', {
-        phone: testPhone,
-        testConfig: waConfig,
-      });
-      if (res.data?.success) {
-        showBanner(`✅ Test WhatsApp message dispatched to +${testPhone}`, 'success');
-      }
-    } catch (err) {
-      setFeedback({
-        type: 'error',
-        message: err.response?.data?.error?.message || 'WhatsApp connection test failed',
-      });
-    } finally {
-      setTestingConnection(false);
     }
   };
 
@@ -220,219 +151,7 @@ export default function WhatsAppTemplatesTab() {
 
   return (
     <div className="space-y-6">
-      {/* 1. WhatsApp Automated Gateway Settings Card */}
-      <div className="bg-[#FEFEFC] p-6 rounded-2xl border border-[#E2E7E3] shadow-xs space-y-5">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#E2E7E3] pb-4">
-          <div>
-            <h2 className="font-bold text-[#202D2B] text-base flex items-center gap-2">
-              <Zap className="w-5 h-5 text-[#28766B]" />
-              Automated Background WhatsApp Gateway
-            </h2>
-            <p className="text-xs text-[#66746F] mt-0.5">
-              Send messages silently in the background without opening browser tabs or redirecting away from the CRM.
-            </p>
-          </div>
-
-          {isOwner && (
-            <button
-              type="button"
-              onClick={handleSaveConfig}
-              disabled={savingConfig}
-              className="px-4 py-2 bg-[#28766B] hover:bg-[#1E5C53] text-white text-xs font-semibold rounded-xl shadow-xs disabled:opacity-50 transition flex items-center gap-1.5"
-            >
-              <Save className="w-4 h-4" />
-              {savingConfig ? 'Saving...' : 'Save Gateway Settings'}
-            </button>
-          )}
-        </div>
-
-        {/* Provider Selection */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          {[
-            { id: 'MOCK', label: 'Dev / Demo Mode', desc: 'Simulated automatic background delivery (Zero setup)', icon: Zap },
-            { id: 'META', label: 'Meta Cloud API', desc: 'Official WhatsApp Business Cloud API (Meta Graph v19)', icon: Key },
-            { id: 'TWILIO', label: 'Twilio API', desc: 'Twilio WhatsApp REST API gateway', icon: Smartphone },
-            { id: 'WEBHOOK', label: 'Custom Webhook', desc: 'Interakt, AiSensy, WATI or custom backend', icon: Server },
-          ].map((p) => {
-            const isSelected = waConfig.provider === p.id;
-            const Icon = p.icon;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setWaConfig((prev) => ({ ...prev, provider: p.id }))}
-                className={`p-3.5 rounded-2xl border text-left transition flex flex-col justify-between gap-1.5 ${
-                  isSelected
-                    ? 'bg-[#EBF3F1] border-[#28766B] ring-1 ring-[#28766B]'
-                    : 'bg-[#FEFEFC] border-[#E2E7E3] hover:bg-[#F5F7F3]'
-                }`}
-              >
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex items-center gap-2">
-                    <Icon className={`w-4 h-4 ${isSelected ? 'text-[#28766B]' : 'text-[#66746F]'}`} />
-                    <span className="font-bold text-xs text-[#202D2B]">{p.label}</span>
-                  </div>
-                  {isSelected && <span className="w-2 h-2 rounded-full bg-[#28766B]"></span>}
-                </div>
-                <p className="text-[11px] text-[#66746F]">{p.desc}</p>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Provider Specific Input Fields */}
-        {waConfig.provider === 'META' && (
-          <div className="p-4 rounded-2xl bg-[#F5F7F3] border border-[#E2E7E3] grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-[11px] font-bold text-[#66746F] uppercase tracking-wider mb-1">
-                Meta Phone Number ID
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. 109283746501928"
-                value={waConfig.metaPhoneNumberId || ''}
-                onChange={(e) => setWaConfig({ ...waConfig, metaPhoneNumberId: e.target.value })}
-                className="w-full px-3 py-2 text-xs bg-[#FEFEFC] rounded-xl border border-[#E2E7E3] font-mono focus:border-[#28766B] focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-[#66746F] uppercase tracking-wider mb-1">
-                Permanent Access Token
-              </label>
-              <input
-                type="password"
-                placeholder="EAAG..."
-                value={waConfig.metaAccessToken || ''}
-                onChange={(e) => setWaConfig({ ...waConfig, metaAccessToken: e.target.value })}
-                className="w-full px-3 py-2 text-xs bg-[#FEFEFC] rounded-xl border border-[#E2E7E3] font-mono focus:border-[#28766B] focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-[#66746F] uppercase tracking-wider mb-1">
-                WhatsApp Business Account ID (WABA)
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. 192837465019283"
-                value={waConfig.metaWabaId || ''}
-                onChange={(e) => setWaConfig({ ...waConfig, metaWabaId: e.target.value })}
-                className="w-full px-3 py-2 text-xs bg-[#FEFEFC] rounded-xl border border-[#E2E7E3] font-mono focus:border-[#28766B] focus:outline-none"
-              />
-            </div>
-          </div>
-        )}
-
-        {waConfig.provider === 'TWILIO' && (
-          <div className="p-4 rounded-2xl bg-[#F5F7F3] border border-[#E2E7E3] grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-[11px] font-bold text-[#66746F] uppercase tracking-wider mb-1">
-                Twilio Account SID
-              </label>
-              <input
-                type="text"
-                placeholder="AC..."
-                value={waConfig.twilioAccountSid || ''}
-                onChange={(e) => setWaConfig({ ...waConfig, twilioAccountSid: e.target.value })}
-                className="w-full px-3 py-2 text-xs bg-[#FEFEFC] rounded-xl border border-[#E2E7E3] font-mono focus:border-[#28766B] focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-[#66746F] uppercase tracking-wider mb-1">
-                Twilio Auth Token
-              </label>
-              <input
-                type="password"
-                placeholder="Auth Token"
-                value={waConfig.twilioAuthToken || ''}
-                onChange={(e) => setWaConfig({ ...waConfig, twilioAuthToken: e.target.value })}
-                className="w-full px-3 py-2 text-xs bg-[#FEFEFC] rounded-xl border border-[#E2E7E3] font-mono focus:border-[#28766B] focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-[#66746F] uppercase tracking-wider mb-1">
-                Twilio WhatsApp From Phone
-              </label>
-              <input
-                type="text"
-                placeholder="+14155238886"
-                value={waConfig.twilioFromPhone || ''}
-                onChange={(e) => setWaConfig({ ...waConfig, twilioFromPhone: e.target.value })}
-                className="w-full px-3 py-2 text-xs bg-[#FEFEFC] rounded-xl border border-[#E2E7E3] font-mono focus:border-[#28766B] focus:outline-none"
-              />
-            </div>
-          </div>
-        )}
-
-        {waConfig.provider === 'WEBHOOK' && (
-          <div className="p-4 rounded-2xl bg-[#F5F7F3] border border-[#E2E7E3]">
-            <label className="block text-[11px] font-bold text-[#66746F] uppercase tracking-wider mb-1">
-              Custom Webhook URL (POST Endpoint)
-            </label>
-            <input
-              type="text"
-              placeholder="https://api.interakt.ai/v1/..."
-              value={waConfig.customWebhookUrl || ''}
-              onChange={(e) => setWaConfig({ ...waConfig, customWebhookUrl: e.target.value })}
-              className="w-full px-3 py-2 text-xs bg-[#FEFEFC] rounded-xl border border-[#E2E7E3] font-mono focus:border-[#28766B] focus:outline-none"
-            />
-          </div>
-        )}
-
-        {/* Automation Triggers & Test Ping */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pt-2">
-          {/* Checkboxes */}
-          <div className="flex flex-wrap gap-4 text-xs font-semibold text-[#202D2B]">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={waConfig.autoSendOrderCreated ?? true}
-                onChange={(e) => setWaConfig({ ...waConfig, autoSendOrderCreated: e.target.checked })}
-                className="rounded text-[#28766B] focus:ring-[#28766B]"
-              />
-              <span>Auto-send on Order Creation</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={waConfig.autoSendOrderReady ?? true}
-                onChange={(e) => setWaConfig({ ...waConfig, autoSendOrderReady: e.target.checked })}
-                className="rounded text-[#28766B] focus:ring-[#28766B]"
-              />
-              <span>Auto-send when Marked Ready for Pickup</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={waConfig.autoSendGoogleReview ?? false}
-                onChange={(e) => setWaConfig({ ...waConfig, autoSendGoogleReview: e.target.checked })}
-                className="rounded text-[#28766B] focus:ring-[#28766B]"
-              />
-              <span>Auto-send Google Review on Delivery</span>
-            </label>
-          </div>
-
-          {/* Test Live Message */}
-          <div className="flex items-center gap-2">
-            <input
-              type="tel"
-              placeholder="10-digit mobile number"
-              value={testPhone}
-              onChange={(e) => setTestPhone(e.target.value)}
-              className="px-3 py-1.5 text-xs bg-[#FEFEFC] rounded-xl border border-[#E2E7E3] w-44 font-mono focus:border-[#28766B] focus:outline-none"
-            />
-            <button
-              type="button"
-              onClick={handleTestConnection}
-              disabled={testingConnection}
-              className="px-3 py-1.5 bg-[#FEFEFC] hover:bg-[#F5F7F3] text-[#28766B] text-xs font-semibold rounded-xl border border-[#E2E7E3] shadow-xs transition flex items-center gap-1.5"
-            >
-              <Send className="w-3.5 h-3.5" />
-              {testingConnection ? 'Testing...' : 'Test Connection'}
-            </button>
-          </div>
-        </div>
-      </div>
-
+      <p role="status">WhatsApp opens a draft for staff to review and send. Internet is required; billing works offline.</p>
       {/* 2. Message Templates Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#FEFEFC] p-5 rounded-2xl border border-[#E2E7E3] shadow-xs">
         <div>
@@ -441,7 +160,7 @@ export default function WhatsAppTemplatesTab() {
             WhatsApp Message Template Customizer
           </h2>
           <p className="text-xs text-[#66746F] mt-0.5">
-            Personalize the automated WhatsApp messages sent to your customers with custom greetings and dynamic placeholders.
+            Personalize the WhatsApp drafts shown to your customers with custom greetings and dynamic placeholders.
           </p>
         </div>
 

@@ -5,7 +5,7 @@ export const recordPaymentSchema = z.object({
     orderId: z.string().uuid('Invalid order ID'),
   }),
   body: z.object({
-    amount: z.coerce.number().min(0.01, 'Payment amount must be greater than 0'),
+    amount: z.coerce.number().multipleOf(0.01).min(0.01, 'Payment amount must be greater than 0'),
     paymentMethod: z.enum(['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'OTHER']),
     reference: z.string().optional().or(z.literal('')),
     notes: z.string().optional().or(z.literal('')),

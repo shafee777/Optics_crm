@@ -12,7 +12,7 @@ const poItemSchema = z.object({
 });
 
 const initialPaymentSchema = z.object({
-  amount: z.coerce.number().positive('Payment amount must be positive'),
+  amount: z.coerce.number().multipleOf(0.01).positive('Payment amount must be positive'),
   paymentMethod: z.enum(['CASH', 'UPI', 'BANK_TRANSFER', 'CHEQUE']).default('CASH'),
   referenceNote: z.string().trim().max(255).optional().nullable(),
 });
@@ -33,7 +33,7 @@ export const recordSupplierPaymentSchema = z.object({
     id: z.string().uuid(),
   }),
   body: z.object({
-    amount: z.coerce.number().positive('Payment amount must be greater than 0'),
+    amount: z.coerce.number().multipleOf(0.01).positive('Payment amount must be greater than 0'),
     paymentMethod: z.enum(['CASH', 'UPI', 'BANK_TRANSFER', 'CHEQUE']).default('CASH'),
     referenceNote: z.string().trim().max(255).optional().nullable(),
   }),

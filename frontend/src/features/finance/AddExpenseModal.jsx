@@ -1,3 +1,4 @@
+import { useModalAccessibility } from '../../hooks/useModalAccessibility.js';
 import React, { useState } from 'react';
 import api from '../../services/api.js';
 import { X, TrendingDown, AlertCircle } from 'lucide-react';
@@ -12,6 +13,7 @@ export default function AddExpenseModal({ isOpen, onClose, onExpenseAdded }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const modalRef = useModalAccessibility(isOpen, onClose);
   if (!isOpen) return null;
 
   const categories = [
@@ -56,7 +58,7 @@ export default function AddExpenseModal({ isOpen, onClose, onExpenseAdded }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#203A36]/40 backdrop-blur-xs p-4">
+    <div ref={modalRef} className="fixed inset-0 z-50 flex items-center justify-center bg-[#203A36]/40 backdrop-blur-xs p-4">
       <div className="bg-[#FEFEFC] w-full max-w-md rounded-2xl shadow-2xl border border-[#E2E7E3] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         <div className="px-6 py-4 bg-[#F5F7F3] border-b border-[#E2E7E3] flex justify-between items-center">
           <div className="flex items-center gap-2">
@@ -65,13 +67,13 @@ export default function AddExpenseModal({ isOpen, onClose, onExpenseAdded }) {
             </div>
             <h2 className="font-bold text-[#202D2B] text-sm">Record Business Expense</h2>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-[#66746F] hover:text-[#202D2B] hover:bg-[#FEFEFC]">
+          <button aria-label="Close dialog" onClick={onClose} className="p-1 rounded-lg text-[#66746F] hover:text-[#202D2B] hover:bg-[#FEFEFC]">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {error && (
-          <div className="mx-6 mt-4 p-3 rounded-xl bg-red-50/80 border border-red-200 flex items-center gap-2 text-red-700 text-xs">
+          <div role="alert" className="mx-6 mt-4 p-3 rounded-xl bg-red-50/80 border border-red-200 flex items-center gap-2 text-red-700 text-xs">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{error}</span>
           </div>
@@ -79,8 +81,8 @@ export default function AddExpenseModal({ isOpen, onClose, onExpenseAdded }) {
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-[#66746F] mb-1">Expense Category *</label>
-            <select
+            <label htmlFor="AddExpenseModal-field-0" className="block text-xs font-semibold text-[#66746F] mb-1">Expense Category *</label>
+            <select id="AddExpenseModal-field-0"
               name="category"
               value={formData.category}
               onChange={handleChange}
@@ -95,8 +97,8 @@ export default function AddExpenseModal({ isOpen, onClose, onExpenseAdded }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#66746F] mb-1">Amount (₹) *</label>
-            <input
+            <label htmlFor="AddExpenseModal-field-1" className="block text-xs font-semibold text-[#66746F] mb-1">Amount (₹) *</label>
+            <input id="AddExpenseModal-field-1"
               type="number"
               step="0.01"
               name="amount"
@@ -109,8 +111,8 @@ export default function AddExpenseModal({ isOpen, onClose, onExpenseAdded }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#66746F] mb-1">Payment Method *</label>
-            <select
+            <label htmlFor="AddExpenseModal-field-2" className="block text-xs font-semibold text-[#66746F] mb-1">Payment Method *</label>
+            <select id="AddExpenseModal-field-2"
               name="paymentMethod"
               value={formData.paymentMethod}
               onChange={handleChange}
@@ -125,8 +127,8 @@ export default function AddExpenseModal({ isOpen, onClose, onExpenseAdded }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#66746F] mb-1">Note / Description</label>
-            <input
+            <label htmlFor="AddExpenseModal-field-3" className="block text-xs font-semibold text-[#66746F] mb-1">Note / Description</label>
+            <input id="AddExpenseModal-field-3"
               type="text"
               name="note"
               placeholder="e.g. Lens grinding lab bill for order ORD-1001"

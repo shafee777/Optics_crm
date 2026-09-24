@@ -3,7 +3,7 @@ import { env } from './config/env.js';
 import { pool } from './config/database.js';
 import { logger } from './config/logger.js';
 
-const server = app.listen(env.PORT, () => {
+const server = app.listen(env.PORT, env.HOST, () => {
   logger.info(` Optical CRM Backend listening on http://localhost:${env.PORT}`);
   logger.info(` Health check: http://localhost:${env.PORT}/health/ready`);
 });
@@ -31,3 +31,7 @@ const gracefulShutdown = async (signal) => {
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+// The desktop host waits for the API to drain before stopping its database.
+process.parentPort?.on('message', event => {
+  if (event.data?.type === 'shutdown') gracefulShutdown('desktop-close');
+});

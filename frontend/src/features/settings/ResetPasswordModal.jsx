@@ -1,3 +1,4 @@
+import { useModalAccessibility } from '../../hooks/useModalAccessibility.js';
 import React, { useState } from 'react';
 import api from '../../services/api.js';
 import { X, KeyRound, AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -9,6 +10,7 @@ export default function ResetPasswordModal({ isOpen, onClose, staffUser }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  const modalRef = useModalAccessibility(isOpen, onClose);
   if (!isOpen || !staffUser) return null;
 
   const handleSubmit = async (e) => {
@@ -47,7 +49,7 @@ export default function ResetPasswordModal({ isOpen, onClose, staffUser }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#203A36]/40 backdrop-blur-xs flex items-center justify-center p-4">
+    <div ref={modalRef} className="fixed inset-0 z-50 overflow-y-auto bg-[#203A36]/40 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-[#FEFEFC] rounded-2xl max-w-md w-full p-6 shadow-2xl border border-[#E2E7E3] animate-in fade-in zoom-in-95 duration-150">
         <div className="flex justify-between items-center mb-5 pb-3 border-b border-[#E2E7E3]">
           <div className="flex items-center gap-2 text-[#28766B]">
@@ -84,10 +86,10 @@ export default function ResetPasswordModal({ isOpen, onClose, staffUser }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
+            <label htmlFor="ResetPasswordModal-field-0" className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
               New Password *
             </label>
-            <input
+            <input id="ResetPasswordModal-field-0"
               type="password"
               required
               minLength={6}
@@ -99,10 +101,10 @@ export default function ResetPasswordModal({ isOpen, onClose, staffUser }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
+            <label htmlFor="ResetPasswordModal-field-1" className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
               Confirm New Password *
             </label>
-            <input
+            <input id="ResetPasswordModal-field-1"
               type="password"
               required
               minLength={6}

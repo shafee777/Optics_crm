@@ -217,6 +217,12 @@ export default function CustomerDetailsPage() {
                     </div>
 
                     <OpticalGrid prescription={p} />
+                    <button type="button" className="text-sm font-semibold underline" onClick={() => sendWhatsApp({ phone: customer.phone, message:
+                      [user?.store?.name || 'Optical Store', 'Prescription for ' + customer.full_name,
+                       'Test date: ' + new Date(p.tested_at).toLocaleDateString(),
+                       'Right: SPH ' + (p.r_sph ?? '—') + ', CYL ' + (p.r_cyl ?? '—') + ', AXIS ' + (p.r_axis ?? '—') + ', ADD ' + (p.r_add ?? '—'),
+                       'Left: SPH ' + (p.l_sph ?? '—') + ', CYL ' + (p.l_cyl ?? '—') + ', AXIS ' + (p.l_axis ?? '—') + ', ADD ' + (p.l_add ?? '—'),
+                       'PD: ' + (p.pd ?? 'Not recorded')].join('\n') })}>Share prescription via WhatsApp</button>
                   </div>
                 ))}
               </div>
@@ -271,10 +277,10 @@ export default function CustomerDetailsPage() {
           <div className="bg-[#FEFEFC] p-6 rounded-2xl border border-[#E2E7E3] shadow-sm space-y-3">
             <h3 className="font-bold text-[#202D2B] flex items-center gap-2 text-sm">
               <MessageSquare className="w-4 h-4 text-[#28766B]" />
-              WhatsApp Message History ({messageLogs.length})
+              Legacy WhatsApp records ({messageLogs.length})
             </h3>
             {messageLogs.length === 0 ? (
-              <p className="text-xs text-[#66746F] py-2 text-center">No WhatsApp messages dispatched yet.</p>
+              <p className="text-xs text-[#66746F] py-2 text-center">No legacy messages. New WhatsApp drafts do not track delivery.</p>
             ) : (
               <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                 {messageLogs.map((log) => (

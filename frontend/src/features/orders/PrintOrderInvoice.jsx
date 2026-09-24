@@ -142,7 +142,7 @@ export default function PrintOrderInvoice({ order, prescription }) {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {order.items?.map((item) => {
-                const taxable = parseFloat(item.taxable_value || item.total_price);
+                const taxable = parseFloat(item.taxable_value ?? item.total_price);
                 const cgst = parseFloat(item.cgst_amount || 0);
                 const sgst = parseFloat(item.sgst_amount || 0);
                 const rate = parseFloat(item.gst_rate || 0);
@@ -168,7 +168,7 @@ export default function PrintOrderInvoice({ order, prescription }) {
                       </>
                     )}
                     <td className="py-2.5 px-2 text-right font-mono font-bold text-slate-900">
-                      ₹{parseFloat(item.total_price).toFixed(2)}
+                      ₹{(order.discount_allocated ? taxable + cgst + sgst : parseFloat(item.total_price)).toFixed(2)}
                     </td>
                   </tr>
                 );
@@ -198,7 +198,7 @@ export default function PrintOrderInvoice({ order, prescription }) {
               <>
                 <div className="flex justify-between text-slate-600 text-xs">
                   <span>Total Taxable Value:</span>
-                  <span className="font-mono">₹{parseFloat(order.total_taxable_value || order.subtotal).toFixed(2)}</span>
+                  <span className="font-mono">₹{parseFloat(order.total_taxable_value ?? order.subtotal).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-slate-500 text-xs">
                   <span>Total CGST:</span>
@@ -213,8 +213,8 @@ export default function PrintOrderInvoice({ order, prescription }) {
 
             {order.discount > 0 && (
               <div className="flex justify-between text-emerald-600 text-xs">
-                <span>Discount Applied:</span>
-                <span className="font-mono">-₹{parseFloat(order.discount).toFixed(2)}</span>
+                <span>{order.discount_allocated ? 'Order discount (included):' : 'Discount Applied:'}</span>
+                <span className="font-mono">{order.discount_allocated ? '' : '-'}₹{parseFloat(order.discount).toFixed(2)}</span>
               </div>
             )}
 

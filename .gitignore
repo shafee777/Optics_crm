@@ -24,3 +24,13 @@ build/
 Thumbs.db
 .vscode/
 .idea/
+# Local backups contain customer data
+backend/backups/
+*.dump
+*.partial
+
+# Desktop builds and local verification data
+work/
+desktop/payload/
+desktop/vendor/
+desktop/release/

@@ -1,3 +1,4 @@
+import { useModalAccessibility } from '../../hooks/useModalAccessibility.js';
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api.js';
 import { X, Package, AlertCircle } from 'lucide-react';
@@ -47,6 +48,7 @@ export default function ProductModal({ isOpen, onClose, productToEdit, onSaved }
     setError('');
   }, [productToEdit, isOpen]);
 
+  const modalRef = useModalAccessibility(isOpen, onClose);
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
@@ -83,7 +85,7 @@ export default function ProductModal({ isOpen, onClose, productToEdit, onSaved }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#203A36]/40 backdrop-blur-xs">
+    <div ref={modalRef} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#203A36]/40 backdrop-blur-xs">
       <div className="bg-[#FEFEFC] rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#E2E7E3] animate-in fade-in zoom-in-95 duration-150">
         <div className="flex justify-between items-center mb-5 pb-3 border-b border-[#E2E7E3]">
           <div className="flex items-center gap-2.5">
@@ -94,13 +96,13 @@ export default function ProductModal({ isOpen, onClose, productToEdit, onSaved }
               {productToEdit ? 'Edit Product Stock' : 'Add New Product to Stock'}
             </h2>
           </div>
-          <button onClick={onClose} className="p-1.5 text-[#66746F] hover:text-[#202D2B] rounded-lg hover:bg-[#F5F7F3]">
+          <button aria-label="Close dialog" onClick={onClose} className="p-1.5 text-[#66746F] hover:text-[#202D2B] rounded-lg hover:bg-[#F5F7F3]">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-xl bg-red-50/80 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+          <div role="alert" className="mb-4 p-3 rounded-xl bg-red-50/80 border border-red-200 text-red-700 text-xs flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -109,8 +111,8 @@ export default function ProductModal({ isOpen, onClose, productToEdit, onSaved }
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-[#66746F] mb-1">Category / Type *</label>
-              <select
+              <label htmlFor="ProductModal-field-0" className="block text-xs font-semibold text-[#66746F] mb-1">Category / Type *</label>
+              <select id="ProductModal-field-0"
                 value={formData.itemType}
                 onChange={(e) => setFormData({ ...formData, itemType: e.target.value })}
                 className="w-full px-3 py-2 border border-[#E2E7E3] rounded-xl text-xs bg-[#FEFEFC] text-[#202D2B] focus:border-[#28766B] focus:ring-1 focus:ring-[#28766B] focus:outline-none font-medium"
@@ -126,8 +128,8 @@ export default function ProductModal({ isOpen, onClose, productToEdit, onSaved }
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#66746F] mb-1">Brand Name</label>
-              <input
+              <label htmlFor="ProductModal-field-1" className="block text-xs font-semibold text-[#66746F] mb-1">Brand Name</label>
+              <input id="ProductModal-field-1"
                 type="text"
                 placeholder="e.g. Ray-Ban, Fastrack"
                 value={formData.brand}
@@ -139,8 +141,8 @@ export default function ProductModal({ isOpen, onClose, productToEdit, onSaved }
 
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-2">
-              <label className="block text-xs font-semibold text-[#66746F] mb-1">Product Name / Title *</label>
-              <input
+              <label htmlFor="ProductModal-field-2" className="block text-xs font-semibold text-[#66746F] mb-1">Product Name / Title *</label>
+              <input id="ProductModal-field-2"
                 type="text"
                 required
                 placeholder="e.g. Aviator Classic Gold 58mm"
@@ -150,8 +152,8 @@ export default function ProductModal({ isOpen, onClose, productToEdit, onSaved }
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[#66746F] mb-1">Model / Code</label>
-              <input
+              <label htmlFor="ProductModal-field-3" className="block text-xs font-semibold text-[#66746F] mb-1">Model / Code</label>
+              <input id="ProductModal-field-3"
                 type="text"
                 placeholder="e.g. RB3025"
                 value={formData.modelCode}
@@ -163,8 +165,8 @@ export default function ProductModal({ isOpen, onClose, productToEdit, onSaved }
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-[#66746F] mb-1">Cost Price (₹)</label>
-              <input
+              <label htmlFor="ProductModal-field-4" className="block text-xs font-semibold text-[#66746F] mb-1">Cost Price (₹)</label>
+              <input id="ProductModal-field-4"
                 type="number"
                 placeholder="0"
                 value={formData.costPrice}
@@ -173,8 +175,8 @@ export default function ProductModal({ isOpen, onClose, productToEdit, onSaved }
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[#66746F] mb-1">Selling Price (₹) *</label>
-              <input
+              <label htmlFor="ProductModal-field-5" className="block text-xs font-semibold text-[#66746F] mb-1">Selling Price (₹) *</label>
+              <input id="ProductModal-field-5"
                 type="number"
                 required
                 placeholder="0"
@@ -187,8 +189,8 @@ export default function ProductModal({ isOpen, onClose, productToEdit, onSaved }
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-[#66746F] mb-1">Initial Stock Qty</label>
-              <input
+              <label htmlFor="ProductModal-field-6" className="block text-xs font-semibold text-[#66746F] mb-1">Initial Stock Qty</label>
+              <input id="ProductModal-field-6"
                 type="number"
                 value={formData.stockQuantity}
                 onChange={(e) => setFormData({ ...formData, stockQuantity: e.target.value })}
@@ -196,8 +198,8 @@ export default function ProductModal({ isOpen, onClose, productToEdit, onSaved }
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[#66746F] mb-1">Low Stock Alert Level</label>
-              <input
+              <label htmlFor="ProductModal-field-7" className="block text-xs font-semibold text-[#66746F] mb-1">Low Stock Alert Level</label>
+              <input id="ProductModal-field-7"
                 type="number"
                 value={formData.minStockAlert}
                 onChange={(e) => setFormData({ ...formData, minStockAlert: e.target.value })}

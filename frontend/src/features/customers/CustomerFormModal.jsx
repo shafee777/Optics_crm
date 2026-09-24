@@ -1,3 +1,4 @@
+import { useModalAccessibility } from '../../hooks/useModalAccessibility.js';
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api.js';
 import { X, UserPlus, AlertCircle, Hash } from 'lucide-react';
@@ -30,6 +31,7 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated }
     }
   }, [isOpen]);
 
+  const modalRef = useModalAccessibility(isOpen, onClose);
   if (!isOpen) return null;
 
   const handleChange = (e) => {
@@ -57,20 +59,20 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#203A36]/40 backdrop-blur-sm p-4">
+    <div ref={modalRef} className="fixed inset-0 z-50 flex items-center justify-center bg-[#203A36]/40 backdrop-blur-sm p-4">
       <div className="bg-[#FEFEFC] w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-[#E2E7E3] animate-in fade-in zoom-in-95 duration-200">
         <div className="px-6 py-4 bg-[#F5F7F3] border-b border-[#E2E7E3] flex justify-between items-center">
           <div className="flex items-center gap-2">
             <UserPlus className="w-5 h-5 text-[#28766B]" />
             <h2 className="font-bold text-[#202D2B] text-base">Add New Customer</h2>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-[#66746F] hover:text-[#202D2B] hover:bg-[#E2E7E3]/60">
+          <button aria-label="Close dialog" onClick={onClose} className="p-1 rounded-lg text-[#66746F] hover:text-[#202D2B] hover:bg-[#E2E7E3]/60">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mx-6 mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 flex items-center gap-2 text-rose-800 text-xs font-medium">
+          <div role="alert" className="mx-6 mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 flex items-center gap-2 text-rose-800 text-xs font-medium">
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
             <span>{error}</span>
           </div>
@@ -97,8 +99,8 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated }
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#202D2B] mb-1">Mobile Number</label>
-              <input
+              <label htmlFor="CustomerFormModal-field-0" className="block text-xs font-semibold text-[#202D2B] mb-1">Mobile Number</label>
+              <input id="CustomerFormModal-field-0"
                 type="tel"
                 name="phone"
                 placeholder="10-digit mobile"
@@ -111,8 +113,8 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated }
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#202D2B] mb-1">Full Name *</label>
-            <input
+            <label htmlFor="CustomerFormModal-field-1" className="block text-xs font-semibold text-[#202D2B] mb-1">Full Name *</label>
+            <input id="CustomerFormModal-field-1"
               type="text"
               name="fullName"
               required
@@ -125,8 +127,8 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated }
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-[#202D2B] mb-1">Age</label>
-              <input
+              <label htmlFor="CustomerFormModal-field-2" className="block text-xs font-semibold text-[#202D2B] mb-1">Age</label>
+              <input id="CustomerFormModal-field-2"
                 type="number"
                 name="age"
                 placeholder="e.g. 35"
@@ -136,8 +138,8 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated }
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[#202D2B] mb-1">Gender</label>
-              <select
+              <label htmlFor="CustomerFormModal-field-3" className="block text-xs font-semibold text-[#202D2B] mb-1">Gender</label>
+              <select id="CustomerFormModal-field-3"
                 name="gender"
                 value={formData.gender}
                 onChange={handleChange}
@@ -149,8 +151,8 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated }
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[#202D2B] mb-1">Email</label>
-              <input
+              <label htmlFor="CustomerFormModal-field-4" className="block text-xs font-semibold text-[#202D2B] mb-1">Email</label>
+              <input id="CustomerFormModal-field-4"
                 type="email"
                 name="email"
                 placeholder="Optional"
@@ -162,8 +164,8 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated }
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#202D2B] mb-1">Address</label>
-            <input
+            <label htmlFor="CustomerFormModal-field-5" className="block text-xs font-semibold text-[#202D2B] mb-1">Address</label>
+            <input id="CustomerFormModal-field-5"
               type="text"
               name="address"
               placeholder="Locality, City"
@@ -174,8 +176,8 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated }
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#202D2B] mb-1">Notes</label>
-            <textarea
+            <label htmlFor="CustomerFormModal-field-6" className="block text-xs font-semibold text-[#202D2B] mb-1">Notes</label>
+            <textarea id="CustomerFormModal-field-6"
               name="notes"
               rows={2}
               placeholder="Doctor recommendations or notes..."

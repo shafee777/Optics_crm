@@ -1,3 +1,4 @@
+import { calculateBilling } from '../../../../shared/billing.mjs';
 import { query, withTransaction } from '../../config/database.js';
 import { ORDER_STATUS } from './order.constants.js';
 import { AppError } from '../../shared/errors/AppError.js';
@@ -56,47 +57,11 @@ export const orderRepository = {
     return await withTransaction(async (client) => {
       const orderNumber = await this.getNextOrderNumber(client, storeId);
 
-      let subtotal = 0;
-      let totalTaxableValue = 0;
-      let totalCgst = 0;
-      let totalSgst = 0;
       const isGstBill = data.isGstBill !== false;
-
-      const computedItems = data.items.map((item) => {
-        const itemSubtotal = item.quantity * item.unitPrice;
-        const itemTotal = Math.max(0, itemSubtotal - (item.discount || 0));
-        subtotal += itemTotal;
-
-        const gstRate = isGstBill ? (parseFloat(item.gstRate) || 0) : 0;
-        let taxableValue = itemTotal;
-        let cgstAmount = 0;
-        let sgstAmount = 0;
-
-        if (gstRate > 0) {
-          taxableValue = Math.round((itemTotal / (1 + gstRate / 100)) * 100) / 100;
-          const totalTax = Math.round((itemTotal - taxableValue) * 100) / 100;
-          cgstAmount = Math.round((totalTax / 2) * 100) / 100;
-          sgstAmount = Math.round((totalTax - cgstAmount) * 100) / 100;
-        }
-
-        totalTaxableValue += taxableValue;
-        totalCgst += cgstAmount;
-        totalSgst += sgstAmount;
-
-        return {
-          ...item,
-          totalPrice: itemTotal,
-          hsnCode: item.hsnCode || null,
-          gstRate,
-          taxableValue,
-          cgstAmount,
-          sgstAmount,
-        };
-      });
-
-      const discount = data.discount || 0;
-      const tax = data.tax || 0;
-      const totalAmount = Math.max(0, subtotal - discount + tax);
+      let billing;
+      try { billing = calculateBilling(data.items, data.discount, isGstBill, data.tax); }
+      catch (error) { throw new AppError(error.message, 400, 'INVALID_ORDER_TOTALS'); }
+      const { computedItems, subtotal, discount, tax, totalAmount, totalTaxableValue, totalCgst, totalSgst } = billing;
 
       if (data.advancePayment && data.advancePayment.amount > totalAmount) {
         throw new AppError(
@@ -112,9 +77,9 @@ export const orderRepository = {
           order_date, due_date, status,
           subtotal, discount, tax, total_amount,
           is_gst_bill, total_taxable_value, total_cgst, total_sgst,
-          notes, created_by
+          notes, created_by, discount_allocated
         )
-        VALUES ($1, $2, $3, $4, CURRENT_DATE, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        VALUES ($1, $2, $3, $4, CURRENT_DATE, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, true)
         RETURNING *;
       `;
       const { rows: orderRows } = await client.query(orderQuery, [
@@ -137,46 +102,20 @@ export const orderRepository = {
       ]);
       const createdOrder = orderRows[0];
 
-      for (const item of computedItems) {
+      for (const item of [...computedItems].sort((a,b) => String(a.productId).localeCompare(String(b.productId)))) {
         let resolvedProductId = item.productId || null;
 
+        // Only explicitly selected inventory is consumed. Custom lines are untracked.
         if (resolvedProductId) {
-          // If explicitly chosen from stock, deduct quantity
-          await client.query(
-            `UPDATE products
-             SET stock_quantity = stock_quantity - $1,
-                 updated_at = NOW()
-             WHERE id = $2 AND store_id = $3;`,
+          await client.query("SELECT set_config('app.stock_reason', $1, true)", ['ORDER ' + createdOrder.id]);
+          const stock = await client.query(
+            `UPDATE products SET stock_quantity = stock_quantity - $1, updated_at = NOW()
+             WHERE id = $2 AND store_id = $3 AND archived_at IS NULL
+               AND stock_quantity >= $1 RETURNING id;`,
             [item.quantity, resolvedProductId, storeId]
           );
-        } else if (item.itemType !== 'SERVICE') {
-          // Check if a product with same name and item_type exists
-          const { rows: existingProd } = await client.query(
-            `SELECT id FROM products 
-             WHERE store_id = $1 AND lower(name) = lower($2) AND item_type = $3 AND archived_at IS NULL 
-             LIMIT 1;`,
-            [storeId, item.description.trim(), item.itemType]
-          );
-
-          if (existingProd.length > 0) {
-            resolvedProductId = existingProd[0].id;
-            await client.query(
-              `UPDATE products
-               SET stock_quantity = stock_quantity - $1,
-                   updated_at = NOW()
-               WHERE id = $2 AND store_id = $3;`,
-              [item.quantity, resolvedProductId, storeId]
-            );
-          } else {
-            // Automatically register new product into store inventory catalog
-            const { rows: newProd } = await client.query(
-              `INSERT INTO products (
-                store_id, item_type, name, selling_price, stock_quantity, min_stock_alert, hsn_code, gst_rate
-              ) VALUES ($1, $2, $3, $4, $5, 3, $6, $7)
-              RETURNING id;`,
-              [storeId, item.itemType, item.description.trim(), item.unitPrice, -item.quantity, item.hsnCode, item.gstRate]
-            );
-            resolvedProductId = newProd[0].id;
+          if (!stock.rowCount) {
+            throw new AppError('Product unavailable in this store or insufficient stock', 409, 'INSUFFICIENT_STOCK');
           }
         }
 
@@ -232,6 +171,11 @@ export const orderRepository = {
 
   async findByIdWithDetails(storeId, orderId) {
     return await this.findByIdWithDetailsTx({ query }, storeId, orderId);
+  },
+
+  async lockOrderTx(db, storeId, orderId) {
+    const result = await db.query('SELECT id FROM orders WHERE store_id = $1 AND id = $2 FOR UPDATE', [storeId, orderId]);
+    return result.rows[0] || null;
   },
 
   async findByIdWithDetailsTx(db, storeId, orderId) {

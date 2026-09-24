@@ -1,65 +1,4 @@
-/**
- * WhatsApp message template engine & Automated Background WhatsApp Dispatcher
- * Dispatches WhatsApp messages in the background via Meta Cloud API / Twilio / Webhook / Gateway
- * without opening extra tabs or redirecting away from the CRM page.
- */
-
-import api from '../services/api.js';
-
-// ---------------------------------------------------------------------------
-// Offline queue helpers
-// ---------------------------------------------------------------------------
-const QUEUE_KEY = 'wa_pending_queue';
-
-function loadQueue() {
-  try {
-    return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
-  } catch {
-    return [];
-  }
-}
-
-function saveQueue(queue) {
-  localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
-}
-
-function enqueue(phone, message, label = '') {
-  const queue = loadQueue();
-  queue.push({ phone, message, label, savedAt: new Date().toISOString() });
-  saveQueue(queue);
-}
-
-/** Flush saved messages when back online */
-async function flushQueueOnline() {
-  const queue = loadQueue();
-  if (!queue.length) return;
-  const remaining = [];
-
-  for (const item of queue) {
-    try {
-      await api.post('/whatsapp/send', {
-        phone: item.phone,
-        message: item.message,
-      });
-    } catch {
-      remaining.push(item);
-    }
-  }
-
-  saveQueue(remaining);
-  const sentCount = queue.length - remaining.length;
-  if (sentCount > 0) {
-    showBanner(
-      `📤 ${sentCount} queued WhatsApp message(s) delivered now that you're back online.`,
-      'success'
-    );
-  }
-}
-
-if (typeof window !== 'undefined') {
-  window.addEventListener('online', flushQueueOnline);
-}
-
+/** User-initiated WhatsApp drafts. Opening a draft never confirms delivery. */
 // ---------------------------------------------------------------------------
 // Non-blocking Toast Banner notification (Calm Sage / Forest Theme)
 // ---------------------------------------------------------------------------
@@ -75,6 +14,8 @@ export function showBanner(text, type = 'success') {
 
   const banner = document.createElement('div');
   banner.id = 'wa-crm-banner';
+  banner.setAttribute('role', 'status');
+  banner.setAttribute('aria-live', 'polite');
   banner.style.cssText = `
     position: fixed; bottom: 24px; right: 24px;
     background: ${c.bg}; border: 1px solid ${c.border}; color: ${c.text};
@@ -103,6 +44,7 @@ export function showBanner(text, type = 'success') {
 
   const close = document.createElement('button');
   close.textContent = '✕';
+  close.setAttribute('aria-label', 'Dismiss notification');
   close.style.cssText = 'background:none; border:none; cursor:pointer; font-size:14px; opacity:0.6; color:inherit; padding:0 4px;';
   close.onclick = () => banner.remove();
   banner.appendChild(close);
@@ -191,75 +133,19 @@ export function getPaymentReminderMessage({ customerName, storeName, orderNumber
   return interpolateTemplate(tpl, { customerName, storeName, orderNumber, balanceDue: formattedBalance });
 }
 
-// ---------------------------------------------------------------------------
-// Automated Background Dispatcher (Zero Browser Redirects)
-// ---------------------------------------------------------------------------
-export async function sendWhatsApp({ phone, message, label = 'WhatsApp message', customerId = null, messageType = 'CUSTOM' }) {
+export function sendWhatsApp({ phone, message }) {
   const formattedPhone = sanitizePhone(phone);
-
-  if (!formattedPhone) {
-    showBanner('⚠️ Customer has no valid phone number recorded.', 'error');
+  if (!/^[1-9]\d{7,14}$/.test(formattedPhone)) {
+    showBanner('Enter a valid customer phone number with country code.', 'error');
     return { success: false, reason: 'INVALID_PHONE' };
   }
-
-  // Ensure clean decoded string for backend API
-  let plainMessage = message;
-  try {
-    if (typeof message === 'string' && message.includes('%')) {
-      plainMessage = decodeURIComponent(message);
-    }
-  } catch {
-    plainMessage = message;
+  if (navigator.onLine === false) {
+    showBanner('WhatsApp requires internet. Your CRM still works locally. Reopen this message when connected.', 'warning');
+    return { success: false, reason: 'OFFLINE' };
   }
-
-  // Offline handling
-  if (!navigator.onLine) {
-    enqueue(formattedPhone, plainMessage, label);
-    showBanner(
-      `📵 Offline: Message queued.\nIt will send automatically when your connection is restored.`,
-      'warning'
-    );
-    return { success: true, queued: true };
-  }
-
-  try {
-    const res = await api.post('/whatsapp/send', {
-      phone: formattedPhone,
-      message: plainMessage,
-      customerId,
-      messageType,
-    });
-
-    if (res.data?.success) {
-      showBanner(`💬 WhatsApp sent automatically to +${formattedPhone}`, 'success');
-      return { success: true, data: res.data.data };
-    } else {
-      throw new Error(res.data?.message || 'Failed to dispatch WhatsApp');
-    }
-  } catch (err) {
-    console.error('Automated WhatsApp dispatch error:', err);
-    showBanner(`⚠️ WhatsApp notification failed: ${err.message || 'Network error'}`, 'error');
-    return { success: false, error: err.message };
-  }
+  window.open('https://wa.me/' + formattedPhone + '?text=' + encodeURIComponent(message), '_blank', 'noopener,noreferrer');
+  showBanner('WhatsApp draft opened. Review it and press Send in WhatsApp. Delivery is not tracked.');
+  return { success: true, opened: true, sent: false };
 }
 
-/**
- * Backward compatibility alias: Calls silent background sendWhatsApp
- */
-export function openWhatsApp(phone, message, label = 'WhatsApp message', customerId = null, messageType = null) {
-  return sendWhatsApp({
-    phone,
-    message,
-    label,
-    customerId,
-    messageType: messageType || 'CUSTOM',
-  });
-}
-
-export function getPendingQueueCount() {
-  return loadQueue().length;
-}
-
-export function clearPendingQueue() {
-  saveQueue([]);
-}
+export function openWhatsApp(phone, message) { return sendWhatsApp({ phone, message }); }

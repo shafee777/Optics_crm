@@ -15,7 +15,6 @@ import messageRoutes from '../modules/messages/message.routes.js';
 import exportRoutes from '../modules/exports/export.routes.js';
 import supplierRoutes from '../modules/suppliers/supplier.routes.js';
 import purchaseRoutes from '../modules/purchases/purchase.routes.js';
-import whatsappRoutes from '../modules/whatsapp/whatsapp.routes.js';
 
 const router = Router();
 
@@ -50,6 +49,5 @@ router.use('/api/v1/messages', messageRoutes);
 router.use('/api/v1/exports', exportRoutes);
 router.use('/api/v1/suppliers', supplierRoutes);
 router.use('/api/v1/purchases', purchaseRoutes);
-router.use('/api/v1/whatsapp', whatsappRoutes);
 
 export default router;

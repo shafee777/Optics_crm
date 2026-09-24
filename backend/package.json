@@ -9,7 +9,11 @@
     "start": "node src/server.js",
     "migrate": "node database/migrate.js",
     "seed": "node database/seeds/dev_seed.js",
-    "test": "node --test tests/api.test.js"
+    "test": "node --test tests/api.test.js",
+    "db:backup": "node scripts/backup.mjs backup",
+    "db:restore": "node scripts/backup.mjs restore",
+    "test:unit": "node --test tests/billing.test.mjs tests/whatsapp.test.mjs",
+    "test:isolated": "node scripts/test-isolated.mjs"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

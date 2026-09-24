@@ -1,3 +1,4 @@
+import { useModalAccessibility } from '../../hooks/useModalAccessibility.js';
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api.js';
 import { X, ShoppingBag, Plus, Trash2, AlertCircle, Building2, Calculator, CheckCircle2 } from 'lucide-react';
@@ -62,6 +63,7 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
     }
   };
 
+  const modalRef = useModalAccessibility(isOpen, onClose);
   if (!isOpen) return null;
 
   const handleAddItem = () => {
@@ -189,7 +191,7 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#203A36]/40 backdrop-blur-xs p-4 overflow-y-auto">
+    <div ref={modalRef} className="fixed inset-0 z-50 flex items-center justify-center bg-[#203A36]/40 backdrop-blur-xs p-4 overflow-y-auto">
       <div className="bg-[#FEFEFC] w-full max-w-4xl rounded-2xl shadow-2xl border border-[#E2E7E3] overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-8">
         
         {/* Header */}
@@ -203,13 +205,13 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
               <p className="text-xs text-white/70">Receive stock from lens labs & frame vendors (auto-increments inventory)</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition">
+          <button aria-label="Close dialog" onClick={onClose} className="p-1 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mx-6 mt-4 p-3.5 rounded-xl bg-red-50/80 border border-red-200 flex items-center gap-2 text-red-700 text-xs">
+          <div role="alert" className="mx-6 mt-4 p-3.5 rounded-xl bg-red-50/80 border border-red-200 flex items-center gap-2 text-red-700 text-xs">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -221,7 +223,7 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-[#F5F7F3] p-4 rounded-2xl border border-[#E2E7E3]">
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className="block text-xs font-semibold text-[#66746F]">Select Supplier / Lab *</label>
+                <label htmlFor="NewPurchaseOrderModal-field-0" className="block text-xs font-semibold text-[#66746F]">Select Supplier / Lab *</label>
                 {onOpenAddSupplier && (
                   <button
                     type="button"
@@ -232,7 +234,7 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
                   </button>
                 )}
               </div>
-              <select
+              <select id="NewPurchaseOrderModal-field-0"
                 required
                 value={supplierId}
                 onChange={(e) => setSupplierId(e.target.value)}
@@ -248,8 +250,8 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#66746F] mb-1">Supplier Bill / Invoice #</label>
-              <input
+              <label htmlFor="NewPurchaseOrderModal-field-1" className="block text-xs font-semibold text-[#66746F] mb-1">Supplier Bill / Invoice #</label>
+              <input id="NewPurchaseOrderModal-field-1"
                 type="text"
                 placeholder="e.g. INV-2026-904"
                 value={invoiceNumber}
@@ -259,8 +261,8 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#66746F] mb-1">Inward Date *</label>
-              <input
+              <label htmlFor="NewPurchaseOrderModal-field-2" className="block text-xs font-semibold text-[#66746F] mb-1">Inward Date *</label>
+              <input id="NewPurchaseOrderModal-field-2"
                 type="date"
                 required
                 value={orderDate}
@@ -433,8 +435,8 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
                 <div className="space-y-3 pt-2 border-t border-[#E2E7E3]">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[11px] font-semibold text-[#66746F] mb-1">Paid Amount (₹)</label>
-                      <input
+                      <label htmlFor="NewPurchaseOrderModal-field-3" className="block text-[11px] font-semibold text-[#66746F] mb-1">Paid Amount (₹)</label>
+                      <input id="NewPurchaseOrderModal-field-3"
                         type="number"
                         step="0.01"
                         placeholder="e.g. 5000"
@@ -444,8 +446,8 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-semibold text-[#66746F] mb-1">Payment Method</label>
-                      <select
+                      <label htmlFor="NewPurchaseOrderModal-field-4" className="block text-[11px] font-semibold text-[#66746F] mb-1">Payment Method</label>
+                      <select id="NewPurchaseOrderModal-field-4"
                         value={paymentMethod}
                         onChange={(e) => setPaymentMethod(e.target.value)}
                         className="w-full px-2.5 py-1.5 rounded-lg border border-[#E2E7E3] text-xs bg-[#FEFEFC] text-[#202D2B] focus:border-[#28766B] focus:outline-none"
@@ -496,8 +498,8 @@ export default function NewPurchaseOrderModal({ isOpen, onClose, onPurchaseCreat
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#66746F] mb-1">Internal Purchase Order Notes</label>
-            <input
+            <label htmlFor="NewPurchaseOrderModal-field-5" className="block text-xs font-semibold text-[#66746F] mb-1">Internal Purchase Order Notes</label>
+            <input id="NewPurchaseOrderModal-field-5"
               type="text"
               placeholder="e.g. Received via courier box #2, lenses inspected and verified"
               value={notes}

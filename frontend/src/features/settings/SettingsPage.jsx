@@ -1,3 +1,4 @@
+import DesktopBackups from './DesktopBackups.jsx';
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -258,10 +259,10 @@ export default function SettingsPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
+                  <label htmlFor="SettingsPage-field-0" className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
                     Store Name *
                   </label>
-                  <input
+                  <input id="SettingsPage-field-0"
                     type="text"
                     required
                     disabled={!isOwner}
@@ -273,14 +274,14 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
+                  <label htmlFor="SettingsPage-field-1" className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
                     Contact Phone
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#66746F]">
                       <Phone className="w-4 h-4" />
                     </div>
-                    <input
+                    <input id="SettingsPage-field-1"
                       type="text"
                       disabled={!isOwner}
                       value={storeData.phone}
@@ -293,10 +294,10 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
+                  <label htmlFor="SettingsPage-field-2" className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
                     Store GSTIN / Tax ID
                   </label>
-                  <input
+                  <input id="SettingsPage-field-2"
                     type="text"
                     disabled={!isOwner}
                     value={storeData.gstin}
@@ -308,14 +309,14 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
+                  <label htmlFor="SettingsPage-field-3" className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
                     Store Physical Address
                   </label>
                   <div className="relative">
                     <div className="absolute top-3 left-3 flex items-start pointer-events-none text-[#66746F]">
                       <MapPin className="w-4 h-4" />
                     </div>
-                    <textarea
+                    <textarea id="SettingsPage-field-3"
                       rows={2}
                       disabled={!isOwner}
                       value={storeData.address}
@@ -328,14 +329,14 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
+                  <label htmlFor="SettingsPage-field-4" className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
                     Google Review / Maps Link
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-amber-500">
                       <Star className="w-4 h-4 fill-amber-500" />
                     </div>
-                    <input
+                    <input id="SettingsPage-field-4"
                       type="url"
                       disabled={!isOwner}
                       value={storeData.googleReviewLink}
@@ -357,7 +358,7 @@ export default function SettingsPage() {
                     )}
                   </div>
                   <span className="text-[11px] text-[#66746F] mt-0.5 block">
-                    Automatically attached in WhatsApp messages when orders are marked as DELIVERED to collect Google 5-star ratings.
+                    Used when staff choose the WhatsApp review request action.
                   </span>
                 </div>
               </div>
@@ -614,6 +615,8 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      {isOwner && <DesktopBackups />}
 
       {/* Add Staff Modal */}
       <AddStaffModal

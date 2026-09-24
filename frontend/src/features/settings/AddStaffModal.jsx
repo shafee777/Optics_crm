@@ -1,3 +1,4 @@
+import { useModalAccessibility } from '../../hooks/useModalAccessibility.js';
 import React, { useState } from 'react';
 import api from '../../services/api.js';
 import { X, UserPlus, AlertCircle } from 'lucide-react';
@@ -10,6 +11,7 @@ export default function AddStaffModal({ isOpen, onClose, onStaffAdded }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const modalRef = useModalAccessibility(isOpen, onClose);
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
@@ -35,7 +37,7 @@ export default function AddStaffModal({ isOpen, onClose, onStaffAdded }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#203A36]/40 backdrop-blur-xs flex items-center justify-center p-4">
+    <div ref={modalRef} className="fixed inset-0 z-50 overflow-y-auto bg-[#203A36]/40 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-[#FEFEFC] rounded-2xl max-w-md w-full p-6 shadow-2xl border border-[#E2E7E3] animate-in fade-in zoom-in-95 duration-150">
         <div className="flex justify-between items-center mb-5 pb-3 border-b border-[#E2E7E3]">
           <div className="flex items-center gap-2 text-[#28766B]">
@@ -51,7 +53,7 @@ export default function AddStaffModal({ isOpen, onClose, onStaffAdded }) {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-50/80 border border-rose-200 flex items-center gap-2 text-rose-700 text-xs">
+          <div role="alert" className="mb-4 p-3 rounded-xl bg-rose-50/80 border border-rose-200 flex items-center gap-2 text-rose-700 text-xs">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -59,10 +61,10 @@ export default function AddStaffModal({ isOpen, onClose, onStaffAdded }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
+            <label htmlFor="AddStaffModal-field-0" className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
               Full Name *
             </label>
-            <input
+            <input id="AddStaffModal-field-0"
               type="text"
               required
               value={fullName}
@@ -73,10 +75,10 @@ export default function AddStaffModal({ isOpen, onClose, onStaffAdded }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
+            <label htmlFor="AddStaffModal-field-1" className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
               Work Email Address *
             </label>
-            <input
+            <input id="AddStaffModal-field-1"
               type="email"
               required
               value={email}
@@ -87,10 +89,10 @@ export default function AddStaffModal({ isOpen, onClose, onStaffAdded }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
+            <label htmlFor="AddStaffModal-field-2" className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
               Initial Login Password *
             </label>
-            <input
+            <input id="AddStaffModal-field-2"
               type="password"
               required
               minLength={6}
@@ -105,10 +107,10 @@ export default function AddStaffModal({ isOpen, onClose, onStaffAdded }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
+            <label htmlFor="AddStaffModal-field-3" className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
               Role & Permissions
             </label>
-            <select
+            <select id="AddStaffModal-field-3"
               value={role}
               onChange={(e) => setRole(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E7E3] text-xs bg-[#FEFEFC] text-[#202D2B] focus:outline-none focus:border-[#28766B] focus:ring-1 focus:ring-[#28766B] transition font-medium"

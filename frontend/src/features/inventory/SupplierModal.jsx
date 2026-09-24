@@ -1,3 +1,4 @@
+import { useModalAccessibility } from '../../hooks/useModalAccessibility.js';
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api.js';
 import { X, Building2, AlertCircle } from 'lucide-react';
@@ -47,6 +48,7 @@ export default function SupplierModal({ isOpen, onClose, supplierToEdit, onSuppl
     }
   }, [supplierToEdit, isOpen]);
 
+  const modalRef = useModalAccessibility(isOpen, onClose);
   if (!isOpen) return null;
 
   const handleChange = (e) => {
@@ -86,7 +88,7 @@ export default function SupplierModal({ isOpen, onClose, supplierToEdit, onSuppl
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#203A36]/40 backdrop-blur-xs p-4 overflow-y-auto">
+    <div ref={modalRef} className="fixed inset-0 z-50 flex items-center justify-center bg-[#203A36]/40 backdrop-blur-xs p-4 overflow-y-auto">
       <div className="bg-[#FEFEFC] w-full max-w-lg rounded-2xl shadow-2xl border border-[#E2E7E3] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}
@@ -99,13 +101,13 @@ export default function SupplierModal({ isOpen, onClose, supplierToEdit, onSuppl
               {supplierToEdit ? 'Edit Supplier / Lab' : 'Add New Supplier / Lens Lab'}
             </h2>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition">
+          <button aria-label="Close dialog" onClick={onClose} className="p-1 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mx-6 mt-4 p-3.5 rounded-xl bg-red-50/80 border border-red-200 flex items-center gap-2 text-red-700 text-xs">
+          <div role="alert" className="mx-6 mt-4 p-3.5 rounded-xl bg-red-50/80 border border-red-200 flex items-center gap-2 text-red-700 text-xs">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -113,8 +115,8 @@ export default function SupplierModal({ isOpen, onClose, supplierToEdit, onSuppl
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-[#66746F] mb-1">Company / Supplier Name *</label>
-            <input
+            <label htmlFor="SupplierModal-field-0" className="block text-xs font-semibold text-[#66746F] mb-1">Company / Supplier Name *</label>
+            <input id="SupplierModal-field-0"
               type="text"
               required
               name="name"
@@ -127,8 +129,8 @@ export default function SupplierModal({ isOpen, onClose, supplierToEdit, onSuppl
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-[#66746F] mb-1">Category *</label>
-              <select
+              <label htmlFor="SupplierModal-field-1" className="block text-xs font-semibold text-[#66746F] mb-1">Category *</label>
+              <select id="SupplierModal-field-1"
                 name="category"
                 value={formData.category}
                 onChange={handleChange}
@@ -143,8 +145,8 @@ export default function SupplierModal({ isOpen, onClose, supplierToEdit, onSuppl
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#66746F] mb-1">Contact Person</label>
-              <input
+              <label htmlFor="SupplierModal-field-2" className="block text-xs font-semibold text-[#66746F] mb-1">Contact Person</label>
+              <input id="SupplierModal-field-2"
                 type="text"
                 name="contactPerson"
                 placeholder="e.g. Vikram Mehta (Sales Mgr)"
@@ -157,8 +159,8 @@ export default function SupplierModal({ isOpen, onClose, supplierToEdit, onSuppl
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-[#66746F] mb-1">Phone Number</label>
-              <input
+              <label htmlFor="SupplierModal-field-3" className="block text-xs font-semibold text-[#66746F] mb-1">Phone Number</label>
+              <input id="SupplierModal-field-3"
                 type="text"
                 name="phone"
                 placeholder="e.g. 9888877777"
@@ -169,8 +171,8 @@ export default function SupplierModal({ isOpen, onClose, supplierToEdit, onSuppl
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#66746F] mb-1">Supplier GSTIN</label>
-              <input
+              <label htmlFor="SupplierModal-field-4" className="block text-xs font-semibold text-[#66746F] mb-1">Supplier GSTIN</label>
+              <input id="SupplierModal-field-4"
                 type="text"
                 name="gstin"
                 placeholder="e.g. 29AABCU9603R1ZM"
@@ -182,8 +184,8 @@ export default function SupplierModal({ isOpen, onClose, supplierToEdit, onSuppl
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#66746F] mb-1">Email Address</label>
-            <input
+            <label htmlFor="SupplierModal-field-5" className="block text-xs font-semibold text-[#66746F] mb-1">Email Address</label>
+            <input id="SupplierModal-field-5"
               type="email"
               name="email"
               placeholder="e.g. laborders@supplier.com"
@@ -194,8 +196,8 @@ export default function SupplierModal({ isOpen, onClose, supplierToEdit, onSuppl
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#66746F] mb-1">Office / Lab Address</label>
-            <textarea
+            <label htmlFor="SupplierModal-field-6" className="block text-xs font-semibold text-[#66746F] mb-1">Office / Lab Address</label>
+            <textarea id="SupplierModal-field-6"
               rows={2}
               name="address"
               placeholder="e.g. Industrial Area, Phase 2, Bangalore"

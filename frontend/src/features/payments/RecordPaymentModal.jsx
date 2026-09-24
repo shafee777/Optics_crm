@@ -1,3 +1,4 @@
+import { useModalAccessibility } from '../../hooks/useModalAccessibility.js';
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api.js';
 import { X, IndianRupee, AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -27,6 +28,7 @@ export default function RecordPaymentModal({
     }
   }, [isOpen, balanceDue, isReadyForPickup]);
 
+  const modalRef = useModalAccessibility(isOpen, onClose);
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
@@ -60,7 +62,7 @@ export default function RecordPaymentModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#203A36]/40 backdrop-blur-sm p-4">
+    <div ref={modalRef} className="fixed inset-0 z-50 flex items-center justify-center bg-[#203A36]/40 backdrop-blur-sm p-4">
       <div className="bg-[#FEFEFC] w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-[#E2E7E3] animate-in fade-in zoom-in-95 duration-200">
         <div className="px-6 py-4 bg-[#F5F7F3] border-b border-[#E2E7E3] flex justify-between items-center">
           <div className="flex items-center gap-2.5">
@@ -72,13 +74,13 @@ export default function RecordPaymentModal({
               <p className="text-[11px] text-[#66746F] tabular-nums font-semibold">Order #{orderNumber}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-[#66746F] hover:text-[#202D2B] hover:bg-[#E2E7E3]/60">
+          <button aria-label="Close dialog" onClick={onClose} className="p-1 rounded-lg text-[#66746F] hover:text-[#202D2B] hover:bg-[#E2E7E3]/60">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mx-6 mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 flex items-center gap-2 text-rose-800 text-xs font-medium">
+          <div role="alert" className="mx-6 mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 flex items-center gap-2 text-rose-800 text-xs font-medium">
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
             <span>{error}</span>
           </div>
@@ -87,14 +89,14 @@ export default function RecordPaymentModal({
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="block text-xs font-semibold text-[#202D2B]">Payment Amount (₹) *</label>
+              <label htmlFor="RecordPaymentModal-field-0" className="block text-xs font-semibold text-[#202D2B]">Payment Amount (₹) *</label>
               <span className="text-xs text-amber-700 font-bold tabular-nums">
                 Balance Due: ₹{balanceDue?.toLocaleString()}
               </span>
             </div>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-[#66746F] font-bold text-sm">₹</span>
-              <input
+              <input id="RecordPaymentModal-field-0"
                 type="number"
                 step="0.01"
                 required
@@ -107,8 +109,8 @@ export default function RecordPaymentModal({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#202D2B] mb-1">Payment Method *</label>
-            <select
+            <label htmlFor="RecordPaymentModal-field-1" className="block text-xs font-semibold text-[#202D2B] mb-1">Payment Method *</label>
+            <select id="RecordPaymentModal-field-1"
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl border border-[#E2E7E3] text-xs text-[#202D2B] bg-white focus:ring-2 focus:ring-[#28766B]/30 focus:border-[#28766B] focus:outline-none"
@@ -122,8 +124,8 @@ export default function RecordPaymentModal({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#202D2B] mb-1">UPI / Transaction Reference (Optional)</label>
-            <input
+            <label htmlFor="RecordPaymentModal-field-2" className="block text-xs font-semibold text-[#202D2B] mb-1">UPI / Transaction Reference (Optional)</label>
+            <input id="RecordPaymentModal-field-2"
               type="text"
               placeholder="e.g. UPI-987123"
               value={reference}
@@ -133,8 +135,8 @@ export default function RecordPaymentModal({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#202D2B] mb-1">Remarks / Note</label>
-            <input
+            <label htmlFor="RecordPaymentModal-field-3" className="block text-xs font-semibold text-[#202D2B] mb-1">Remarks / Note</label>
+            <input id="RecordPaymentModal-field-3"
               type="text"
               placeholder="e.g. Balance collected on customer pickup"
               value={notes}

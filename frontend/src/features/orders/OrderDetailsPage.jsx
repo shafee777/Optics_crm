@@ -4,7 +4,7 @@ import api from '../../services/api.js';
 import OrderStatusBadge from './OrderStatusBadge.jsx';
 import RecordPaymentModal from '../payments/RecordPaymentModal.jsx';
 import PrintOrderInvoice from './PrintOrderInvoice.jsx';
-import { sendWhatsApp, getOrderPlacedGreetingMessage, getOrderReadyMessage, getGoogleReviewMessage } from '../../lib/whatsapp.js';
+import { sendWhatsApp, getOrderReadyMessage, getGoogleReviewMessage } from '../../lib/whatsapp.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { SkeletonCard, SkeletonTable } from '../../components/common/Skeleton.jsx';
 
@@ -73,39 +73,6 @@ export default function OrderDetailsPage() {
       await api.patch(`/orders/${id}/status`, { status: nextStatus });
       await fetchOrder();
 
-      // Trigger automatic WhatsApp notifications
-      if (order?.customer_phone) {
-        const storeName = user?.store?.name || 'Optical Store';
-        const templates = user?.store?.whatsapp_templates || user?.store?.whatsappTemplates;
-
-        if (nextStatus === 'PROCESSING') {
-          const msg = getOrderPlacedGreetingMessage({
-            customerName: order.customer_name,
-            storeName,
-            orderNumber: order.order_number,
-            dueDate: order.due_date,
-            customTemplate: templates?.ORDER_PLACED,
-          });
-          sendWhatsApp({ phone: order.customer_phone, message: msg, label: 'Order Placed Greeting', customerId: order.customer_id, messageType: 'ORDER_PLACED' });
-        } else if (nextStatus === 'READY_FOR_PICKUP') {
-          const msg = getOrderReadyMessage({
-            customerName: order.customer_name,
-            storeName,
-            orderNumber: order.order_number,
-            customTemplate: templates?.ORDER_READY,
-          });
-          sendWhatsApp({ phone: order.customer_phone, message: msg, label: 'Order Ready for Pickup', customerId: order.customer_id, messageType: 'ORDER_READY' });
-        } else if (nextStatus === 'DELIVERED') {
-          const reviewLink = user?.store?.googleReviewLink || user?.store?.google_review_link;
-          const msg = getGoogleReviewMessage({
-            customerName: order.customer_name,
-            storeName,
-            googleReviewLink: reviewLink,
-            customTemplate: templates?.GOOGLE_REVIEW,
-          });
-          sendWhatsApp({ phone: order.customer_phone, message: msg, label: 'Google Review Request', customerId: order.customer_id, messageType: 'GOOGLE_REVIEW' });
-        }
-      }
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Status transition failed');
     } finally {

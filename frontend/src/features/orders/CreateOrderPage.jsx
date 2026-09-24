@@ -1,12 +1,10 @@
+import { calculateBilling } from '../../../../shared/billing.mjs';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../services/api.js';
-import { useAuth } from '../auth/AuthContext.jsx';
-import { sendWhatsApp, getOrderPlacedGreetingMessage } from '../../lib/whatsapp.js';
 import { ArrowLeft, Plus, Trash2, ShoppingBag, AlertCircle } from 'lucide-react';
 
 export default function CreateOrderPage() {
-  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const preselectedCustomerId = searchParams.get('customerId');
   const navigate = useNavigate();
@@ -117,33 +115,16 @@ export default function CreateOrderPage() {
     }
   };
 
-  // Compute Subtotal, Taxable, CGST, SGST and Grand Total
-  const subtotal = items.reduce((sum, item) => {
-    const qty = parseInt(item.quantity, 10) || 0;
-    const price = parseFloat(item.unitPrice) || 0;
-    const disc = parseFloat(item.discount) || 0;
-    return sum + Math.max(0, qty * price - disc);
-  }, 0);
-
-  const totalTaxable = items.reduce((sum, item) => {
-    const qty = parseInt(item.quantity, 10) || 0;
-    const price = parseFloat(item.unitPrice) || 0;
-    const disc = parseFloat(item.discount) || 0;
-    const itemTotal = Math.max(0, qty * price - disc);
-    const rate = isGstBill ? (parseFloat(item.gstRate) || 0) : 0;
-    const taxable = rate > 0 ? itemTotal / (1 + rate / 100) : itemTotal;
-    return sum + taxable;
-  }, 0);
-
-  const totalTax = isGstBill ? subtotal - totalTaxable : 0;
-  const totalCgst = totalTax / 2;
-  const totalSgst = totalTax / 2;
-
-  const grandTotal = Math.max(0, subtotal - (parseFloat(orderDiscount) || 0));
+  let billing, billingError = '';
+  try { billing = calculateBilling(items, orderDiscount, isGstBill); }
+  catch (error) { billingError = error.message; }
+  const { subtotal = 0, totalTaxableValue: totalTaxable = 0, totalCgst = 0, totalSgst = 0, totalAmount: grandTotal = 0 } = billing || {};
+  const totalTax = totalCgst + totalSgst;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (billingError) { setError(billingError); return; }
 
     if (!selectedCustomerId) {
       setError('Please select a customer');
@@ -188,25 +169,6 @@ export default function CreateOrderPage() {
       const response = await api.post('/orders', payload);
       const createdOrder = response.data.data;
 
-      // Auto-send WhatsApp order confirmation silently in background
-      const customer = customers.find((c) => c.id === selectedCustomerId);
-      if (customer?.phone) {
-        const msg = getOrderPlacedGreetingMessage({
-          customerName: customer.full_name,
-          storeName: user?.store?.name || 'Optical Store',
-          orderNumber: createdOrder.order_number,
-          dueDate: createdOrder.due_date,
-        });
-
-        sendWhatsApp({
-          phone: customer.phone,
-          message: msg,
-          label: 'Order Placed Confirmation',
-          customerId: customer.id,
-          messageType: 'ORDER_PLACED',
-        }).catch((err) => console.warn('Background WhatsApp send failed:', err));
-      }
-
       navigate(`/orders/${createdOrder.id}`);
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Failed to create order');
@@ -217,6 +179,7 @@ export default function CreateOrderPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      <p className="text-sm">Select an inventory product to deduct stock. Custom lines are not stock-tracked.</p>
       <button
         onClick={() => navigate(-1)}
         className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#66746F] hover:text-[#202D2B] transition"
@@ -242,14 +205,14 @@ export default function CreateOrderPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form aria-label="Create order" onSubmit={handleSubmit} className="space-y-6">
         {/* Step 1: Customer & Prescription */}
         <div className="bg-[#FEFEFC] p-6 rounded-2xl border border-[#E2E7E3] shadow-sm space-y-4">
           <h2 className="font-bold text-[#202D2B] text-sm">1. Customer & Eye Power</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-[#202D2B] mb-1">Select Customer *</label>
-              <select
+              <label htmlFor="CreateOrderPage-field-0" className="block text-xs font-semibold text-[#202D2B] mb-1">Select Customer *</label>
+              <select id="CreateOrderPage-field-0"
                 required
                 value={selectedCustomerId}
                 onChange={(e) => setSelectedCustomerId(e.target.value)}
@@ -265,8 +228,8 @@ export default function CreateOrderPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#202D2B] mb-1">Link Prescription</label>
-              <select
+              <label htmlFor="CreateOrderPage-field-1" className="block text-xs font-semibold text-[#202D2B] mb-1">Link Prescription</label>
+              <select id="CreateOrderPage-field-1"
                 value={selectedPrescriptionId}
                 onChange={(e) => setSelectedPrescriptionId(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs text-[#202D2B] focus:ring-2 focus:ring-[#28766B]/30 focus:border-[#28766B] focus:outline-none bg-white"
@@ -328,8 +291,8 @@ export default function CreateOrderPage() {
                 >
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
                     <div className="md:col-span-2">
-                      <label className="block text-[10px] font-bold text-[#66746F] uppercase mb-1">Type</label>
-                      <select
+                      <label htmlFor={'CreateOrderPage-field-2-' + index} className="block text-[10px] font-bold text-[#66746F] uppercase mb-1">Type</label>
+                      <select id={'CreateOrderPage-field-2-' + index}
                         value={item.itemType}
                         onChange={(e) => {
                           const updated = [...items];
@@ -353,10 +316,10 @@ export default function CreateOrderPage() {
                     </div>
 
                     <div className="md:col-span-4 relative">
-                      <label className="block text-[10px] font-bold text-[#66746F] uppercase mb-1">
+                      <label htmlFor={'CreateOrderPage-field-3-' + index} className="block text-[10px] font-bold text-[#66746F] uppercase mb-1">
                         Description / Name (Auto-search Catalog)
                       </label>
-                      <input
+                      <input id={'CreateOrderPage-field-3-' + index}
                         type="text"
                         required
                         placeholder={`Type ${item.itemType.toLowerCase()} name...`}
@@ -405,8 +368,8 @@ export default function CreateOrderPage() {
                     </div>
 
                     <div className="md:col-span-2">
-                      <label className="block text-[10px] font-bold text-[#66746F] uppercase mb-1">HSN Code</label>
-                      <input
+                      <label htmlFor={'CreateOrderPage-field-4-' + index} className="block text-[10px] font-bold text-[#66746F] uppercase mb-1">HSN Code</label>
+                      <input id={'CreateOrderPage-field-4-' + index}
                         type="text"
                         placeholder="e.g. 9004"
                         value={item.hsnCode || ''}
@@ -421,8 +384,8 @@ export default function CreateOrderPage() {
 
                     {isGstBill && (
                       <div className="md:col-span-2">
-                        <label className="block text-[10px] font-bold text-[#66746F] uppercase mb-1">GST Rate</label>
-                        <select
+                        <label htmlFor={'CreateOrderPage-field-5-' + index} className="block text-[10px] font-bold text-[#66746F] uppercase mb-1">GST Rate</label>
+                        <select id={'CreateOrderPage-field-5-' + index}
                           value={item.gstRate}
                           onChange={(e) => {
                             const updated = [...items];
@@ -441,9 +404,9 @@ export default function CreateOrderPage() {
                     )}
 
                     <div className={isGstBill ? "md:col-span-2" : "md:col-span-4"}>
-                      <label className="block text-[10px] font-bold text-[#66746F] uppercase mb-1">Total Price (₹)</label>
+                      <label htmlFor={'CreateOrderPage-field-6-' + index} className="block text-[10px] font-bold text-[#66746F] uppercase mb-1">Total Price (₹)</label>
                       <div className="flex items-center gap-2">
-                        <input
+                        <input id={'CreateOrderPage-field-6-' + index}
                           type="number"
                           required
                           placeholder="0"
@@ -520,8 +483,8 @@ export default function CreateOrderPage() {
           <h2 className="font-bold text-[#202D2B] text-sm">3. Advance Payment & Due Date</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-[#202D2B] mb-1">Expected Delivery Date *</label>
-              <input
+              <label htmlFor="CreateOrderPage-field-7" className="block text-xs font-semibold text-[#202D2B] mb-1">Expected Delivery Date *</label>
+              <input id="CreateOrderPage-field-7"
                 type="date"
                 required
                 value={dueDate}
@@ -531,8 +494,8 @@ export default function CreateOrderPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#202D2B] mb-1">Advance Amount (₹)</label>
-              <input
+              <label htmlFor="CreateOrderPage-field-8" className="block text-xs font-semibold text-[#202D2B] mb-1">Advance Amount (₹)</label>
+              <input id="CreateOrderPage-field-8"
                 type="number"
                 placeholder="e.g. 1000"
                 value={advanceAmount}
@@ -542,8 +505,8 @@ export default function CreateOrderPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#202D2B] mb-1">Payment Method</label>
-              <select
+              <label htmlFor="CreateOrderPage-field-9" className="block text-xs font-semibold text-[#202D2B] mb-1">Payment Method</label>
+              <select id="CreateOrderPage-field-9"
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs text-[#202D2B] bg-white focus:outline-none"
@@ -558,8 +521,8 @@ export default function CreateOrderPage() {
 
           {paymentMethod !== 'CASH' && (
             <div>
-              <label className="block text-xs font-semibold text-[#202D2B] mb-1">Payment Reference / Txn ID</label>
-              <input
+              <label htmlFor="CreateOrderPage-field-10" className="block text-xs font-semibold text-[#202D2B] mb-1">Payment Reference / Txn ID</label>
+              <input id="CreateOrderPage-field-10"
                 type="text"
                 placeholder="e.g. UPI Ref / Cheque No."
                 value={paymentRef}
@@ -570,8 +533,8 @@ export default function CreateOrderPage() {
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-[#202D2B] mb-1">Order Notes</label>
-            <input
+            <label htmlFor="CreateOrderPage-field-11" className="block text-xs font-semibold text-[#202D2B] mb-1">Order Notes</label>
+            <input id="CreateOrderPage-field-11"
               type="text"
               placeholder="e.g. Needs delivery by Saturday afternoon"
               value={notes}

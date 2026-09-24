@@ -6,6 +6,7 @@ dotenv.config();
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(5000),
+  HOST: z.string().default('127.0.0.1'),
   DATABASE_URL: z.string().url({ message: 'DATABASE_URL must be a valid PostgreSQL connection string' }),
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
   JWT_ACCESS_SECRET: z

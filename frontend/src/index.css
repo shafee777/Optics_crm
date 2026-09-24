@@ -97,3 +97,5 @@
     display: none !important;
   }
 }
+/* Clear keyboard focus across custom controls. */
+:focus-visible { outline: 3px solid #28766B; outline-offset: 3px; }

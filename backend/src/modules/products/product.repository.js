@@ -1,3 +1,4 @@
+import { AppError } from '../../shared/errors/AppError.js';
 import { pool } from '../../config/database.js';
 
 export const productRepository = {
@@ -96,12 +97,13 @@ export const productRepository = {
   async adjustStock(storeId, id, adjustment) {
     const query = `
       UPDATE products
-      SET stock_quantity = GREATEST(0, stock_quantity + $3),
+      SET stock_quantity = stock_quantity + $3,
           updated_at = NOW()
-      WHERE store_id = $1 AND id = $2 AND archived_at IS NULL
+      WHERE store_id = $1 AND id = $2 AND archived_at IS NULL AND stock_quantity + $3 >= 0
       RETURNING *;
     `;
     const { rows } = await pool.query(query, [storeId, id, adjustment]);
+    if (!rows.length) throw new AppError('Insufficient stock or product unavailable', 409, 'INSUFFICIENT_STOCK');
     return rows[0];
   },
 

@@ -1,3 +1,4 @@
+import { customerRepository } from '../customers/customer.repository.js';
 import { messageRepository } from './message.repository.js';
 import { AppError } from '../../shared/errors/AppError.js';
 
@@ -9,6 +10,9 @@ export const messageController = {
         throw new AppError('customerId and messageType are required', 400, 'MISSING_FIELDS');
       }
 
+      if (!await customerRepository.findById(req.user.storeId, customerId)) {
+        throw new AppError('Customer not found in this store', 404, 'CUSTOMER_NOT_FOUND');
+      }
       const log = await messageRepository.logMessage(
         req.user.storeId,
         customerId,
