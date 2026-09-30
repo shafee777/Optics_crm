@@ -3,13 +3,17 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api.js';
 import OpticalGrid from '../prescriptions/OpticalGrid.jsx';
 import NewPrescriptionModal from '../prescriptions/NewPrescriptionModal.jsx';
+import PrintPrescription from '../prescriptions/PrintPrescription.jsx';
+import CustomerFormModal from './CustomerFormModal.jsx';
 import OrderStatusBadge from '../orders/OrderStatusBadge.jsx';
-import { MessageSquare, UserCheck } from 'lucide-react';
-import { sendWhatsApp, getGreetingMessage, getAnnualCheckupMessage } from '../../lib/whatsapp.js';
+import { MessageSquare, UserCheck, Edit2, FileDown, Share2, Printer } from 'lucide-react';
+import { sendWhatsApp, sharePdfOnWhatsApp, getRichPrescriptionWhatsAppMessage, getGreetingMessage, getAnnualCheckupMessage } from '../../lib/whatsapp.js';
+import { downloadPrescriptionPdf } from '../../lib/pdfGenerator.js';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { ArrowLeft, Phone,MapPin,Calendar,FileText,ShoppingBag,Hash,PlusCircle,Clock,ArrowRight} from 'lucide-react';
+import { ArrowLeft, Phone, MapPin, Calendar, FileText, ShoppingBag, Hash, PlusCircle, Clock, ArrowRight } from 'lucide-react';
 
 export default function CustomerDetailsPage() {
+  const { user } = useAuth();
   const { id } = useParams();
   const navigate = useNavigate();
   const [customer, setCustomer] = useState(null);
@@ -18,6 +22,9 @@ export default function CustomerDetailsPage() {
   const [messageLogs, setMessageLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isPrescriptionModalOpen, setIsPrescriptionModalOpen] = useState(false);
+  const [editingPrescription, setEditingPrescription] = useState(null);
+  const [printingPrescription, setPrintingPrescription] = useState(null);
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
 
   const fetchCustomerData = useCallback(async () => {
     if (!id) return;
@@ -57,6 +64,19 @@ export default function CustomerDetailsPage() {
       </div>
     );
   }
+
+  // Dedicated Print / Save PDF View for Prescription
+  if (printingPrescription) {
+    return (
+      <PrintPrescription
+        prescription={printingPrescription}
+        customer={customer}
+        onBack={() => setPrintingPrescription(null)}
+      />
+    );
+  }
+
+  const templates = user?.store?.whatsapp_templates || user?.store?.whatsappTemplates;
 
   return (
     <div className="space-y-6">
@@ -104,9 +124,20 @@ export default function CustomerDetailsPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
-            onClick={() => setIsPrescriptionModalOpen(true)}
+            onClick={() => setIsCustomerModalOpen(true)}
+            className="px-3.5 py-2 bg-[#FEFEFC] hover:bg-[#F5F7F3] text-[#202D2B] rounded-xl text-xs font-semibold border border-[#E2E7E3] transition flex items-center gap-1.5 shadow-sm"
+            title="Edit Customer Information"
+          >
+            <Edit2 className="w-3.5 h-3.5 text-[#28766B]" />
+            Edit Profile
+          </button>
+          <button
+            onClick={() => {
+              setEditingPrescription(null);
+              setIsPrescriptionModalOpen(true);
+            }}
             className="px-3.5 py-2 bg-[#EBF3F1] hover:bg-[#DDEAE7] text-[#28766B] rounded-xl text-xs font-semibold border border-[#28766B]/20 transition flex items-center gap-1.5"
           >
             <PlusCircle className="w-4 h-4" />
@@ -121,39 +152,41 @@ export default function CustomerDetailsPage() {
           </button>
         </div>
       </div>
-      <div className="flex gap-2">
-  {customer.phone && (
-    <>
-      <button
-        onClick={() => {
-          const msg = getGreetingMessage({
-            customerName: customer.full_name,
-            storeName: user?.store?.name || 'Optical Store',
-          });
-          sendWhatsApp({ phone: customer.phone, message: msg, label: 'Welcome Greeting', customerId: customer.id, messageType: 'GREETING' });
-        }}
-        className="px-3 py-1.5 bg-[#FEFEFC] hover:bg-[#F5F7F3] text-[#28766B] text-xs font-semibold rounded-xl border border-[#E2E7E3] flex items-center gap-1 transition shadow-sm"
-      >
-        <MessageSquare className="w-3.5 h-3.5" />
-        Send Welcome Greeting
-      </button>
-      <button
-        onClick={() => {
-          const msg = getAnnualCheckupMessage({
-            customerName: customer.full_name,
-            storeName: user?.store?.name || 'Optical Store',
-            lastTestDate: prescriptions[0]?.tested_at,
-          });
-          sendWhatsApp({ phone: customer.phone, message: msg, label: 'Annual Eye Checkup Recall', customerId: customer.id, messageType: 'ANNUAL_CHECKUP' });
-        }}
-        className="px-3 py-1.5 bg-[#FEFEFC] hover:bg-[#F5F7F3] text-amber-700 text-xs font-semibold rounded-xl border border-[#E2E7E3] flex items-center gap-1 transition shadow-sm"
-      >
-        <UserCheck className="w-3.5 h-3.5" />
-        Send 1-Year Checkup Recall
-      </button>
-    </>
-  )}
-</div>
+      <div className="flex flex-wrap gap-2">
+        {customer.phone && (
+          <>
+            <button
+              onClick={() => {
+                const msg = getGreetingMessage({
+                  customerName: customer.full_name,
+                  storeName: user?.store?.name || 'Optical Store',
+                  customTemplate: templates?.GREETING,
+                });
+                sendWhatsApp({ phone: customer.phone, message: msg, label: 'Welcome Greeting', customerId: customer.id, messageType: 'GREETING' });
+              }}
+              className="px-3 py-1.5 bg-[#FEFEFC] hover:bg-[#F5F7F3] text-[#28766B] text-xs font-semibold rounded-xl border border-[#E2E7E3] flex items-center gap-1.5 transition shadow-sm"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              Send Welcome Greeting
+            </button>
+            <button
+              onClick={() => {
+                const msg = getAnnualCheckupMessage({
+                  customerName: customer.full_name,
+                  storeName: user?.store?.name || 'Optical Store',
+                  lastTestDate: prescriptions[0]?.tested_at,
+                  customTemplate: templates?.ANNUAL_CHECKUP,
+                });
+                sendWhatsApp({ phone: customer.phone, message: msg, label: 'Annual Eye Checkup Recall', customerId: customer.id, messageType: 'ANNUAL_CHECKUP' });
+              }}
+              className="px-3 py-1.5 bg-[#FEFEFC] hover:bg-[#F5F7F3] text-amber-700 text-xs font-semibold rounded-xl border border-[#E2E7E3] flex items-center gap-1.5 transition shadow-sm"
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              Send 1-Year Checkup Recall
+            </button>
+          </>
+        )}
+      </div>
 
       {/* Main Grid: Eye Test History & Orders */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -166,7 +199,10 @@ export default function CustomerDetailsPage() {
                 Eye Test & Prescription History ({prescriptions.length})
               </h2>
               <button
-                onClick={() => setIsPrescriptionModalOpen(true)}
+                onClick={() => {
+                  setEditingPrescription(null);
+                  setIsPrescriptionModalOpen(true);
+                }}
                 className="text-xs font-semibold text-[#28766B] hover:underline"
               >
                 + Record Test
@@ -209,20 +245,85 @@ export default function CustomerDetailsPage() {
                           })}
                         </span>
                       </div>
-                      {p.tested_by_name && (
-                        <span className="text-[#66746F]">
-                          Tested by: <strong className="text-[#202D2B]">{p.tested_by_name}</strong>
-                        </span>
-                      )}
+                      
+                      <div className="flex items-center gap-3">
+                        {p.tested_by_name && (
+                          <span className="text-[#66746F]">
+                            Tested by: <strong className="text-[#202D2B]">{p.tested_by_name}</strong>
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingPrescription(p);
+                            setIsPrescriptionModalOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[#28766B] hover:bg-[#EBF3F1] rounded-lg border border-[#28766B]/20 transition"
+                          title="Edit this eye test values"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                          Edit Test
+                        </button>
+                      </div>
                     </div>
 
                     <OpticalGrid prescription={p} />
-                    <button type="button" className="text-sm font-semibold underline" onClick={() => sendWhatsApp({ phone: customer.phone, message:
-                      [user?.store?.name || 'Optical Store', 'Prescription for ' + customer.full_name,
-                       'Test date: ' + new Date(p.tested_at).toLocaleDateString(),
-                       'Right: SPH ' + (p.r_sph ?? '—') + ', CYL ' + (p.r_cyl ?? '—') + ', AXIS ' + (p.r_axis ?? '—') + ', ADD ' + (p.r_add ?? '—'),
-                       'Left: SPH ' + (p.l_sph ?? '—') + ', CYL ' + (p.l_cyl ?? '—') + ', AXIS ' + (p.l_axis ?? '—') + ', ADD ' + (p.l_add ?? '—'),
-                       'PD: ' + (p.pd ?? 'Not recorded')].join('\n') })}>Share prescription via WhatsApp</button>
+                    
+                    <div className="pt-2 flex items-center gap-2 flex-wrap">
+                      {/* Print Rx / Save as PDF */}
+                      <button
+                        type="button"
+                        onClick={() => setPrintingPrescription(p)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#203A36] hover:bg-[#182C29] text-white text-xs font-semibold rounded-xl shadow-xs transition"
+                        title="Open clean, print-ready prescription with 1-click Print or Save as PDF"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        Print Rx / Save as PDF
+                      </button>
+
+                      {/* Share Prescription via WhatsApp */}
+                      {customer.phone && (
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#28766B] hover:bg-[#1E5C53] text-white text-xs font-semibold rounded-xl shadow-xs transition"
+                          onClick={() => {
+                            const msg = getRichPrescriptionWhatsAppMessage({
+                              customer,
+                              store: user?.store,
+                              prescription: p,
+                            });
+                            sendWhatsApp({
+                              phone: customer.phone,
+                              message: msg,
+                              label: 'Prescription Details',
+                              customerId: customer.id,
+                              messageType: 'PRESCRIPTION',
+                            });
+                          }}
+                          title="Sends complete prescription refraction powers directly into WhatsApp message"
+                        >
+                          <Share2 className="w-3.5 h-3.5" />
+                          Send Rx via WhatsApp
+                        </button>
+                      )}
+
+                      {/* Download PDF */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          downloadPrescriptionPdf({
+                            prescription: p,
+                            customer,
+                            store: user?.store,
+                          });
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F5F7F3] hover:bg-[#E2E7E3] text-[#202D2B] text-xs font-semibold rounded-xl border border-[#E2E7E3] transition"
+                        title="Download prescription PDF file"
+                      >
+                        <FileDown className="w-3.5 h-3.5 text-[#66746F]" />
+                        Download PDF
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -301,12 +402,27 @@ export default function CustomerDetailsPage() {
         </div>
       </div>
 
-      {/* New Prescription Modal */}
+      {/* New / Edit Prescription Modal */}
       <NewPrescriptionModal
         isOpen={isPrescriptionModalOpen}
-        onClose={() => setIsPrescriptionModalOpen(false)}
+        onClose={() => {
+          setIsPrescriptionModalOpen(false);
+          setEditingPrescription(null);
+        }}
         customerId={id}
-        onPrescriptionCreated={fetchCustomerData}
+        prescription={editingPrescription}
+        onPrescriptionSaved={fetchCustomerData}
+      />
+
+      {/* Edit Customer Profile Modal */}
+      <CustomerFormModal
+        isOpen={isCustomerModalOpen}
+        onClose={() => setIsCustomerModalOpen(false)}
+        customer={customer}
+        onCustomerSaved={(updated) => {
+          setCustomer(updated);
+          fetchCustomerData();
+        }}
       />
     </div>
   );

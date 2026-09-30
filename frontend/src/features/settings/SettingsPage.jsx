@@ -18,12 +18,16 @@ import {
   CheckCircle2, 
   AlertCircle,
   Phone,
+  Mail,
   MapPin,
   Star,
   Shield,
   Download,
   Database,
-  MessageSquare
+  MessageSquare,
+  Image as ImageIcon,
+  Upload,
+  Trash2
 } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -58,9 +62,11 @@ export default function SettingsPage() {
   const [storeData, setStoreData] = useState({
     name: '',
     phone: '',
+    email: '',
     address: '',
     gstin: '',
     googleReviewLink: '',
+    logoUrl: '',
     currency: 'INR',
     timezone: 'Asia/Kolkata',
   });
@@ -84,9 +90,11 @@ export default function SettingsPage() {
       setStoreData({
         name: s.name || '',
         phone: s.phone || '',
+        email: s.email || '',
         address: s.address || '',
         gstin: s.gstin || '',
         googleReviewLink: s.googleReviewLink || '',
+        logoUrl: s.logoUrl || '',
         currency: s.currency || 'INR',
         timezone: s.timezone || 'Asia/Kolkata',
       });
@@ -119,6 +127,31 @@ export default function SettingsPage() {
     }
   }, [fetchStore, fetchStaff, isOwner]);
 
+  const handleLogoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please choose an image file (PNG, JPG, or WebP).');
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Logo image size must be under 2MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setStoreData(prev => ({ ...prev, logoUrl: event.target.result }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveLogo = () => {
+    setStoreData(prev => ({ ...prev, logoUrl: '' }));
+  };
+
   // Handle store form submit
   const handleSaveStore = async (e) => {
     e.preventDefault();
@@ -135,8 +168,10 @@ export default function SettingsPage() {
       updateStore({
         name: res.data.data.name,
         phone: res.data.data.phone,
+        email: res.data.data.email,
         address: res.data.data.address,
         gstin: res.data.data.gstin,
+        logoUrl: res.data.data.logoUrl,
         googleReviewLink: res.data.data.googleReviewLink,
         google_review_link: res.data.data.googleReviewLink,
         currency: res.data.data.currency,
@@ -317,6 +352,26 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
+                  <label htmlFor="SettingsPage-field-email" className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
+                    Business Email
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#66746F]">
+                      <Mail className="w-4 h-4" />
+                    </div>
+                    <input id="SettingsPage-field-email"
+                      type="email"
+                      disabled={!isOwner}
+                      value={storeData.email}
+                      onChange={(e) => setStoreData({ ...storeData, email: e.target.value })}
+                      placeholder="info@visioncareopticals.com"
+                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-[#E2E7E3] text-sm bg-[#FEFEFC] text-[#202D2B] focus:outline-none focus:border-[#28766B] focus:ring-1 focus:ring-[#28766B] transition disabled:bg-[#F5F7F3] disabled:text-[#66746F]"
+                    />
+                  </div>
+                  <span className="text-[11px] text-[#66746F] mt-0.5 block">Printed on invoice headers</span>
+                </div>
+
+                <div>
                   <label htmlFor="SettingsPage-field-2" className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
                     Store GSTIN / Tax ID
                   </label>
@@ -329,6 +384,60 @@ export default function SettingsPage() {
                     className="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E7E3] text-sm font-mono bg-[#FEFEFC] text-[#202D2B] focus:outline-none focus:border-[#28766B] focus:ring-1 focus:ring-[#28766B] transition disabled:bg-[#F5F7F3] disabled:text-[#66746F] uppercase"
                   />
                   <span className="text-[11px] text-[#66746F] mt-0.5 block">15-digit GST Number printed on Tax Invoices</span>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
+                    Store Brand Logo (Printed on Invoices & Prescriptions)
+                  </label>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-xl border border-[#E2E7E3] bg-[#F5F7F3]/50">
+                    {storeData.logoUrl ? (
+                      <div className="relative w-24 h-16 bg-white rounded-lg border border-[#E2E7E3] p-1 flex items-center justify-center shrink-0">
+                        <img
+                          src={storeData.logoUrl}
+                          alt="Store Logo"
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-24 h-16 bg-white rounded-lg border border-dashed border-[#CCD6D2] flex flex-col items-center justify-center text-[#66746F] shrink-0">
+                        <ImageIcon className="w-6 h-6 stroke-1 mb-0.5" />
+                        <span className="text-[10px]">No Logo</span>
+                      </div>
+                    )}
+                    <div className="flex-1 space-y-1.5">
+                      <p className="text-xs text-[#202D2B] font-medium">
+                        Upload your optical dispensary brand mark or header crest
+                      </p>
+                      <p className="text-[11px] text-[#66746F]">
+                        Supports PNG, JPG, or WebP (max 2MB). Automatically rendered on PDF invoices & prescriptions.
+                      </p>
+                      {isOwner && (
+                        <div className="flex items-center gap-2 pt-1">
+                          <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-neutral-50 text-[#203A36] border border-[#CCD6D2] rounded-lg text-xs font-semibold shadow-2xs transition">
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>{storeData.logoUrl ? 'Change Logo' : 'Upload Logo'}</span>
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              className="hidden"
+                              onChange={handleLogoUpload}
+                            />
+                          </label>
+                          {storeData.logoUrl && (
+                            <button
+                              type="button"
+                              onClick={handleRemoveLogo}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg text-xs font-semibold transition"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Remove</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="sm:col-span-2">

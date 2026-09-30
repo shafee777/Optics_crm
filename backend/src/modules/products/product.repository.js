@@ -1,16 +1,16 @@
 import { AppError } from '../../shared/errors/AppError.js';
-import { pool } from '../../config/database.js';
+import { query } from '../../config/database.js';
 
 export const productRepository = {
   async create({ storeId, itemType, brand, modelCode, name, description, costPrice, sellingPrice, stockQuantity, minStockAlert, hsnCode, gstRate }) {
-    const query = `
+    const sql = `
       INSERT INTO products (
         store_id, item_type, brand, model_code, name, description, cost_price, selling_price, stock_quantity, min_stock_alert, hsn_code, gst_rate
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *;
     `;
     const values = [storeId, itemType, brand || null, modelCode || null, name, description || null, costPrice || 0, sellingPrice || 0, stockQuantity || 0, minStockAlert || 3, hsnCode || null, gstRate ?? 12.00];
-    const { rows } = await pool.query(query, values);
+    const { rows } = await query(sql, values);
     return rows[0];
   },
 
@@ -35,7 +35,7 @@ export const productRepository = {
       whereClause += ` AND stock_quantity <= min_stock_alert`;
     }
 
-    const query = `
+    const sql = `
       SELECT * FROM products
       WHERE ${whereClause}
       ORDER BY updated_at DESC
@@ -43,13 +43,13 @@ export const productRepository = {
     `;
     values.push(limit, offset);
 
-    const { rows } = await pool.query(query, values);
+    const { rows } = await query(sql, values);
     return rows;
   },
 
   async findById(storeId, id) {
-    const query = `SELECT * FROM products WHERE store_id = $1 AND id = $2 AND archived_at IS NULL;`;
-    const { rows } = await pool.query(query, [storeId, id]);
+    const sql = `SELECT * FROM products WHERE store_id = $1 AND id = $2 AND archived_at IS NULL;`;
+    const { rows } = await query(sql, [storeId, id]);
     return rows[0] || null;
   },
 
@@ -80,41 +80,47 @@ export const productRepository = {
       }
     }
 
+    if (data.stockQuantity === undefined) {
+      fields.push(`stock_quantity = GREATEST(stock_quantity, 0)`);
+    }
+
     if (fields.length === 0) return this.findById(storeId, id);
 
     fields.push(`updated_at = NOW()`);
 
-    const query = `
+    const sql = `
       UPDATE products
       SET ${fields.join(', ')}
       WHERE store_id = $1 AND id = $2 AND archived_at IS NULL
       RETURNING *;
     `;
-    const { rows } = await pool.query(query, values);
+    const { rows } = await query(sql, values);
     return rows[0];
   },
 
   async adjustStock(storeId, id, adjustment) {
-    const query = `
+    const sql = `
       UPDATE products
       SET stock_quantity = stock_quantity + $3,
           updated_at = NOW()
       WHERE store_id = $1 AND id = $2 AND archived_at IS NULL AND stock_quantity + $3 >= 0
       RETURNING *;
     `;
-    const { rows } = await pool.query(query, [storeId, id, adjustment]);
+    const { rows } = await query(sql, [storeId, id, adjustment]);
     if (!rows.length) throw new AppError('Insufficient stock or product unavailable', 409, 'INSUFFICIENT_STOCK');
     return rows[0];
   },
 
   async archive(storeId, id) {
-    const query = `
+    const sql = `
       UPDATE products
-      SET archived_at = NOW()
-      WHERE store_id = $1 AND id = $2
-      RETURNING id;
+      SET archived_at = NOW(),
+          stock_quantity = GREATEST(stock_quantity, 0),
+          updated_at = NOW()
+      WHERE store_id = $1 AND id = $2 AND archived_at IS NULL
+      RETURNING id, name, archived_at;
     `;
-    const { rows } = await pool.query(query, [storeId, id]);
-    return rows[0];
+    const { rows } = await query(sql, [storeId, id]);
+    return rows[0] || null;
   },
 };

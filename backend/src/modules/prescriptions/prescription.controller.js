@@ -32,4 +32,21 @@ export const prescriptionController = {
       next(error);
     }
   },
+
+  async update(req, res, next) {
+    try {
+      const prescription = await prescriptionService.updatePrescription(
+        req.user.storeId,
+        req.params.customerId,
+        req.params.id,
+        req.body
+      );
+      res.status(200).json({
+        success: true,
+        data: prescription,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
 };

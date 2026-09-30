@@ -119,31 +119,55 @@ export const customerRepository = {
   },
 
   async update(storeId, customerId, data) {
+    const fields = [];
+    const values = [storeId, customerId];
+    let idx = 3;
+
+    if (data.fullName !== undefined) {
+      fields.push(`full_name = $${idx++}`);
+      values.push(data.fullName.trim());
+    }
+    if (data.phone !== undefined) {
+      fields.push(`phone = $${idx++}`);
+      values.push(data.phone?.trim() || null);
+    }
+    if (data.email !== undefined) {
+      fields.push(`email = $${idx++}`);
+      values.push(data.email?.trim() || null);
+    }
+    if (data.gender !== undefined) {
+      fields.push(`gender = $${idx++}`);
+      values.push(data.gender || null);
+    }
+    if (data.age !== undefined) {
+      fields.push(`age = $${idx++}`);
+      values.push(data.age ?? null);
+    }
+    if (data.address !== undefined) {
+      fields.push(`address = $${idx++}`);
+      values.push(data.address?.trim() || null);
+    }
+    if (data.notes !== undefined) {
+      fields.push(`notes = $${idx++}`);
+      values.push(data.notes?.trim() || null);
+    }
+    if (data.customerCode !== undefined) {
+      fields.push(`customer_code = $${idx++}`);
+      values.push(data.customerCode.trim());
+    }
+
+    if (fields.length === 0) {
+      return this.findById(storeId, customerId);
+    }
+
+    fields.push(`updated_at = NOW()`);
+
     const sql = `
       UPDATE customers
-      SET 
-        full_name = COALESCE($3, full_name),
-        phone = COALESCE($4, phone),
-        email = COALESCE($5, email),
-        gender = COALESCE($6, gender),
-        age = COALESCE($7, age),
-        address = COALESCE($8, address),
-        notes = COALESCE($9, notes),
-        updated_at = NOW()
+      SET ${fields.join(', ')}
       WHERE store_id = $1 AND id = $2 AND archived_at IS NULL
       RETURNING *;
     `;
-    const values = [
-      storeId,
-      customerId,
-      data.fullName,
-      data.phone,
-      data.email !== undefined ? data.email || null : null,
-      data.gender !== undefined ? data.gender || null : null,
-      data.age !== undefined ? data.age : null,
-      data.address !== undefined ? data.address || null : null,
-      data.notes !== undefined ? data.notes || null : null,
-    ];
     const res = await query(sql, values);
     return res.rows[0] || null;
   },

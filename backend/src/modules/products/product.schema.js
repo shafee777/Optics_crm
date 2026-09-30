@@ -35,9 +35,15 @@ export const updateProductSchema = z.object({
   body: createProductSchema.shape.body.partial(),
 });
 
+export const productIdSchema = z.object({
+  params: z.object({
+    id: z.string().uuid('Invalid product ID format'),
+  }),
+});
+
 export const adjustStockSchema = z.object({
   params: z.object({
-    id: z.string().uuid(),
+    id: z.string().uuid('Invalid product ID format'),
   }),
   body: z.object({
     adjustment: z.coerce.number().int(),

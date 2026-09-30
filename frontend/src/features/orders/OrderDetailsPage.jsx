@@ -4,7 +4,8 @@ import api from '../../services/api.js';
 import OrderStatusBadge from './OrderStatusBadge.jsx';
 import RecordPaymentModal from '../payments/RecordPaymentModal.jsx';
 import PrintOrderInvoice from './PrintOrderInvoice.jsx';
-import { sendWhatsApp, getOrderReadyMessage, getGoogleReviewMessage } from '../../lib/whatsapp.js';
+import { sendWhatsApp, sharePdfOnWhatsApp, getRichOrderWhatsAppMessage, showBanner, getOrderReadyMessage, getGoogleReviewMessage } from '../../lib/whatsapp.js';
+import { downloadInvoicePdf, downloadBillAndPrescriptionPdf } from '../../lib/pdfGenerator.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { SkeletonCard, SkeletonTable } from '../../components/common/Skeleton.jsx';
 
@@ -18,8 +19,11 @@ import {
   IndianRupee,
   Plus,
   Printer,
+  FileDown,
+  Share2,
   MessageSquare,
-  Star
+  Star,
+  FileText
 } from 'lucide-react';
 
 export default function OrderDetailsPage() {
@@ -60,6 +64,80 @@ export default function OrderDetailsPage() {
   useEffect(() => {
     fetchOrder();
   }, [fetchOrder]);
+
+  const handleDownloadBillAndRxPdf = () => {
+    downloadBillAndPrescriptionPdf({
+      order,
+      customer: {
+        name: order.customer_name,
+        phone: order.customer_phone,
+        customer_code: order.customer_code,
+        address: order.customer_address,
+      },
+      store: user?.store,
+      items: order.items,
+      payments: order.payments,
+      prescription: linkedPrescription,
+    });
+  };
+
+  const handleDownloadInvoicePdf = () => {
+    downloadInvoicePdf({
+      order,
+      customer: {
+        name: order.customer_name,
+        phone: order.customer_phone,
+        customer_code: order.customer_code,
+        address: order.customer_address,
+      },
+      store: user?.store,
+      items: order.items,
+      payments: order.payments,
+    });
+  };
+
+  const handleShareOnWhatsApp = (withDownload = false) => {
+    const richMsg = getRichOrderWhatsAppMessage({
+      order,
+      store: user?.store,
+      prescription: linkedPrescription,
+    });
+
+    if (withDownload) {
+      const filename = linkedPrescription
+        ? downloadBillAndPrescriptionPdf({
+            order,
+            customer: {
+              name: order.customer_name,
+              phone: order.customer_phone,
+              customer_code: order.customer_code,
+              address: order.customer_address,
+            },
+            store: user?.store,
+            items: order.items,
+            payments: order.payments,
+            prescription: linkedPrescription,
+          })
+        : downloadInvoicePdf({
+            order,
+            customer: {
+              name: order.customer_name,
+              phone: order.customer_phone,
+              customer_code: order.customer_code,
+              address: order.customer_address,
+            },
+            store: user?.store,
+            items: order.items,
+            payments: order.payments,
+          });
+
+      sendWhatsApp({ phone: order.customer_phone, message: richMsg });
+      showBanner(`📄 PDF "${filename}" saved to Downloads! WhatsApp draft opened with complete bill & prescription details.`, 'success');
+    } else {
+      sendWhatsApp({ phone: order.customer_phone, message: richMsg });
+      showBanner(`WhatsApp draft opened with full bill, power refraction & payment breakdown!`, 'success');
+    }
+  };
 
   const handleStatusTransition = async (nextStatus) => {
     if (nextStatus === 'DELIVERED' && order.balance_due > 0) {
@@ -152,14 +230,26 @@ export default function OrderDetailsPage() {
           </p>
         </div>
 
-        {/* Action Controls & Print Toggle */}
+        {/* Action Controls & Print / PDF Toggle */}
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Dedicated In-browser Print View / Save PDF */}
           <button
             onClick={() => setShowPrintView(true)}
-            className="px-3.5 py-2 bg-[#F5F7F3] hover:bg-[#E2E7E3] text-[#202D2B] text-xs font-semibold rounded-xl border border-[#E2E7E3] transition flex items-center gap-1.5"
+            className="px-3.5 py-2 bg-[#203A36] hover:bg-[#182C29] text-white text-xs font-semibold rounded-xl shadow-xs transition flex items-center gap-1.5"
+            title="Open clean, print-ready invoice with 1-click Print or Save as PDF"
           >
-            <Printer className="w-4 h-4 text-[#66746F]" />
-            Print Invoice
+            <Printer className="w-4 h-4" />
+            Print Invoice / Save as PDF
+          </button>
+
+          {/* Download Bill + Rx PDF */}
+          <button
+            onClick={handleDownloadBillAndRxPdf}
+            title={linkedPrescription ? 'Download print-ready Bill & Prescription PDF' : 'Download Invoice PDF (no prescription linked)'}
+            className="px-3 py-2 bg-[#F5F7F3] hover:bg-[#E2E7E3] text-[#202D2B] text-xs font-semibold rounded-xl border border-[#E2E7E3] transition flex items-center gap-1.5"
+          >
+            <FileDown className="w-4 h-4 text-[#66746F]" />
+            {linkedPrescription ? 'Download Bill+Rx PDF' : 'Download Invoice PDF'}
           </button>
 
           {order.status === 'PENDING' && (
@@ -329,44 +419,78 @@ export default function OrderDetailsPage() {
           </div>
         </div>
       </div>
-      {/* WhatsApp Quick Notification Buttons */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {order.customer_phone && (
-          <>
-            {/* Ready for pickup WhatsApp */}
-            <button
-              onClick={() => {
-                const msg = getOrderReadyMessage({
-                  customerName: order.customer_name,
-                  storeName: user?.store?.name || 'Optical Store',
-                  orderNumber: order.order_number,
-                });
-                sendWhatsApp({ phone: order.customer_phone, message: msg, label: 'Order Ready for Pickup', customerId: order.customer_id, messageType: 'ORDER_READY' });
-              }}
-              className="px-3.5 py-2 bg-[#FEFEFC] hover:bg-[#F5F7F3] text-[#28766B] text-xs font-semibold rounded-xl border border-[#E2E7E3] shadow-sm transition flex items-center gap-1.5"
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-[#28766B]" />
-              Send: Ready for Pickup
-            </button>
+      {/* WhatsApp Quick Notification & PDF Sharing Buttons */}
+      <div className="bg-[#FEFEFC] p-4 rounded-2xl border border-[#E2E7E3] shadow-xs space-y-2.5">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-[#202D2B] flex items-center gap-1.5">
+            <MessageSquare className="w-4 h-4 text-[#28766B]" />
+            WhatsApp Actions & PDF Sharing
+          </span>
+          <span className="text-[11px] text-[#66746F]">
+            Instant WhatsApp summary & optional PDF download
+          </span>
+        </div>
 
-            {/* Google Review & Feedback WhatsApp */}
-            <button
-              onClick={() => {
-                const reviewLink = user?.store?.googleReviewLink || user?.store?.google_review_link || 'https://g.page/r/your-shop-review';
-                const msg = getGoogleReviewMessage({
-                  customerName: order.customer_name,
-                  storeName: user?.store?.name || 'Optical Store',
-                  googleReviewLink: reviewLink,
-                });
-                sendWhatsApp({ phone: order.customer_phone, message: msg, label: 'Google Review Request', customerId: order.customer_id, messageType: 'GOOGLE_REVIEW' });
-              }}
-              className="px-3.5 py-2 bg-[#FEFEFC] hover:bg-[#F5F7F3] text-amber-700 text-xs font-semibold rounded-xl border border-[#E2E7E3] shadow-sm transition flex items-center gap-1.5"
-            >
-              <Star className="w-3.5 h-3.5 text-amber-600" />
-              Send: Google Rating & Feedback
-            </button>
-          </>
-        )}
+        <div className="flex items-center gap-2 flex-wrap pt-1">
+          {order.customer_phone ? (
+            <>
+              {/* Send Bill details directly via WhatsApp */}
+              <button
+                onClick={() => handleShareOnWhatsApp(false)}
+                className="px-3.5 py-2 bg-[#28766B] hover:bg-[#1E5C53] text-white text-xs font-semibold rounded-xl shadow-xs transition flex items-center gap-1.5"
+                title="Sends complete bill, eyeglass powers, and payment balance directly into WhatsApp"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                Send Bill via WhatsApp
+              </button>
+
+              {/* Share with PDF download */}
+              <button
+                onClick={() => handleShareOnWhatsApp(true)}
+                className="px-3 py-2 bg-[#FEFEFC] hover:bg-[#F5F7F3] text-[#202D2B] text-xs font-semibold rounded-xl border border-[#E2E7E3] shadow-xs transition flex items-center gap-1.5"
+                title="Saves PDF file to your Downloads and opens WhatsApp draft"
+              >
+                <FileDown className="w-3.5 h-3.5 text-[#28766B]" />
+                Share + Download PDF
+              </button>
+
+              {/* Ready for pickup WhatsApp */}
+              <button
+                onClick={() => {
+                  const msg = getOrderReadyMessage({
+                    customerName: order.customer_name,
+                    storeName: user?.store?.name || 'Optical Store',
+                    orderNumber: order.order_number,
+                  });
+                  sendWhatsApp({ phone: order.customer_phone, message: msg, label: 'Order Ready for Pickup', customerId: order.customer_id, messageType: 'ORDER_READY' });
+                }}
+                className="px-3.5 py-2 bg-[#FEFEFC] hover:bg-[#F5F7F3] text-[#28766B] text-xs font-semibold rounded-xl border border-[#E2E7E3] shadow-xs transition flex items-center gap-1.5"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-[#28766B]" />
+                Send: Ready for Pickup
+              </button>
+
+              {/* Google Review & Feedback WhatsApp */}
+              <button
+                onClick={() => {
+                  const reviewLink = user?.store?.googleReviewLink || user?.store?.google_review_link || 'https://g.page/r/your-shop-review';
+                  const msg = getGoogleReviewMessage({
+                    customerName: order.customer_name,
+                    storeName: user?.store?.name || 'Optical Store',
+                    googleReviewLink: reviewLink,
+                  });
+                  sendWhatsApp({ phone: order.customer_phone, message: msg, label: 'Google Review Request', customerId: order.customer_id, messageType: 'GOOGLE_REVIEW' });
+                }}
+                className="px-3.5 py-2 bg-[#FEFEFC] hover:bg-[#F5F7F3] text-amber-700 text-xs font-semibold rounded-xl border border-[#E2E7E3] shadow-xs transition flex items-center gap-1.5"
+              >
+                <Star className="w-3.5 h-3.5 text-amber-600" />
+                Send: Google Review Link
+              </button>
+            </>
+          ) : (
+            <span className="text-xs text-[#66746F] italic">Customer phone number not available for WhatsApp.</span>
+          )}
+        </div>
       </div>
 
       {/* Record Payment Modal */}

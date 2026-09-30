@@ -7,9 +7,11 @@ export const storeRepository = {
         id, 
         name, 
         phone, 
+        email,
         address, 
         google_review_link, 
         gstin,
+        logo_url,
         whatsapp_templates,
         whatsapp_config,
         currency, 
@@ -36,6 +38,10 @@ export const storeRepository = {
       fields.push(`phone = $${idx++}`);
       values.push(data.phone);
     }
+    if (data.email !== undefined) {
+      fields.push(`email = $${idx++}`);
+      values.push(data.email);
+    }
     if (data.address !== undefined) {
       fields.push(`address = $${idx++}`);
       values.push(data.address);
@@ -47,6 +53,10 @@ export const storeRepository = {
     if (data.gstin !== undefined) {
       fields.push(`gstin = $${idx++}`);
       values.push(data.gstin);
+    }
+    if (data.logoUrl !== undefined) {
+      fields.push(`logo_url = $${idx++}`);
+      values.push(data.logoUrl);
     }
     if (data.whatsappTemplates !== undefined) {
       fields.push(`whatsapp_templates = $${idx++}`);
@@ -76,7 +86,7 @@ export const storeRepository = {
       UPDATE stores
       SET ${fields.join(', ')}
       WHERE id = $${idx}
-      RETURNING id, name, phone, address, google_review_link, gstin, whatsapp_templates, whatsapp_config, currency, timezone, created_at, updated_at;
+      RETURNING id, name, phone, email, address, google_review_link, gstin, logo_url, whatsapp_templates, whatsapp_config, currency, timezone, created_at, updated_at;
     `;
 
     const res = await query(sql, values);

@@ -58,4 +58,42 @@ export const prescriptionRepository = {
     const res = await query(sql, [storeId, customerId, prescriptionId]);
     return res.rows[0] || null;
   },
+
+  async update(storeId, customerId, prescriptionId, data) {
+    const sql = `
+      UPDATE prescriptions
+      SET 
+        r_sph = $4,
+        r_cyl = $5,
+        r_axis = $6,
+        r_add = $7,
+        l_sph = $8,
+        l_cyl = $9,
+        l_axis = $10,
+        l_add = $11,
+        pd = $12,
+        notes = $13,
+        tested_at = COALESCE($14, tested_at)
+      WHERE store_id = $1 AND customer_id = $2 AND id = $3
+      RETURNING *;
+    `;
+    const values = [
+      storeId,
+      customerId,
+      prescriptionId,
+      data.rSph !== undefined ? data.rSph : null,
+      data.rCyl !== undefined ? data.rCyl : null,
+      data.rAxis !== undefined ? data.rAxis : null,
+      data.rAdd !== undefined ? data.rAdd : null,
+      data.lSph !== undefined ? data.lSph : null,
+      data.lCyl !== undefined ? data.lCyl : null,
+      data.lAxis !== undefined ? data.lAxis : null,
+      data.lAdd !== undefined ? data.lAdd : null,
+      data.pd !== undefined ? data.pd : null,
+      data.notes !== undefined ? (data.notes?.trim() || null) : null,
+      data.testedAt || null,
+    ];
+    const res = await query(sql, values);
+    return res.rows[0] || null;
+  },
 };

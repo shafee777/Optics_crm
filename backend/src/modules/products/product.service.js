@@ -12,7 +12,7 @@ export const productService = {
 
   async getById(storeId, id) {
     const product = await productRepository.findById(storeId, id);
-    if (!product) throw new AppError('Product not found', 404);
+    if (!product) throw new AppError('Product not found in this store', 404, 'PRODUCT_NOT_FOUND');
     return product;
   },
 

@@ -1,5 +1,5 @@
 import { useModalAccessibility } from '../../hooks/useModalAccessibility.js';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../../services/api.js';
 import { X, FileText, AlertCircle, Copy, Check, Eye } from 'lucide-react';
 
@@ -102,7 +102,14 @@ function PowerInput({ label, name, value, onChange, placeholder, step = 0.25, mi
   );
 }
 
-export default function NewPrescriptionModal({ isOpen, onClose, customerId, onPrescriptionCreated }) {
+export default function NewPrescriptionModal({
+  isOpen,
+  onClose,
+  customerId,
+  prescription = null,
+  onPrescriptionCreated,
+  onPrescriptionSaved,
+}) {
   const [formData, setFormData] = useState({
     rSph: '',
     rCyl: '',
@@ -118,6 +125,41 @@ export default function NewPrescriptionModal({ isOpen, onClose, customerId, onPr
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
+
+  const isEditing = Boolean(prescription?.id);
+
+  useEffect(() => {
+    if (isOpen) {
+      setError('');
+      if (prescription) {
+        setFormData({
+          rSph: prescription.r_sph !== null && prescription.r_sph !== undefined ? prescription.r_sph.toString() : '',
+          rCyl: prescription.r_cyl !== null && prescription.r_cyl !== undefined ? prescription.r_cyl.toString() : '',
+          rAxis: prescription.r_axis !== null && prescription.r_axis !== undefined ? prescription.r_axis.toString() : '',
+          rAdd: prescription.r_add !== null && prescription.r_add !== undefined ? prescription.r_add.toString() : '',
+          lSph: prescription.l_sph !== null && prescription.l_sph !== undefined ? prescription.l_sph.toString() : '',
+          lCyl: prescription.l_cyl !== null && prescription.l_cyl !== undefined ? prescription.l_cyl.toString() : '',
+          lAxis: prescription.l_axis !== null && prescription.l_axis !== undefined ? prescription.l_axis.toString() : '',
+          lAdd: prescription.l_add !== null && prescription.l_add !== undefined ? prescription.l_add.toString() : '',
+          pd: prescription.pd !== null && prescription.pd !== undefined ? prescription.pd.toString() : '63.0',
+          notes: prescription.notes || '',
+        });
+      } else {
+        setFormData({
+          rSph: '',
+          rCyl: '',
+          rAxis: '',
+          rAdd: '',
+          lSph: '',
+          lCyl: '',
+          lAxis: '',
+          lAdd: '',
+          pd: '63.0',
+          notes: '',
+        });
+      }
+    }
+  }, [isOpen, prescription]);
 
   const modalRef = useModalAccessibility(isOpen, onClose);
   if (!isOpen) return null;
@@ -171,11 +213,22 @@ export default function NewPrescriptionModal({ isOpen, onClose, customerId, onPr
         notes: formData.notes,
       };
 
-      const response = await api.post(`/customers/${customerId}/prescriptions`, payload);
-      onPrescriptionCreated(response.data.data);
+      let result;
+      if (isEditing) {
+        const response = await api.patch(`/customers/${customerId}/prescriptions/${prescription.id}`, payload);
+        result = response.data.data;
+        if (onPrescriptionSaved) onPrescriptionSaved(result);
+        if (onPrescriptionCreated) onPrescriptionCreated(result);
+      } else {
+        const response = await api.post(`/customers/${customerId}/prescriptions`, payload);
+        result = response.data.data;
+        if (onPrescriptionSaved) onPrescriptionSaved(result);
+        if (onPrescriptionCreated) onPrescriptionCreated(result);
+      }
+
       onClose();
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'Failed to save eye test');
+      setError(err.response?.data?.error?.message || (isEditing ? 'Failed to update eye test' : 'Failed to save eye test'));
     } finally {
       setLoading(false);
     }
@@ -207,8 +260,12 @@ export default function NewPrescriptionModal({ isOpen, onClose, customerId, onPr
               <Eye className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="font-bold text-white text-base">Quick Lens Power Matrix</h2>
-              <p className="text-xs text-[#A3CCC4]">Log optical refraction & prescription in under 10 seconds</p>
+              <h2 className="font-bold text-white text-base">
+                {isEditing ? 'Edit Lens Power / Refraction' : 'Quick Lens Power Matrix'}
+              </h2>
+              <p className="text-xs text-[#A3CCC4]">
+                {isEditing ? 'Modify or correct customer eye test values' : 'Log optical refraction & prescription in under 10 seconds'}
+              </p>
             </div>
           </div>
           
@@ -474,7 +531,7 @@ export default function NewPrescriptionModal({ isOpen, onClose, customerId, onPr
                 className="px-5 py-2.5 bg-[#28766B] hover:bg-[#1E5C53] text-white text-xs font-bold rounded-xl shadow-sm disabled:opacity-50 transition flex items-center gap-2"
               >
                 <FileText className="w-4 h-4" />
-                {loading ? 'Saving Refraction...' : 'Save Prescription'}
+                {loading ? (isEditing ? 'Updating Refraction...' : 'Saving Refraction...') : (isEditing ? 'Update Prescription' : 'Save Prescription')}
               </button>
             </div>
           </div>

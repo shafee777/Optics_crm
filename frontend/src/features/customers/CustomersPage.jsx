@@ -4,7 +4,7 @@ import api from '../../services/api.js';
 import CustomerFormModal from './CustomerFormModal.jsx';
 import AnnualRemindersTab from './AnnualRemindersTab.jsx';
 import { SkeletonTable } from '../../components/common/Skeleton.jsx';
-import { Search, UserPlus, Phone, Eye, UserCheck, Hash, Clock, Users } from 'lucide-react';
+import { Search, UserPlus, Phone, Eye, UserCheck, Hash, Clock, Users, Edit2 } from 'lucide-react';
 
 export default function CustomersPage() {
   const [activeTab, setActiveTab] = useState('directory'); // 'directory' | 'reminders'
@@ -13,6 +13,7 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [meta, setMeta] = useState({ page: 1, total: 0, totalPages: 1 });
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState(null);
 
   const navigate = useNavigate();
 
@@ -48,7 +49,10 @@ export default function CustomersPage() {
           <p className="text-xs text-[#66746F] mt-0.5">Search walk-in customers by Customer ID, phone, or name</p>
         </div>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setEditingCustomer(null);
+            setIsModalOpen(true);
+          }}
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold shadow-sm transition"
         >
           <UserPlus className="w-4 h-4" />
@@ -127,7 +131,7 @@ export default function CustomersPage() {
                   <th className="px-5 py-3 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E2E7E3]">
+              <tbody className="divide-y border-t border-[#E2E7E3]">
                 {customers.map((c) => (
                   <tr
                     key={c.id}
@@ -168,16 +172,31 @@ export default function CustomersPage() {
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-right">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/customers/${c.id}`);
-                        }}
-                        className="p-1.5 text-[#28766B] hover:bg-[#EBF3F1] rounded-lg transition"
-                        title="View Profile"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingCustomer(c);
+                            setIsModalOpen(true);
+                          }}
+                          className="p-1.5 text-[#66746F] hover:text-[#28766B] hover:bg-[#EBF3F1] rounded-lg transition"
+                          title="Edit Customer"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/customers/${c.id}`);
+                          }}
+                          className="p-1.5 text-[#28766B] hover:bg-[#EBF3F1] rounded-lg transition"
+                          title="View Profile"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -192,7 +211,12 @@ export default function CustomersPage() {
       {/* Customer Form Modal */}
       <CustomerFormModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingCustomer(null);
+        }}
+        customer={editingCustomer}
+        onCustomerSaved={() => fetchCustomers(search, meta.page)}
         onCustomerCreated={() => fetchCustomers(search, 1)}
       />
     </div>

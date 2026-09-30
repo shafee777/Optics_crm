@@ -148,4 +148,118 @@ export function sendWhatsApp({ phone, message }) {
   return { success: true, opened: true, sent: false };
 }
 
+export function getRichOrderWhatsAppMessage({ order, store, prescription }) {
+  const storeName = store?.name || 'Vision Opticals';
+  const customerName = order?.customer_name || 'Valued Customer';
+  const orderNumber = order?.order_number || '';
+  const orderDate = order?.order_date ? new Date(order.order_date).toLocaleDateString('en-IN') : '';
+  const dueDate = order?.due_date ? new Date(order.due_date).toLocaleDateString('en-IN') : '';
+
+  const formatPwr = (val) => {
+    if (val === null || val === undefined || val === '') return '—';
+    const num = parseFloat(val);
+    if (isNaN(num)) return val;
+    if (num === 0) return '0.00';
+    return (num > 0 ? '+' : '') + num.toFixed(2);
+  };
+
+  const lines = [
+    `👓 *${storeName}*`,
+    `*TAX INVOICE & ORDER SUMMARY*`,
+    `━━━━━━━━━━━━━━━━━━━━━`,
+    `🧾 Order / Invoice: *#${orderNumber}*`,
+    `👤 Customer: *${customerName}*`,
+    `📅 Date: ${orderDate}${dueDate ? ` | *Due Date:* ${dueDate}` : ''}`,
+  ];
+
+  if (prescription) {
+    lines.push(
+      ``,
+      `👁️ *EYEGLASS POWER (PRESCRIPTION):*`,
+      `• *Right (OD):* SPH ${formatPwr(prescription.r_sph)} | CYL ${formatPwr(prescription.r_cyl)} | AXIS ${prescription.r_axis ? `${prescription.r_axis}°` : '—'} | ADD ${formatPwr(prescription.r_add)}`,
+      `• *Left (OS):* SPH ${formatPwr(prescription.l_sph)} | CYL ${formatPwr(prescription.l_cyl)} | AXIS ${prescription.l_axis ? `${prescription.l_axis}°` : '—'} | ADD ${formatPwr(prescription.l_add)}`,
+      prescription.pd ? `• *PD (Pupillary Dist.):* ${prescription.pd} mm` : ''
+    );
+  }
+
+  if (order?.items && order.items.length > 0) {
+    lines.push(
+      ``,
+      `🛍️ *ORDER ITEMS:*`,
+      ...order.items.map(item => `• ${item.description || item.product_name} (Qty: ${item.quantity || 1}) - ₹${parseFloat(item.total_price || 0).toFixed(2)}`)
+    );
+  }
+
+  const total = parseFloat(order?.total_amount || 0).toFixed(2);
+  const paid = parseFloat(order?.total_paid || order?.advance_amount || 0).toFixed(2);
+  const balance = parseFloat(order?.balance_due || 0).toFixed(2);
+
+  lines.push(
+    ``,
+    `💰 *PAYMENT BREAKDOWN:*`,
+    `• Net Grand Total: *₹${total}*`,
+    `• Advance Paid: *₹${paid}*`,
+    `• Balance Due: *₹${balance}*`,
+    ``,
+    store?.address ? `📍 ${store.address}` : '',
+    store?.phone ? `📞 Contact: ${store.phone}` : '',
+    `Thank you for choosing ${storeName}! ✨`
+  );
+
+  return lines.filter(Boolean).join('\n');
+}
+
+export function getRichPrescriptionWhatsAppMessage({ customer, store, prescription }) {
+  const storeName = store?.name || 'Vision Opticals';
+  const customerName = customer?.full_name || customer?.name || 'Valued Customer';
+  const testDate = prescription?.tested_at
+    ? new Date(prescription.tested_at).toLocaleDateString('en-IN')
+    : new Date().toLocaleDateString('en-IN');
+
+  const formatPwr = (val) => {
+    if (val === null || val === undefined || val === '') return '—';
+    const num = parseFloat(val);
+    if (isNaN(num)) return val;
+    if (num === 0) return '0.00';
+    return (num > 0 ? '+' : '') + num.toFixed(2);
+  };
+
+  const lines = [
+    `👓 *${storeName}*`,
+    `*VISION & EYE POWER PRESCRIPTION*`,
+    `━━━━━━━━━━━━━━━━━━━━━`,
+    `👤 Patient: *${customerName}*`,
+    `📅 Exam Date: *${testDate}*`,
+    prescription?.tested_by_name ? `👨‍⚕️ Optometrist: ${prescription.tested_by_name}` : '',
+    ``,
+    `👁️ *REFRACTION POWER SPECIFICATIONS:*`,
+    `• *Right Eye (OD):* SPH ${formatPwr(prescription?.r_sph)} | CYL ${formatPwr(prescription?.r_cyl)} | AXIS ${prescription?.r_axis ? `${prescription.r_axis}°` : '—'} | ADD ${formatPwr(prescription?.r_add)}`,
+    `• *Left Eye (OS):* SPH ${formatPwr(prescription?.l_sph)} | CYL ${formatPwr(prescription?.l_cyl)} | AXIS ${prescription?.l_axis ? `${prescription.l_axis}°` : '—'} | ADD ${formatPwr(prescription?.l_add)}`,
+    prescription?.pd ? `• *PD:* ${prescription.pd} mm` : '',
+    prescription?.lens_type ? `• *Recommended Lens:* ${prescription.lens_type}` : '',
+    prescription?.notes ? `• *Notes:* ${prescription.notes}` : '',
+    ``,
+    `📍 *${storeName}*`,
+    store?.phone ? `📞 Phone: ${store.phone}` : '',
+    `Valid for 12 months. Routine annual checkups recommended! ✨`
+  ];
+
+  return lines.filter(Boolean).join('\n');
+}
+
+export function sharePdfOnWhatsApp({ phone, customerName, storeName, docType = 'BILL_PRESCRIPTION', orderNumber, filename, customMessage }) {
+  const message = customMessage || (
+    docType === 'BILL_PRESCRIPTION'
+      ? `Hello ${customerName}! 👓\n\nThank you for choosing *${storeName}*.\nYour order details for Order *#${orderNumber}* are confirmed.\n\nHave a great day!`
+      : `Hello ${customerName}! 👓\n\nThank you for visiting *${storeName}*.\nHere are your vision and eye power prescription details.\n\nHave a wonderful day!`
+  );
+
+  const res = sendWhatsApp({ phone, message });
+  if (res.success) {
+    showBanner(`WhatsApp draft opened with complete details! Review and send in WhatsApp.`, 'success');
+  }
+  return res;
+}
+
 export function openWhatsApp(phone, message) { return sendWhatsApp({ phone, message }); }
+

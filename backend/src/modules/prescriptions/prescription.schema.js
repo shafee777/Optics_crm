@@ -33,8 +33,32 @@ export const createPrescriptionSchema = z.object({
     lAdd: opticalNumber,
 
     pd: z.coerce.number().min(40).max(85).optional().nullable(),
-    notes: z.string().optional().or(z.literal('')),
-    testedAt: z.string().datetime().optional(),
+    notes: z.string().optional().or(z.literal('')).nullable(),
+    testedAt: z.string().datetime().optional().nullable(),
+  }),
+});
+
+export const updatePrescriptionSchema = z.object({
+  params: z.object({
+    customerId: z.string().uuid('Invalid customer ID format'),
+    id: z.string().uuid('Invalid prescription ID format'),
+  }),
+  body: z.object({
+    // Right Eye (OD - Oculus Dexter)
+    rSph: opticalNumber,
+    rCyl: opticalNumber,
+    rAxis: axisNumber,
+    rAdd: opticalNumber,
+
+    // Left Eye (OS - Oculus Sinister)
+    lSph: opticalNumber,
+    lCyl: opticalNumber,
+    lAxis: axisNumber,
+    lAdd: opticalNumber,
+
+    pd: z.coerce.number().min(40).max(85).optional().nullable(),
+    notes: z.string().optional().or(z.literal('')).nullable(),
+    testedAt: z.string().datetime().optional().nullable(),
   }),
 });
 

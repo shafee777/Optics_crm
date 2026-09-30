@@ -54,6 +54,7 @@ export default function ProductsPage() {
   const [duesSummary, setDuesSummary] = useState(null);
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState(null);
+  const [feedback, setFeedback] = useState(null);
 
   // 1. Fetch Products
   const fetchProducts = useCallback(async () => {
@@ -123,9 +124,13 @@ export default function ProductsPage() {
   const handleAdjustStock = async (id, adjustment) => {
     try {
       await api.patch(`/products/${id}/stock`, { adjustment });
+      setFeedback({ type: 'success', message: 'Stock quantity adjusted successfully' });
+      setTimeout(() => setFeedback(null), 3000);
       fetchProducts();
     } catch (err) {
-      console.error('Failed to adjust stock', err);
+      const msg = err.response?.data?.error?.message || 'Failed to adjust stock';
+      setFeedback({ type: 'error', message: msg });
+      setTimeout(() => setFeedback(null), 4000);
     }
   };
 
@@ -133,9 +138,13 @@ export default function ProductsPage() {
     if (!window.confirm('Are you sure you want to remove this product from inventory?')) return;
     try {
       await api.delete(`/products/${id}`);
+      setFeedback({ type: 'success', message: 'Product removed from catalog successfully' });
+      setTimeout(() => setFeedback(null), 3000);
       fetchProducts();
     } catch (err) {
-      console.error('Failed to delete product', err);
+      const msg = err.response?.data?.error?.message || 'Failed to delete product';
+      setFeedback({ type: 'error', message: msg });
+      setTimeout(() => setFeedback(null), 4000);
     }
   };
 
@@ -143,15 +152,38 @@ export default function ProductsPage() {
     if (!window.confirm('Are you sure you want to remove this supplier?')) return;
     try {
       await api.delete(`/suppliers/${id}`);
+      setFeedback({ type: 'success', message: 'Supplier removed successfully' });
+      setTimeout(() => setFeedback(null), 3000);
       fetchSuppliers();
     } catch (err) {
-      console.error('Failed to delete supplier', err);
+      const msg = err.response?.data?.error?.message || 'Failed to delete supplier';
+      setFeedback({ type: 'error', message: msg });
+      setTimeout(() => setFeedback(null), 4000);
     }
   };
 
   return (
     <div className="space-y-6">
-      {historyError && <p role="alert">{historyError}</p>}
+      {feedback && (
+        <div
+          role="status"
+          className={`p-4 rounded-xl text-xs font-semibold flex items-center justify-between transition border ${
+            feedback.type === 'error'
+              ? 'bg-rose-50 text-rose-800 border-rose-200'
+              : 'bg-[#EBF3F1] text-[#28766B] border-[#28766B]/30'
+          }`}
+        >
+          <span>{feedback.message}</span>
+          <button
+            type="button"
+            onClick={() => setFeedback(null)}
+            className="text-xs opacity-70 hover:opacity-100 font-bold ml-4"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+      {historyError && <p role="alert" className="p-3 bg-rose-50 text-rose-800 rounded-xl text-xs">{historyError}</p>}
       {movements && <section aria-label="Inventory movement history" className="p-4 bg-white rounded-xl border">
         <h2 className="font-semibold">Stock history: {movements.name}</h2>
         <button type="button" onClick={() => setMovements(null)}>Close history</button>

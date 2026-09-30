@@ -43,6 +43,11 @@ export const authService = {
         store: {
           id: user.store_id,
           name: user.store_name,
+          phone: user.store_phone,
+          email: user.store_email,
+          address: user.store_address,
+          gstin: user.store_gstin,
+          logoUrl: user.store_logo_url,
           currency: user.currency,
           timezone: user.timezone,
         },
@@ -141,6 +146,11 @@ export const authService = {
       store: {
         id: user.store_id,
         name: user.store_name,
+        phone: user.store_phone,
+        email: user.store_email,
+        address: user.store_address,
+        gstin: user.store_gstin,
+        logoUrl: user.store_logo_url,
         currency: user.currency,
         timezone: user.timezone,
       },

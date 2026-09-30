@@ -1,9 +1,9 @@
 import { useModalAccessibility } from '../../hooks/useModalAccessibility.js';
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api.js';
-import { X, UserPlus, AlertCircle, Hash } from 'lucide-react';
+import { X, UserPlus, AlertCircle, Hash, UserCheck, Edit2 } from 'lucide-react';
 
-export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated }) {
+export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, onCustomerSaved, customer = null }) {
   const [formData, setFormData] = useState({
     customerCode: '',
     fullName: '',
@@ -17,19 +17,45 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Fetch next available customer code when modal opens
+  const isEditing = Boolean(customer?.id);
+
+  // Initialize form data on open or customer change
   useEffect(() => {
     if (isOpen) {
-      api.get('/customers/next-code')
-        .then((res) => {
-          setFormData((prev) => ({
-            ...prev,
-            customerCode: res.data.data.nextCode || 'CUST-1001',
-          }));
-        })
-        .catch((err) => console.error('Could not fetch next customer code', err));
+      setError('');
+      if (customer) {
+        setFormData({
+          customerCode: customer.customer_code || '',
+          fullName: customer.full_name || '',
+          phone: customer.phone || '',
+          email: customer.email || '',
+          gender: customer.gender || 'Male',
+          age: customer.age !== null && customer.age !== undefined ? customer.age.toString() : '',
+          address: customer.address || '',
+          notes: customer.notes || '',
+        });
+      } else {
+        setFormData({
+          customerCode: '',
+          fullName: '',
+          phone: '',
+          email: '',
+          gender: 'Male',
+          age: '',
+          address: '',
+          notes: '',
+        });
+        api.get('/customers/next-code')
+          .then((res) => {
+            setFormData((prev) => ({
+              ...prev,
+              customerCode: res.data.data.nextCode || 'CUST-1001',
+            }));
+          })
+          .catch((err) => console.error('Could not fetch next customer code', err));
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, customer]);
 
   const modalRef = useModalAccessibility(isOpen, onClose);
   if (!isOpen) return null;
@@ -45,14 +71,32 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated }
 
     try {
       const payload = {
-        ...formData,
+        customerCode: formData.customerCode?.trim(),
+        fullName: formData.fullName?.trim(),
+        phone: formData.phone?.trim() || null,
+        email: formData.email?.trim() || null,
+        gender: formData.gender || null,
         age: formData.age ? parseInt(formData.age, 10) : null,
+        address: formData.address?.trim() || null,
+        notes: formData.notes?.trim() || null,
       };
-      const response = await api.post('/customers', payload);
-      onCustomerCreated(response.data.data);
+
+      let result;
+      if (isEditing) {
+        const response = await api.patch(`/customers/${customer.id}`, payload);
+        result = response.data.data;
+        if (onCustomerSaved) onCustomerSaved(result);
+        if (onCustomerCreated) onCustomerCreated(result);
+      } else {
+        const response = await api.post('/customers', payload);
+        result = response.data.data;
+        if (onCustomerSaved) onCustomerSaved(result);
+        if (onCustomerCreated) onCustomerCreated(result);
+      }
+
       onClose();
     } catch (err) {
-      setError(err.response?.data?.error?.message || 'Failed to create customer');
+      setError(err.response?.data?.error?.message || (isEditing ? 'Failed to update customer' : 'Failed to create customer'));
     } finally {
       setLoading(false);
     }
@@ -63,8 +107,14 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated }
       <div className="bg-[#FEFEFC] w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-[#E2E7E3] animate-in fade-in zoom-in-95 duration-200">
         <div className="px-6 py-4 bg-[#F5F7F3] border-b border-[#E2E7E3] flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <UserPlus className="w-5 h-5 text-[#28766B]" />
-            <h2 className="font-bold text-[#202D2B] text-base">Add New Customer</h2>
+            {isEditing ? (
+              <Edit2 className="w-5 h-5 text-[#28766B]" />
+            ) : (
+              <UserPlus className="w-5 h-5 text-[#28766B]" />
+            )}
+            <h2 className="font-bold text-[#202D2B] text-base">
+              {isEditing ? 'Edit Customer Details' : 'Add New Customer'}
+            </h2>
           </div>
           <button aria-label="Close dialog" onClick={onClose} className="p-1 rounded-lg text-[#66746F] hover:text-[#202D2B] hover:bg-[#E2E7E3]/60">
             <X className="w-5 h-5" />
@@ -95,7 +145,9 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated }
                 placeholder="e.g. CUST-1002"
                 className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] font-bold tabular-nums text-[#202D2B] text-xs focus:ring-2 focus:ring-[#28766B]/30 focus:border-[#28766B] focus:outline-none bg-[#F5F7F3]"
               />
-              <span className="text-[10px] text-[#66746F]">Auto-suggested sequential ID</span>
+              <span className="text-[10px] text-[#66746F]">
+                {isEditing ? 'Customer reference identifier' : 'Auto-suggested sequential ID'}
+              </span>
             </div>
 
             <div>
@@ -200,7 +252,7 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated }
               disabled={loading}
               className="px-4 py-2 bg-[#28766B] hover:bg-[#1E5C53] text-white text-xs font-semibold rounded-xl shadow-sm transition disabled:opacity-50"
             >
-              {loading ? 'Saving...' : 'Save Customer'}
+              {loading ? (isEditing ? 'Updating...' : 'Saving...') : (isEditing ? 'Update Customer' : 'Save Customer')}
             </button>
           </div>
         </form>
