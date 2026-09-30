@@ -36,7 +36,7 @@ export const orderService = {
     return await orderRepository.list(storeId, queryParams);
   },
 
-  async transitionStatus(storeId, orderId, nextStatus) {
+  async transitionStatus(storeId, orderId, nextStatus, userId = null) {
     return withTransaction(async (client) => {
       await orderRepository.lockOrderTx(client, storeId, orderId);
       const order = await orderRepository.findByIdWithDetailsTx(client, storeId, orderId);
@@ -46,7 +46,7 @@ export const orderService = {
 
       const currentStatus = order.status;
 
-      // 2. Enforce state machine transitions
+      // 2. Enforce state machine transitions (also guards against duplicate cancellation requests)
       const allowed = ALLOWED_TRANSITIONS[currentStatus] || [];
       if (!allowed.includes(nextStatus)) {
         throw new AppError(
@@ -65,16 +65,41 @@ export const orderService = {
         );
       }
 
+      // 4. Transactional Stock Restoration and Refund on Cancellation
       if (nextStatus === ORDER_STATUS.CANCELLED) {
-        await client.query("SELECT set_config('app.stock_reason', $1, true)", ['CANCEL_ORDER ' + orderId]);
-        // The locked order and state transition guard prevent double restoration.
-        for (const item of [...order.items].sort((a, b) => String(a.product_id).localeCompare(String(b.product_id)))) {
-          if (item.product_id) {
-            await client.query('UPDATE products SET stock_quantity = stock_quantity + $1, updated_at = NOW() WHERE store_id = $2 AND id = $3', [item.quantity, storeId, item.product_id]);
+        await client.query("SELECT set_config('app.stock_reason', $1, true)", ['CANCEL_ORDER ' + (order.order_number || orderId)]);
+        
+        // Restore stock deterministically sorted to prevent deadlocks
+        for (const item of [...(order.items || [])].sort((a, b) => String(a.product_id).localeCompare(String(b.product_id)))) {
+          if (item.product_id && Number(item.quantity) > 0) {
+            await client.query(
+              'UPDATE products SET stock_quantity = stock_quantity + $1, updated_at = NOW() WHERE store_id = $2 AND id = $3',
+              [Number(item.quantity), storeId, item.product_id]
+            );
           }
         }
+
+        // Record refund expense if payments were collected
+        if (Number(order.total_paid) > 0) {
+          const primaryPaymentMethod = order.payments?.[0]?.payment_method || 'CASH';
+          await client.query(
+            `INSERT INTO expenses (
+              store_id, category, amount, payment_method, note, created_by, incurred_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+            [
+              storeId,
+              'Refund',
+              order.total_paid,
+              primaryPaymentMethod,
+              `Refund for cancelled order ${order.order_number || orderId}`,
+              userId || order.created_by || null,
+            ]
+          );
+        }
       }
-      return await orderRepository.updateStatusTx(client, storeId, orderId, nextStatus);
+
+      await orderRepository.updateStatusTx(client, storeId, orderId, nextStatus);
+      return await orderRepository.findByIdWithDetailsTx(client, storeId, orderId);
     });
   },
 };

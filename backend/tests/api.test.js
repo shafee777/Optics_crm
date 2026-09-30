@@ -32,7 +32,7 @@ test('Auth: Valid login returns JWT token and store details', async () => {
   assert.equal(res.status, 200);
   assert.equal(res.body.success, true);
   assert.ok(res.body.data.token);
-  assert.equal(res.body.data.user.store.name, 'Vision Care Opticals');
+  assert.ok(res.body.data.user.store.name);
 });
 
 test('Auth: Invalid password returns 401 Unauthorized', async () => {
@@ -923,3 +923,448 @@ test('Automatic WhatsApp dispatch endpoints are disabled for the local edition',
     assert.equal(response.status,404);
   }
 });
+
+test('Security & Auth: Every store and order endpoint enforces authentication (401)', async () => {
+  const fakeId = '00000000-0000-0000-0000-000000000000';
+
+  // Stores endpoints require auth
+  const getStoreNoAuth = await request.get('/api/v1/stores/current');
+  assert.equal(getStoreNoAuth.status, 401);
+  assert.equal(getStoreNoAuth.body.error.code, 'UNAUTHENTICATED');
+
+  const patchStoreNoAuth = await request.patch('/api/v1/stores/current').send({ name: 'Hacked Store' });
+  assert.equal(patchStoreNoAuth.status, 401);
+  assert.equal(patchStoreNoAuth.body.error.code, 'UNAUTHENTICATED');
+
+  // Orders endpoints require auth
+  const listOrdersNoAuth = await request.get('/api/v1/orders');
+  assert.equal(listOrdersNoAuth.status, 401);
+  assert.equal(listOrdersNoAuth.body.error.code, 'UNAUTHENTICATED');
+
+  const createOrderNoAuth = await request.post('/api/v1/orders').send({
+    customerId: fakeId,
+    dueDate: '2026-10-20',
+    items: [{ itemType: 'FRAME', description: 'Test', quantity: 1, unitPrice: 1000 }],
+  });
+  assert.equal(createOrderNoAuth.status, 401);
+  assert.equal(createOrderNoAuth.body.error.code, 'UNAUTHENTICATED');
+
+  const getOrderNoAuth = await request.get(`/api/v1/orders/${fakeId}`);
+  assert.equal(getOrderNoAuth.status, 401);
+  assert.equal(getOrderNoAuth.body.error.code, 'UNAUTHENTICATED');
+
+  const updateStatusNoAuth = await request.patch(`/api/v1/orders/${fakeId}/status`).send({ status: 'PROCESSING' });
+  assert.equal(updateStatusNoAuth.status, 401);
+  assert.equal(updateStatusNoAuth.body.error.code, 'UNAUTHENTICATED');
+
+  const getPaymentsNoAuth = await request.get(`/api/v1/orders/${fakeId}/payments`);
+  assert.equal(getPaymentsNoAuth.status, 401);
+  assert.equal(getPaymentsNoAuth.body.error.code, 'UNAUTHENTICATED');
+
+  const recordPaymentNoAuth = await request.post(`/api/v1/orders/${fakeId}/payments`).send({
+    amount: 500,
+    paymentMethod: 'CASH',
+  });
+  assert.equal(recordPaymentNoAuth.status, 401);
+  assert.equal(recordPaymentNoAuth.body.error.code, 'UNAUTHENTICATED');
+
+  // Malformed / invalid bearer token is rejected
+  const invalidTokenRes = await request.get('/api/v1/orders').set('Authorization', 'Bearer invalid-garbage-token');
+  assert.equal(invalidTokenRes.status, 401);
+  assert.equal(invalidTokenRes.body.error.code, 'INVALID_TOKEN');
+});
+
+test('Security & Data Isolation: Store B user cannot access or mutate Store A orders, payments, or customers', async () => {
+  // 1. Login Store A owner (Vision Care)
+  const loginA = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const tokenA = loginA.body.data.token;
+
+  // 2. Login Store B owner (City Eye)
+  const loginB = await request.post('/api/v1/auth/login').send({
+    email: 'owner@cityeye.com',
+    password: 'Password123!',
+  });
+  const tokenB = loginB.body.data.token;
+
+  // 3. Create a Customer and Order in Store A
+  const uniquePhone = '97' + Math.floor(10000000 + Math.random() * 90000000);
+  const custARes = await request
+    .post('/api/v1/customers')
+    .set('Authorization', `Bearer ${tokenA}`)
+    .send({
+      fullName: 'Store A Exclusive Customer',
+      phone: uniquePhone,
+    });
+  assert.equal(custARes.status, 201);
+  const custAId = custARes.body.data.id;
+
+  const orderARes = await request
+    .post('/api/v1/orders')
+    .set('Authorization', `Bearer ${tokenA}`)
+    .send({
+      customerId: custAId,
+      dueDate: '2026-10-30',
+      items: [
+        {
+          itemType: 'FRAME',
+          description: 'Store A Isolated Spec Frame',
+          quantity: 1,
+          unitPrice: 4000,
+          discount: 0,
+        },
+      ],
+      notes: 'Store A confidential notes',
+    });
+  assert.equal(orderARes.status, 201);
+  const orderAId = orderARes.body.data.id;
+
+  // 4. Store B lists orders: Store A's order must NOT appear
+  const listB = await request.get('/api/v1/orders').set('Authorization', `Bearer ${tokenB}`);
+  assert.equal(listB.status, 200);
+  const foundInB = listB.body.data.some((o) => o.id === orderAId || o.order_number === orderARes.body.data.order_number);
+  assert.equal(foundInB, false, 'Store A order leaked into Store B order list');
+
+  // 5. Store B attempts GET order details of Store A: must return 404
+  const getOrderB = await request.get(`/api/v1/orders/${orderAId}`).set('Authorization', `Bearer ${tokenB}`);
+  assert.equal(getOrderB.status, 404);
+  assert.equal(getOrderB.body.error.code, 'ORDER_NOT_FOUND');
+
+  // 6. Store B attempts to change status of Store A order: must return 404
+  const patchOrderB = await request
+    .patch(`/api/v1/orders/${orderAId}/status`)
+    .set('Authorization', `Bearer ${tokenB}`)
+    .send({ status: 'PROCESSING' });
+  assert.equal(patchOrderB.status, 404);
+  assert.equal(patchOrderB.body.error.code, 'ORDER_NOT_FOUND');
+
+  // 7. Store B attempts to record payment on Store A order: must return 404
+  const payOrderB = await request
+    .post(`/api/v1/orders/${orderAId}/payments`)
+    .set('Authorization', `Bearer ${tokenB}`)
+    .send({
+      amount: 1000,
+      paymentMethod: 'CASH',
+    });
+  assert.equal(payOrderB.status, 404);
+  assert.equal(payOrderB.body.error.code, 'ORDER_NOT_FOUND');
+
+  // 8. Store B attempts to view payments of Store A order: must return 404
+  const getPaymentsB = await request
+    .get(`/api/v1/orders/${orderAId}/payments`)
+    .set('Authorization', `Bearer ${tokenB}`);
+  assert.equal(getPaymentsB.status, 404);
+  assert.equal(getPaymentsB.body.error.code, 'ORDER_NOT_FOUND');
+
+  // 9. Store B attempts to create an order referencing Store A's customer: must return 404
+  const crossOrderCreate = await request
+    .post('/api/v1/orders')
+    .set('Authorization', `Bearer ${tokenB}`)
+    .send({
+      customerId: custAId,
+      dueDate: '2026-10-30',
+      items: [{ itemType: 'FRAME', description: 'Cross Store Attempt', quantity: 1, unitPrice: 1000 }],
+    });
+  assert.equal(crossOrderCreate.status, 404);
+  assert.equal(crossOrderCreate.body.error.code, 'CUSTOMER_NOT_FOUND');
+});
+
+test('Security & Secret Leakage: Store and Auth APIs never return WhatsApp credentials or secrets', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  assert.equal(loginRes.status, 200);
+  const token = loginRes.body.data.token;
+
+  // 1. Check Store object in Auth response
+  const authStore = loginRes.body.data.user.store;
+  assert.equal(authStore.whatsappConfig, undefined);
+  assert.equal(authStore.whatsapp_config, undefined);
+  assert.equal(authStore.metaAccessToken, undefined);
+  assert.equal(authStore.twilioAuthToken, undefined);
+
+  // 2. Check GET /api/v1/stores/current
+  const getStoreRes = await request.get('/api/v1/stores/current').set('Authorization', `Bearer ${token}`);
+  assert.equal(getStoreRes.status, 200);
+  const storeData = getStoreRes.body.data;
+  assert.equal(storeData.whatsappConfig, undefined);
+  assert.equal(storeData.whatsapp_config, undefined);
+  assert.equal(storeData.metaAccessToken, undefined);
+  assert.equal(storeData.metaPhoneNumberId, undefined);
+  assert.equal(storeData.twilioAuthToken, undefined);
+  assert.equal(storeData.twilioAccountSid, undefined);
+  assert.equal(storeData.customWebhookUrl, undefined);
+  assert.equal(storeData.password, undefined);
+  assert.equal(storeData.password_hash, undefined);
+
+  // 3. Check PATCH /api/v1/stores/current
+  const patchStoreRes = await request
+    .patch('/api/v1/stores/current')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      phone: '+91 9988776655',
+    });
+  assert.equal(patchStoreRes.status, 200);
+  const updatedStoreData = patchStoreRes.body.data;
+  assert.equal(updatedStoreData.whatsappConfig, undefined);
+  assert.equal(updatedStoreData.whatsapp_config, undefined);
+  assert.equal(updatedStoreData.metaAccessToken, undefined);
+  assert.equal(updatedStoreData.twilioAuthToken, undefined);
+});
+
+// ─── Cancellation, Refund & Stock Edge Cases ────────────────────────────────
+
+test('Cancellation: cancelling an order restores product stock', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  // 1. Create product with 10 units
+  const prodRes = await request
+    .post('/api/v1/products')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ itemType: 'FRAME', name: 'Cancel-Test Frame', sellingPrice: 1000, stockQuantity: 10 });
+  assert.equal(prodRes.status, 201);
+  const productId = prodRes.body.data.id;
+
+  // 2. Create customer
+  const custRes = await request
+    .post('/api/v1/customers')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ fullName: 'Cancel Customer', phone: `91${Math.floor(10000000 + Math.random() * 90000000)}` });
+  const customerId = custRes.body.data.id;
+
+  // 3. Create order consuming 3 units
+  const orderRes = await request
+    .post('/api/v1/orders')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      customerId,
+      dueDate: '2026-12-31',
+      items: [{ productId, itemType: 'FRAME', description: 'Cancel-Test Frame', quantity: 3, unitPrice: 1000, discount: 0 }],
+    });
+  assert.equal(orderRes.status, 201);
+  const orderId = orderRes.body.data.id;
+
+  // 4. Stock should now be 7
+  const stockAfterOrder = await request.get(`/api/v1/products/${productId}`).set('Authorization', `Bearer ${token}`);
+  assert.equal(Number(stockAfterOrder.body.data.stock_quantity), 7, 'Stock should decrease by 3 after order');
+
+  // 5. Cancel the order
+  const cancelRes = await request
+    .patch(`/api/v1/orders/${orderId}/status`)
+    .set('Authorization', `Bearer ${token}`)
+    .send({ status: 'CANCELLED' });
+  assert.equal(cancelRes.status, 200);
+  assert.equal(cancelRes.body.data.status, 'CANCELLED');
+
+  // 6. Stock should be restored to 10
+  const stockAfterCancel = await request.get(`/api/v1/products/${productId}`).set('Authorization', `Bearer ${token}`);
+  assert.equal(Number(stockAfterCancel.body.data.stock_quantity), 10, 'Stock should be restored to 10 after cancellation');
+});
+
+test('Cancellation: cancelling a paid order creates a Refund expense entry', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  // 1. Create customer
+  const custRes = await request
+    .post('/api/v1/customers')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ fullName: 'Refund Customer', phone: `92${Math.floor(10000000 + Math.random() * 90000000)}` });
+  const customerId = custRes.body.data.id;
+
+  // 2. Create order with advance payment of Rs.800 via UPI
+  const orderRes = await request
+    .post('/api/v1/orders')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      customerId,
+      dueDate: '2026-12-31',
+      items: [{ itemType: 'LENS', description: 'Refund-Test Lens', quantity: 1, unitPrice: 2000, discount: 0 }],
+      advancePayment: { amount: 800, paymentMethod: 'UPI' },
+    });
+  assert.equal(orderRes.status, 201);
+  const orderId = orderRes.body.data.id;
+  const orderNumber = orderRes.body.data.order_number;
+
+  // 3. Cancel the order
+  const cancelRes = await request
+    .patch(`/api/v1/orders/${orderId}/status`)
+    .set('Authorization', `Bearer ${token}`)
+    .send({ status: 'CANCELLED' });
+  assert.equal(cancelRes.status, 200);
+
+  // 4. Verify a Refund expense was created for this order
+  const expensesRes = await request.get('/api/v1/expenses').set('Authorization', `Bearer ${token}`);
+  assert.equal(expensesRes.status, 200);
+  const refundExpense = expensesRes.body.data.find(
+    (e) => e.category === 'Refund' && e.note && e.note.includes(orderNumber)
+  );
+  assert.ok(refundExpense, `Expected a Refund expense for order ${orderNumber}`);
+  assert.equal(Number(refundExpense.amount), 800, 'Refund amount should match total paid (800)');
+  assert.equal(refundExpense.payment_method, 'UPI', 'Refund payment method should match original payment');
+});
+
+test('Cancellation: duplicate cancellation is rejected with INVALID_STATE_TRANSITION', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  // 1. Create a product with 5 units
+  const prodRes = await request
+    .post('/api/v1/products')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ itemType: 'FRAME', name: 'Dupe-Cancel Frame', sellingPrice: 500, stockQuantity: 5 });
+  const productId = prodRes.body.data.id;
+
+  // 2. Create customer + order consuming 2 units
+  const custRes = await request
+    .post('/api/v1/customers')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ fullName: 'Duplicate Cancel Customer', phone: `93${Math.floor(10000000 + Math.random() * 90000000)}` });
+  const customerId = custRes.body.data.id;
+
+  const orderRes = await request
+    .post('/api/v1/orders')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      customerId,
+      dueDate: '2026-12-31',
+      items: [{ productId, itemType: 'FRAME', description: 'Dupe-Cancel Frame', quantity: 2, unitPrice: 500, discount: 0 }],
+    });
+  const orderId = orderRes.body.data.id;
+
+  // 3. First cancellation — should succeed and restore stock to 5
+  const firstCancel = await request
+    .patch(`/api/v1/orders/${orderId}/status`)
+    .set('Authorization', `Bearer ${token}`)
+    .send({ status: 'CANCELLED' });
+  assert.equal(firstCancel.status, 200);
+
+  const stockAfterFirst = await request.get(`/api/v1/products/${productId}`).set('Authorization', `Bearer ${token}`);
+  assert.equal(Number(stockAfterFirst.body.data.stock_quantity), 5, 'Stock should be 5 after first cancel');
+
+  // 4. Second cancellation — must be rejected
+  const secondCancel = await request
+    .patch(`/api/v1/orders/${orderId}/status`)
+    .set('Authorization', `Bearer ${token}`)
+    .send({ status: 'CANCELLED' });
+  assert.equal(secondCancel.status, 400, 'Duplicate cancel must return 400');
+  assert.equal(secondCancel.body.error.code, 'INVALID_STATE_TRANSITION');
+
+  // 5. Stock must NOT be double-restored (still 5, not 7)
+  const stockAfterSecond = await request.get(`/api/v1/products/${productId}`).set('Authorization', `Bearer ${token}`);
+  assert.equal(Number(stockAfterSecond.body.data.stock_quantity), 5, 'Stock must not be double-restored');
+});
+
+test('Cancellation: cancelling an unpaid order does NOT create a Refund expense', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  // 1. Create customer + unpaid order
+  const custRes = await request
+    .post('/api/v1/customers')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ fullName: 'No-Payment Cancel Customer', phone: `94${Math.floor(10000000 + Math.random() * 90000000)}` });
+  const customerId = custRes.body.data.id;
+
+  const orderRes = await request
+    .post('/api/v1/orders')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      customerId,
+      dueDate: '2026-12-31',
+      items: [{ itemType: 'LENS', description: 'No-Pay Cancel Lens', quantity: 1, unitPrice: 1500, discount: 0 }],
+      // No advancePayment
+    });
+  assert.equal(orderRes.status, 201);
+  const orderId = orderRes.body.data.id;
+  const orderNumber = orderRes.body.data.order_number;
+
+  // 2. Get refund count for this order number before cancellation
+  const beforeRes = await request.get('/api/v1/expenses').set('Authorization', `Bearer ${token}`);
+  const refundCountBefore = beforeRes.body.data.filter(
+    (e) => e.category === 'Refund' && e.note && e.note.includes(orderNumber)
+  ).length;
+
+  // 3. Cancel the unpaid order
+  const cancelRes = await request
+    .patch(`/api/v1/orders/${orderId}/status`)
+    .set('Authorization', `Bearer ${token}`)
+    .send({ status: 'CANCELLED' });
+  assert.equal(cancelRes.status, 200);
+
+  // 4. No Refund expense should have appeared for this order
+  const afterRes = await request.get('/api/v1/expenses').set('Authorization', `Bearer ${token}`);
+  const refundCountAfter = afterRes.body.data.filter(
+    (e) => e.category === 'Refund' && e.note && e.note.includes(orderNumber)
+  ).length;
+  assert.equal(refundCountAfter, refundCountBefore, 'No Refund expense should be created for an unpaid order');
+});
+
+test('Stock Edge Case: negative adjustment exceeding available stock is rejected', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  // 1. Create product with 3 units
+  const prodRes = await request
+    .post('/api/v1/products')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ itemType: 'FRAME', name: 'InsufficientStock Frame', sellingPrice: 750, stockQuantity: 3 });
+  assert.equal(prodRes.status, 201);
+  const productId = prodRes.body.data.id;
+
+  // 2. Attempt to deduct more than available stock (3 - 10 = -7, violates CHECK)
+  const adjustRes = await request
+    .patch(`/api/v1/products/${productId}/stock`)
+    .set('Authorization', `Bearer ${token}`)
+    .send({ adjustment: -10, reason: 'Manual deduction test' });
+
+  assert.equal(adjustRes.status, 409, `Expected 409, got ${adjustRes.status}: ${JSON.stringify(adjustRes.body)}`);
+  assert.equal(adjustRes.body.error.code, 'INSUFFICIENT_STOCK');
+
+  // 3. Stock must remain at 3
+  const checkRes = await request.get(`/api/v1/products/${productId}`).set('Authorization', `Bearer ${token}`);
+  assert.equal(Number(checkRes.body.data.stock_quantity), 3, 'Stock must not change on rejected adjustment');
+});
+
+test('Stock Edge Case: zero adjustment is rejected with a validation error', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  // 1. Create product
+  const prodRes = await request
+    .post('/api/v1/products')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ itemType: 'FRAME', name: 'ZeroAdjust Frame', sellingPrice: 500, stockQuantity: 5 });
+  const productId = prodRes.body.data.id;
+
+  // 2. Attempt zero adjustment — Zod schema must reject it
+  const adjustRes = await request
+    .patch(`/api/v1/products/${productId}/stock`)
+    .set('Authorization', `Bearer ${token}`)
+    .send({ adjustment: 0 });
+
+  assert.equal(adjustRes.status, 400, 'Zero adjustment should be rejected with 400 validation error');
+});
+

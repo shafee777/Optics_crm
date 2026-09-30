@@ -3,6 +3,11 @@ import { pool } from '../../src/config/database.js';
 import { logger } from '../../src/config/logger.js';
 
 async function seed() {
+  if (process.env.NODE_ENV === 'production') {
+    logger.error('FATAL: Running development seeds and creating demo accounts is prohibited in production.');
+    process.exit(1);
+  }
+
   const client = await pool.connect();
   try {
     logger.info(' Starting database seed for development...');

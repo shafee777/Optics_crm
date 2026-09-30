@@ -21,9 +21,9 @@ export const productService = {
     return productRepository.update(storeId, id, data);
   },
 
-  async adjustStock(storeId, id, adjustment) {
+  async adjustStock(storeId, id, adjustment, reason = null) {
     await this.getById(storeId, id);
-    return productRepository.adjustStock(storeId, id, adjustment);
+    return productRepository.adjustStock(storeId, id, adjustment, reason);
   },
 
   async archive(storeId, id) {

@@ -8,6 +8,22 @@ import { withTransaction } from '../../config/database.js';
 
 export const authService = {
   async login(email, password) {
+    if (env.NODE_ENV === 'production') {
+      const DEMO_EMAILS = new Set([
+        'owner@visioncare.com',
+        'staff@visioncare.com',
+        'owner@cityeye.com',
+      ]);
+      const normalizedEmail = (email || '').toLowerCase().trim();
+      if (DEMO_EMAILS.has(normalizedEmail) || password === 'Password123!') {
+        throw new AppError(
+          'Demo accounts and default passwords cannot be used in production.',
+          403,
+          'DEMO_ACCOUNTS_PROHIBITED'
+        );
+      }
+    }
+
     const user = await authRepository.findByEmailWithStore(email);
 
     if (!user) {

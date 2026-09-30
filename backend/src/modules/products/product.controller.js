@@ -46,7 +46,12 @@ export const productController = {
 
   async adjustStock(req, res, next) {
     try {
-      const product = await productService.adjustStock(req.user.storeId, req.params.id, req.body.adjustment);
+      const product = await productService.adjustStock(
+        req.user.storeId,
+        req.params.id,
+        req.body.adjustment,
+        req.body.reason
+      );
       res.json({ success: true, data: product });
     } catch (err) {
       next(err);

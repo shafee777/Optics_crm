@@ -46,7 +46,7 @@ export const adjustStockSchema = z.object({
     id: z.string().uuid('Invalid product ID format'),
   }),
   body: z.object({
-    adjustment: z.coerce.number().int(),
+    adjustment: z.coerce.number().int().refine((v) => v !== 0, { message: 'Adjustment must be a non-zero integer' }),
     reason: z.string().trim().optional(),
   }),
-});
+});

@@ -40,7 +40,12 @@ export const orderController = {
 
   async updateStatus(req, res, next) {
     try {
-      const order = await orderService.transitionStatus(req.user.storeId, req.params.id, req.body.status);
+      const order = await orderService.transitionStatus(
+        req.user.storeId,
+        req.params.id,
+        req.body.status,
+        req.user.userId
+      );
       res.status(200).json({
         success: true,
         data: order,

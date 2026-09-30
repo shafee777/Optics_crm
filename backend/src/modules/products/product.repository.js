@@ -80,10 +80,6 @@ export const productRepository = {
       }
     }
 
-    if (data.stockQuantity === undefined) {
-      fields.push(`stock_quantity = GREATEST(stock_quantity, 0)`);
-    }
-
     if (fields.length === 0) return this.findById(storeId, id);
 
     fields.push(`updated_at = NOW()`);
@@ -98,7 +94,10 @@ export const productRepository = {
     return rows[0];
   },
 
-  async adjustStock(storeId, id, adjustment) {
+  async adjustStock(storeId, id, adjustment, reason = null) {
+    if (reason) {
+      await query("SELECT set_config('app.stock_reason', $1, true)", [reason]);
+    }
     const sql = `
       UPDATE products
       SET stock_quantity = stock_quantity + $3,
@@ -115,7 +114,6 @@ export const productRepository = {
     const sql = `
       UPDATE products
       SET archived_at = NOW(),
-          stock_quantity = GREATEST(stock_quantity, 0),
           updated_at = NOW()
       WHERE store_id = $1 AND id = $2 AND archived_at IS NULL
       RETURNING id, name, archived_at;
