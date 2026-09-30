@@ -19,7 +19,6 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, 
 
   const isEditing = Boolean(customer?.id);
 
-  // Initialize form data on open or customer change
   useEffect(() => {
     if (isOpen) {
       setError('');
@@ -45,6 +44,7 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, 
           address: '',
           notes: '',
         });
+
         api.get('/customers/next-code')
           .then((res) => {
             setFormData((prev) => ({
@@ -61,7 +61,21 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, 
   if (!isOpen) return null;
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    if (name === 'phone') {
+      const digitsOnly = value.replace(/\D/g, '').slice(0, 10);
+      setFormData((prev) => ({
+        ...prev,
+        phone: digitsOnly,
+      }));
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -70,10 +84,18 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, 
     setLoading(true);
 
     try {
+      const phoneDigits = formData.phone.replace(/\D/g, '');
+
+      if (formData.phone && phoneDigits.length !== 10) {
+        setError('Mobile number must contain exactly 10 numeric digits.');
+        setLoading(false);
+        return;
+      }
+
       const payload = {
         customerCode: formData.customerCode?.trim(),
         fullName: formData.fullName?.trim(),
-        phone: formData.phone?.trim() || null,
+        phone: phoneDigits || null,
         email: formData.email?.trim() || null,
         gender: formData.gender || null,
         age: formData.age ? parseInt(formData.age, 10) : null,
@@ -152,21 +174,25 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, 
 
             <div>
               <label htmlFor="CustomerFormModal-field-0" className="block text-xs font-semibold text-[#202D2B] mb-1">Mobile Number</label>
-              <input id="CustomerFormModal-field-0"
+              <input
+                id="CustomerFormModal-field-0"
                 type="tel"
                 name="phone"
                 placeholder="10-digit mobile"
                 value={formData.phone}
                 onChange={handleChange}
+                maxLength="10"
+                inputMode="numeric"
                 className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] bg-white text-xs tabular-nums text-[#202D2B] placeholder:text-[#9AA8A3] focus:ring-2 focus:ring-[#28766B]/30 focus:border-[#28766B] focus:outline-none"
               />
-              <span className="text-[10px] text-[#66746F]">Shared family mobile allowed</span>
+              <span className="text-[10px] text-[#66746F]">Must contain exactly 10 digits</span>
             </div>
           </div>
 
           <div>
             <label htmlFor="CustomerFormModal-field-1" className="block text-xs font-semibold text-[#202D2B] mb-1">Full Name *</label>
-            <input id="CustomerFormModal-field-1"
+            <input
+              id="CustomerFormModal-field-1"
               type="text"
               name="fullName"
               required
@@ -180,7 +206,8 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label htmlFor="CustomerFormModal-field-2" className="block text-xs font-semibold text-[#202D2B] mb-1">Age</label>
-              <input id="CustomerFormModal-field-2"
+              <input
+                id="CustomerFormModal-field-2"
                 type="number"
                 name="age"
                 placeholder="e.g. 35"
@@ -189,9 +216,11 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, 
                 className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] bg-white text-xs tabular-nums text-[#202D2B] placeholder:text-[#9AA8A3] focus:ring-2 focus:ring-[#28766B]/30 focus:border-[#28766B] focus:outline-none"
               />
             </div>
+
             <div>
               <label htmlFor="CustomerFormModal-field-3" className="block text-xs font-semibold text-[#202D2B] mb-1">Gender</label>
-              <select id="CustomerFormModal-field-3"
+              <select
+                id="CustomerFormModal-field-3"
                 name="gender"
                 value={formData.gender}
                 onChange={handleChange}
@@ -202,9 +231,11 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, 
                 <option value="Other">Other</option>
               </select>
             </div>
+
             <div>
               <label htmlFor="CustomerFormModal-field-4" className="block text-xs font-semibold text-[#202D2B] mb-1">Email</label>
-              <input id="CustomerFormModal-field-4"
+              <input
+                id="CustomerFormModal-field-4"
                 type="email"
                 name="email"
                 placeholder="Optional"
@@ -217,7 +248,8 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, 
 
           <div>
             <label htmlFor="CustomerFormModal-field-5" className="block text-xs font-semibold text-[#202D2B] mb-1">Address</label>
-            <input id="CustomerFormModal-field-5"
+            <input
+              id="CustomerFormModal-field-5"
               type="text"
               name="address"
               placeholder="Locality, City"
@@ -229,7 +261,8 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, 
 
           <div>
             <label htmlFor="CustomerFormModal-field-6" className="block text-xs font-semibold text-[#202D2B] mb-1">Notes</label>
-            <textarea id="CustomerFormModal-field-6"
+            <textarea
+              id="CustomerFormModal-field-6"
               name="notes"
               rows={2}
               placeholder="Doctor recommendations or notes..."
