@@ -1,5 +1,7 @@
 # P2 release verification — 2026-09-30
 
+Follow-up: see [verification/FOLLOWUP.md](verification/FOLLOWUP.md) for the subsequent validation fixes, 68-test run, dependency audit results, cleanup, and rebuilt artifact details. The checks and installer hash below describe the earlier P2 artifact.
+
 Automated release checks passed on Windows against the current working tree. Existing shop data was not used, seeded, migrated, or restored over. Existing uncommitted project changes were preserved.
 
 | Check | Result |

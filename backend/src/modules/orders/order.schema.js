@@ -73,12 +73,12 @@ export const updateOrderStatusSchema = z.object({
 
 export const listOrdersSchema = z.object({
   query: z.object({
-    status: z.string().optional(),
+    status: z.enum(Object.values(ORDER_STATUS)).optional(),
     customerId: z.string().uuid().optional(),
     overdue: z.enum(['true', 'false']).optional(),
     search: z.string().optional(),
-    page: z.coerce.number().min(1).default(1),
-    limit: z.coerce.number().min(1).max(50).default(10),
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(50).default(10),
   }),
 });
 

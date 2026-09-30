@@ -1,17 +1,16 @@
 import { query } from '../../config/database.js';
-import { z } from 'zod';
 import { Router } from 'express';
 import { authenticate } from '../../middleware/auth.middleware.js';
 import { validate } from '../../middleware/validate.middleware.js';
 import { productController } from './product.controller.js';
-import { createProductSchema, updateProductSchema, adjustStockSchema, productIdSchema } from './product.schema.js';
+import { createProductSchema, updateProductSchema, adjustStockSchema, productIdSchema, listProductsSchema } from './product.schema.js';
 
 const router = Router();
 
 router.use(authenticate);
 
 router.post('/', validate(createProductSchema), productController.create);
-router.get('/', productController.list);
+router.get('/', validate(listProductsSchema), productController.list);
 router.get('/:id/movements', validate(productIdSchema), async (req, res, next) => {
   try {
     const result = await query('SELECT * FROM inventory_movements WHERE store_id = $1 AND product_id = $2 ORDER BY id DESC LIMIT 200', [req.user.storeId, req.params.id]);

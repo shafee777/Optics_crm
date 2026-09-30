@@ -1,0 +1,46 @@
+{
+  "verifiedAt": "2026-09-30T12:54:11.4782553Z",
+  "lint": {
+    "warnings": 52,
+    "errors": 0
+  },
+  "restoredTables": 18,
+  "frontendBuild": "passed",
+  "backendTests": {
+    "skipped": 0,
+    "failed": 0,
+    "passed": 68
+  },
+  "audits": {
+    "backend": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "frontend": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "desktop": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    }
+  },
+  "packagedSmoke": "passed",
+  "installer": {
+    "build": "passed",
+    "builder": "26.15.3",
+    "sha256": "0D2A4794978F413AB2F9F3EE77B64850CB55363FFEC984507462BDAEEC6127B3"
+  }
+}

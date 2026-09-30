@@ -49,4 +49,14 @@ export const adjustStockSchema = z.object({
     adjustment: z.coerce.number().int().refine((v) => v !== 0, { message: 'Adjustment must be a non-zero integer' }),
     reason: z.string().trim().optional(),
   }),
-});
+});
+
+export const listProductsSchema = z.object({
+  query: z.object({
+    itemType: z.enum(ITEM_TYPES).optional(),
+    search: z.string().trim().max(255).optional(),
+    lowStockOnly: z.enum(['true', 'false']).default('false'),
+    limit: z.coerce.number().int().min(1).max(1000).default(100),
+    offset: z.coerce.number().int().min(0).max(Number.MAX_SAFE_INTEGER).default(0),
+  }),
+});

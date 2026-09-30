@@ -6,6 +6,22 @@ import { pool } from '../src/config/database.js';
 
 const request = supertest(app);
 
+test('List query validation rejects malformed filters and pagination', async () => {
+  const login = await request.post('/api/v1/auth/login').send({ email: 'owner@visioncare.com', password: 'Password123!' });
+  assert.equal(login.status, 200);
+  for (const route of [
+    '/products?limit=2x', '/products?limit=-1', '/products?limit=1001',
+    '/products?offset=1.5', '/products?lowStockOnly=yes', '/products?itemType=INVALID',
+    '/products?search[x]=bad', '/orders?status=INVALID', '/orders?page=1.5', '/customers?limit=2.5',
+  ]) {
+    const response = await request.get('/api/v1' + route).set('Authorization', `Bearer ${login.body.data.token}`);
+    assert.equal(response.status, 400, route);
+    assert.equal(response.body.error.code, 'VALIDATION_ERROR', route);
+  }
+  const valid = await request.get('/api/v1/products?limit=200&offset=0&lowStockOnly=false').set('Authorization', `Bearer ${login.body.data.token}`);
+  assert.equal(valid.status, 200);
+});
+
 test.after(async () => {
   await pool.end();
 });
@@ -1807,6 +1823,5 @@ test('Financial outputs: top-product revenue reflects item discounts and allocat
   // Revenue must be 1500 (after item discount of 200 AND order-level discount of 300)
   assert.equal(prod.totalRevenue, 1500, `Expected totalRevenue to be 1500, got ${prod.totalRevenue}`);
 });
-
 
 

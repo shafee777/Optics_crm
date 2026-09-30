@@ -1,20 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api.js';
-import { Calendar, Phone, MessageSquare, AlertCircle, Clock } from 'lucide-react';
+import { MessageSquare, AlertCircle, Clock } from 'lucide-react';
 import { sendWhatsApp, getAnnualCheckupMessage } from '../../lib/whatsapp.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 
 export default function AnnualRemindersTab() {
   const [reminders, setReminders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [attempt, setAttempt] = useState(0);
   const { user } = useAuth();
 
   useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError('');
     api.get('/customers/due-reminders')
-      .then((res) => setReminders(res.data.data))
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
-  }, []);
+      .then((res) => { if (active) setReminders(res.data.data); })
+      .catch(() => { if (active) setError('Could not load annual reminders. Please try again.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [attempt]);
 
   const handleSendReminder = (customer) => {
     const templates = user?.store?.whatsapp_templates || user?.store?.whatsappTemplates;
@@ -46,12 +52,18 @@ export default function AnnualRemindersTab() {
           </div>
         </div>
         <span className="px-3 py-1 bg-[#EBF3F1] text-[#28766B] text-xs font-semibold rounded-full border border-[#28766B]/20">
-          {reminders.length} Due for Recall
+          {loading || error ? '—' : reminders.length} Due for Recall
         </span>
       </div>
 
       {loading ? (
         <div className="p-8 text-center text-[#66746F] text-xs">Checking annual recall records...</div>
+      ) : error ? (
+        <div role="alert" className="p-4 rounded-xl bg-red-50 text-red-800 text-sm flex items-center gap-3">
+          <AlertCircle className="w-4 h-4" aria-hidden="true" />
+          <span>{error}</span>
+          <button type="button" onClick={() => setAttempt(value => value + 1)} className="font-semibold underline">Retry</button>
+        </div>
       ) : reminders.length === 0 ? (
         <div className="p-8 text-center text-[#66746F] text-xs">
           No customers currently due for 1-year annual recall.
