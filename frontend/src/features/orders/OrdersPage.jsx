@@ -3,19 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../services/api.js';
 import OrderStatusBadge from './OrderStatusBadge.jsx';
 import { SkeletonTable } from '../../components/common/Skeleton.jsx';
-import { Search, Plus, Calendar, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Search, Plus, Calendar, AlertTriangle, ArrowRight, AlertCircle, RotateCcw } from 'lucide-react';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [meta, setMeta] = useState({ page: 1, total: 0, totalPages: 1 });
 
   const navigate = useNavigate();
 
   const fetchOrders = useCallback(async (searchTerm = search, status = statusFilter, page = 1) => {
     setLoading(true);
+    setError('');
     try {
       const params = { page, limit: 10 };
       if (searchTerm) params.search = searchTerm;
@@ -30,6 +32,7 @@ export default function OrdersPage() {
       setMeta(response.data.meta);
     } catch (err) {
       console.error('Error fetching orders:', err);
+      setError(err.response?.data?.error?.message || 'Failed to load orders. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -102,7 +105,21 @@ export default function OrdersPage() {
 
       {/* Orders Table */}
       <div className="bg-[#FEFEFC] rounded-2xl border border-[#E2E7E3] shadow-sm overflow-hidden">
-        {loading ? (
+        {error ? (
+          <div className="p-12 text-center space-y-3">
+            <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mx-auto text-rose-600">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <p className="text-[#202D2B] font-semibold text-sm">Failed to load orders</p>
+            <p className="text-xs text-rose-700 max-w-md mx-auto">{error}</p>
+            <button
+              onClick={() => fetchOrders(search, statusFilter, meta.page || 1)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold transition shadow-xs mt-2"
+            >
+              <RotateCcw className="w-3.5 h-3.5" /> Retry
+            </button>
+          </div>
+        ) : loading ? (
           <SkeletonTable rows={6} cols={5} />
         ) : orders.length === 0 ? (
           <div className="p-12 text-center space-y-2">

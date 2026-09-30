@@ -13,7 +13,7 @@ export const supplierService = {
   async getSupplierById(storeId, id) {
     const supplier = await supplierRepository.findById(storeId, id);
     if (!supplier) {
-      throw new AppError('Supplier not found', 404);
+      throw new AppError('Supplier not found', 404, 'SUPPLIER_NOT_FOUND');
     }
     return supplier;
   },

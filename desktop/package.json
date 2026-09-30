@@ -21,6 +21,10 @@
   "dependencies": {
     "pg": "8.12.0"
   },
+  "overrides": {
+    "tar": "^7.5.22",
+    "builder-util-runtime": "^9.7.0"
+  },
   "build": {
     "appId": "com.opticscrm.desktop",
     "productName": "Optics CRM",

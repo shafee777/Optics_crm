@@ -1,6 +1,8 @@
 import bcrypt from 'bcrypt';
 import { userRepository } from './user.repository.js';
+import { authRepository } from '../auth/auth.repository.js';
 import { AppError } from '../../shared/errors/AppError.js';
+import { withTransaction } from '../../config/database.js';
 
 export const userService = {
   async listUsers(storeId) {
@@ -41,8 +43,15 @@ export const userService = {
       }
     }
 
-    const updated = await userRepository.updateStatus(storeId, targetUserId, active);
-    return updated;
+    return withTransaction(async (client) => {
+      const updated = await userRepository.updateStatus(storeId, targetUserId, active);
+      // On deactivation, immediately invalidate all active sessions so the
+      // user cannot continue using an existing refresh token to get new access tokens.
+      if (!active) {
+        await authRepository.revokeAllUserSessions(targetUserId, client);
+      }
+      return updated;
+    });
   },
 
   async resetPassword(storeId, targetUserId, newPassword) {
@@ -54,6 +63,12 @@ export const userService = {
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(newPassword, saltRounds);
 
-    return userRepository.updatePassword(storeId, targetUserId, passwordHash);
-  }
+    return withTransaction(async (client) => {
+      const updated = await userRepository.updatePassword(storeId, targetUserId, passwordHash);
+      // Revoke all existing sessions so holders of old refresh tokens must
+      // log in again with the new password.
+      await authRepository.revokeAllUserSessions(targetUserId, client);
+      return updated;
+    });
+  },
 };

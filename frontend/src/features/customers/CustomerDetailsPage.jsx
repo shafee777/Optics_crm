@@ -10,7 +10,7 @@ import { MessageSquare, UserCheck, Edit2, FileDown, Share2, Printer } from 'luci
 import { sendWhatsApp, sharePdfOnWhatsApp, getRichPrescriptionWhatsAppMessage, getGreetingMessage, getAnnualCheckupMessage } from '../../lib/whatsapp.js';
 import { downloadPrescriptionPdf } from '../../lib/pdfGenerator.js';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { ArrowLeft, Phone, MapPin, Calendar, FileText, ShoppingBag, Hash, PlusCircle, Clock, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Phone, MapPin, Calendar, FileText, ShoppingBag, Hash, PlusCircle, Clock, ArrowRight, AlertCircle, RotateCcw } from 'lucide-react';
 
 export default function CustomerDetailsPage() {
   const { user } = useAuth();
@@ -21,6 +21,7 @@ export default function CustomerDetailsPage() {
   const [customerOrders, setCustomerOrders] = useState([]);
   const [messageLogs, setMessageLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [isPrescriptionModalOpen, setIsPrescriptionModalOpen] = useState(false);
   const [editingPrescription, setEditingPrescription] = useState(null);
   const [printingPrescription, setPrintingPrescription] = useState(null);
@@ -28,6 +29,8 @@ export default function CustomerDetailsPage() {
 
   const fetchCustomerData = useCallback(async () => {
     if (!id) return;
+    setLoading(true);
+    setError('');
     try {
       const [custRes, prescRes, ordersRes, logsRes] = await Promise.all([
         api.get(`/customers/${id}`),
@@ -41,6 +44,11 @@ export default function CustomerDetailsPage() {
       setMessageLogs(logsRes.data?.data || []);
     } catch (err) {
       console.error('Error fetching customer data:', err);
+      if (err.response?.status === 404) {
+        setCustomer(null);
+      } else {
+        setError(err.response?.data?.error?.message || 'Failed to load customer profile. Please check your connection and try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -52,6 +60,32 @@ export default function CustomerDetailsPage() {
 
   if (loading) {
     return <div className="p-8 text-center text-slate-500">Loading customer profile & history...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-lg mx-auto p-8 text-center bg-[#FEFEFC] rounded-2xl border border-rose-200 shadow-sm space-y-4 my-8">
+        <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mx-auto text-rose-600">
+          <AlertCircle className="w-6 h-6" />
+        </div>
+        <h2 className="text-base font-bold text-[#202D2B]">Unable to load customer profile</h2>
+        <p className="text-xs text-rose-700">{error}</p>
+        <div className="flex justify-center gap-3 pt-2">
+          <button
+            onClick={() => navigate('/customers')}
+            className="px-4 py-2 border border-[#E2E7E3] text-[#66746F] hover:bg-[#F5F7F3] rounded-xl text-xs font-semibold transition"
+          >
+            Back to Directory
+          </button>
+          <button
+            onClick={fetchCustomerData}
+            className="px-4 py-2 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-xs"
+          >
+            <RotateCcw className="w-3.5 h-3.5" /> Try Again
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (!customer) {

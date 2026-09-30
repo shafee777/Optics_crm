@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ORDER_STATUS } from './order.constants.js';
+import { isValidCalendarDate } from '../../shared/validators/dateValidator.js';
 
 const orderItemSchema = z.object({
   itemType: z.enum(['FRAME', 'LENS', 'COATING', 'CONTACT_LENS', 'ACCESSORY', 'SERVICE']),
@@ -23,9 +24,9 @@ export const ITEM_TYPES = [
 
 export const createOrderSchema = z.object({
   body: z.object({
-    customerId: z.string().uuid(),
-    prescriptionId: z.string().uuid().optional().nullable(),
-    dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Due date must be YYYY-MM-DD'),
+    customerId: z.string().uuid('Invalid customer ID format'),
+    prescriptionId: z.string().uuid('Invalid prescription ID format').optional().nullable(),
+    dueDate: z.string().refine(isValidCalendarDate, { message: 'Due date must be a valid calendar date (YYYY-MM-DD)' }),
     isGstBill: z.boolean().default(true),
     items: z
       .array(

@@ -60,39 +60,45 @@ export const prescriptionRepository = {
   },
 
   async update(storeId, customerId, prescriptionId, data) {
+    const fields = [];
+    const values = [storeId, customerId, prescriptionId];
+    let idx = 4;
+
+    const map = {
+      rSph: 'r_sph',
+      rCyl: 'r_cyl',
+      rAxis: 'r_axis',
+      rAdd: 'r_add',
+      lSph: 'l_sph',
+      lCyl: 'l_cyl',
+      lAxis: 'l_axis',
+      lAdd: 'l_add',
+      pd: 'pd',
+      notes: 'notes',
+      testedAt: 'tested_at',
+    };
+
+    for (const [key, dbCol] of Object.entries(map)) {
+      if (data[key] !== undefined) {
+        fields.push(`${dbCol} = $${idx++}`);
+        if (key === 'notes') {
+          values.push(data[key] ? data[key].trim() : null);
+        } else {
+          values.push(data[key] ?? null);
+        }
+      }
+    }
+
+    if (fields.length === 0) {
+      return this.findById(storeId, customerId, prescriptionId);
+    }
+
     const sql = `
       UPDATE prescriptions
-      SET 
-        r_sph = $4,
-        r_cyl = $5,
-        r_axis = $6,
-        r_add = $7,
-        l_sph = $8,
-        l_cyl = $9,
-        l_axis = $10,
-        l_add = $11,
-        pd = $12,
-        notes = $13,
-        tested_at = COALESCE($14, tested_at)
+      SET ${fields.join(', ')}
       WHERE store_id = $1 AND customer_id = $2 AND id = $3
       RETURNING *;
     `;
-    const values = [
-      storeId,
-      customerId,
-      prescriptionId,
-      data.rSph !== undefined ? data.rSph : null,
-      data.rCyl !== undefined ? data.rCyl : null,
-      data.rAxis !== undefined ? data.rAxis : null,
-      data.rAdd !== undefined ? data.rAdd : null,
-      data.lSph !== undefined ? data.lSph : null,
-      data.lCyl !== undefined ? data.lCyl : null,
-      data.lAxis !== undefined ? data.lAxis : null,
-      data.lAdd !== undefined ? data.lAdd : null,
-      data.pd !== undefined ? data.pd : null,
-      data.notes !== undefined ? (data.notes?.trim() || null) : null,
-      data.testedAt || null,
-    ];
     const res = await query(sql, values);
     return res.rows[0] || null;
   },

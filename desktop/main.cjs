@@ -112,7 +112,7 @@ ipcMain.handle('restore', async (event, token) => {
   app.relaunch(); app.quit(); return { restored: true };
 });
 app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
-app.on('window-all-closed', () => app.quit());
+app.on('window-all-closed', () => { if (!smoke) app.quit(); });
 app.on('before-quit', event => {
   if (shutdownAllowed) return;
   event.preventDefault(); if (exiting) return; exiting = true; clearInterval(timer);
@@ -133,11 +133,46 @@ if (single) app.whenReady().then(async () => {
   await db.start();
   await startApi();
   if (smoke) {
-    await createOwner({shop:'Desktop smoke test',name:'Test owner',email:'owner@example.test',password:crypto.randomBytes(16).toString('hex')});
+    const password = crypto.randomBytes(16).toString('hex');
+    await createOwner({shop:'Desktop smoke test',name:'Test owner',email:'owner@example.test',password});
+    // Exercise the actual packaged renderer with all non-loopback requests blocked.
+    const check = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true } });
+    const externalRequests = [];
+    check.webContents.session.webRequest.onBeforeRequest((details, callback) => {
+      const local = details.url.startsWith(origin + '/');
+      if (!local) externalRequests.push(details.url);
+      callback({ cancel: !local });
+    });
+    await check.loadURL(origin + '/login');
+    const result = await check.webContents.executeJavaScript(`(async () => {
+      Object.defineProperty(navigator, 'onLine', { get: () => false });
+      let token;
+      async function api(route, body) {
+        const response = await fetch('/api/v1' + route, { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', ...(token ? {Authorization: 'Bearer ' + token} : {}) }, ...(body ? {body: JSON.stringify(body)} : {}) });
+        const data = await response.json();
+        if (!response.ok) throw new Error(route + ': ' + JSON.stringify(data));
+        return data.data;
+      }
+      token = (await api('/auth/login', {email:'owner@example.test',password:${JSON.stringify(password)}})).token;
+      const customer = await api('/customers', {fullName:'Offline customer'});
+      const product = await api('/products', {itemType:'FRAME',name:'Offline frame',sellingPrice:100,stockQuantity:5});
+      const order = await api('/orders', {customerId:customer.id,dueDate:'2026-10-01',items:[{productId:product.id,itemType:'FRAME',description:'Offline frame',quantity:2,unitPrice:100,gstRate:0}]});
+      await api('/orders/' + order.id + '/payments', {amount:200,paymentMethod:'CASH'});
+      const saved = await api('/orders/' + order.id);
+      const stock = await api('/products/' + product.id);
+      if (Number(saved.balance_due) !== 0 || Number(stock.stock_quantity) !== 3) throw new Error('Offline billing or stock mismatch');
+      if (!document.querySelector('input[type="password"]')) throw new Error('Login renderer did not mount');
+      return {customerId:customer.id,orderId:order.id};
+    })()`);
+    if (externalRequests.length) throw new Error('Renderer requested external resources: ' + externalRequests.join(', '));
+    check.destroy();
     const backup = await db.backup();
     const restored = await db.restore(backup);
     if (!await db.hasOwner(restored)) throw new Error('Restore verification failed');
-    console.log('DESKTOP_SMOKE_OK: first run, migrations, backend health, owner setup, backup and restore');
+    await db.client(restored, async client => {
+      if (!(await client.query('SELECT 1 FROM orders WHERE id=$1 AND customer_id=$2', [result.orderId, result.customerId])).rowCount) throw new Error('Offline order missing from restored backup');
+    });
+    console.log('DESKTOP_SMOKE_OK: first run, migrations, backend health, owner setup, offline renderer/login/customer/order/payment/stock, backup and restored order');
     app.quit(); return;
   }
   createWindow();

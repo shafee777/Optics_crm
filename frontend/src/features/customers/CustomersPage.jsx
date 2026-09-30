@@ -4,13 +4,14 @@ import api from '../../services/api.js';
 import CustomerFormModal from './CustomerFormModal.jsx';
 import AnnualRemindersTab from './AnnualRemindersTab.jsx';
 import { SkeletonTable } from '../../components/common/Skeleton.jsx';
-import { Search, UserPlus, Phone, Eye, UserCheck, Hash, Clock, Users, Edit2 } from 'lucide-react';
+import { Search, UserPlus, Phone, Eye, UserCheck, Hash, Clock, Users, Edit2, AlertCircle, RotateCcw } from 'lucide-react';
 
 export default function CustomersPage() {
   const [activeTab, setActiveTab] = useState('directory'); // 'directory' | 'reminders'
   const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [meta, setMeta] = useState({ page: 1, total: 0, totalPages: 1 });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
@@ -19,6 +20,7 @@ export default function CustomersPage() {
 
   const fetchCustomers = useCallback(async (searchTerm = search, page = 1) => {
     setLoading(true);
+    setError('');
     try {
       const response = await api.get('/customers', {
         params: { search: searchTerm, page, limit: 10 },
@@ -27,6 +29,7 @@ export default function CustomersPage() {
       setMeta(response.data.meta);
     } catch (err) {
       console.error('Error fetching customers:', err);
+      setError(err.response?.data?.error?.message || 'Failed to load customers. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -107,7 +110,21 @@ export default function CustomersPage() {
 
           {/* Customers Table */}
           <div className="bg-[#FEFEFC] rounded-2xl border border-[#E2E7E3] shadow-sm overflow-hidden">
-        {loading ? (
+        {error ? (
+          <div className="p-12 text-center space-y-3">
+            <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mx-auto text-rose-600">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <p className="text-[#202D2B] font-semibold text-sm">Failed to load customer records</p>
+            <p className="text-xs text-rose-700 max-w-md mx-auto">{error}</p>
+            <button
+              onClick={() => fetchCustomers(search, meta.page || 1)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold transition shadow-xs mt-2"
+            >
+              <RotateCcw className="w-3.5 h-3.5" /> Retry
+            </button>
+          </div>
+        ) : loading ? (
           <SkeletonTable rows={6} cols={5} />
         ) : customers.length === 0 ? (
           <div className="p-12 text-center space-y-3">

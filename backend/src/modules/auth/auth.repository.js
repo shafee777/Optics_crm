@@ -83,4 +83,18 @@ export const authRepository = {
     const result = await query(sql, [userId]);
     return result.rows[0] || null;
   },
-};
+
+  /** Revoke all active refresh sessions for a given user.
+   *  Call this inside a transaction (pass `db = client`) after a password
+   *  reset or account deactivation so existing tokens stop working immediately.
+   */
+  async revokeAllUserSessions(userId, db = { query }) {
+    await this.ensureRefreshSessionsTable(db);
+    await db.query(
+      `UPDATE auth_refresh_sessions
+          SET revoked_at = NOW()
+        WHERE user_id = $1 AND revoked_at IS NULL`,
+      [userId]
+    );
+  },
+};

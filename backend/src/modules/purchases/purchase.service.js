@@ -13,7 +13,7 @@ export const purchaseService = {
   async getPurchaseOrderById(storeId, id) {
     const po = await purchaseRepository.findById(storeId, id);
     if (!po) {
-      throw new AppError('Purchase order not found', 404);
+      throw new AppError('Purchase order not found', 404, 'PURCHASE_ORDER_NOT_FOUND');
     }
     return po;
   },

@@ -17,7 +17,9 @@ import {
   User,
   ShoppingBag,
   CalendarDays,
-  BarChart3
+  BarChart3,
+  AlertCircle,
+  RotateCcw
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -58,6 +60,7 @@ export default function FinancePage() {
 
   // UI states
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Fetch Summary and Expenses
@@ -72,6 +75,7 @@ export default function FinancePage() {
       }
     } catch (err) {
       console.error('Error fetching expenses/summary:', err);
+      setError(err.response?.data?.error?.message || 'Failed to load financial records');
     }
   }, [isOwner]);
 
@@ -189,6 +193,25 @@ export default function FinancePage() {
           Record Expense
         </button>
       </div>
+
+      {error && (
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-rose-800">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+            <span>{error}</span>
+          </div>
+          <button
+            onClick={() => {
+              setError('');
+              fetchExpensesAndSummary();
+              if (isOwner) fetchDailySales(selectedDate);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-lg text-xs font-semibold self-start sm:self-auto shadow-xs transition"
+          >
+            <RotateCcw className="w-3.5 h-3.5" /> Retry
+          </button>
+        </div>
+      )}
 
       {/* Owner-Only Executive Overview Cards */}
       {isOwner && (

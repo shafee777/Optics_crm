@@ -1368,3 +1368,445 @@ test('Stock Edge Case: zero adjustment is rejected with a validation error', asy
   assert.equal(adjustRes.status, 400, 'Zero adjustment should be rejected with 400 validation error');
 });
 
+// ─── P1: Supplier & Purchase Error Propagation ──────────────────────────────
+
+test('Supplier API: not-found error returns structured JSON error response', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  // Request a supplier that does not exist
+  const nonExistentId = '00000000-0000-0000-0000-000000000000';
+  const res = await request
+    .get(`/api/v1/suppliers/${nonExistentId}`)
+    .set('Authorization', `Bearer ${token}`);
+
+  // Must NOT crash as unhandled rejection — must return structured error
+  assert.equal(res.status, 404);
+  assert.equal(res.body.success, false);
+  assert.ok(res.body.error?.code, 'Expected error.code in response');
+});
+
+test('Supplier API: creating a supplier with missing required fields returns 400 validation error', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  // Send empty body — schema should reject
+  const res = await request
+    .post('/api/v1/suppliers')
+    .set('Authorization', `Bearer ${token}`)
+    .send({});
+
+  assert.equal(res.status, 400);
+  assert.equal(res.body.success, false);
+  assert.ok(res.body.error, 'Expected error object in response');
+});
+
+test('Purchase API: not-found error returns structured JSON error response', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  const nonExistentId = '00000000-0000-0000-0000-000000000000';
+  const res = await request
+    .get(`/api/v1/purchases/${nonExistentId}`)
+    .set('Authorization', `Bearer ${token}`);
+
+  assert.equal(res.status, 404);
+  assert.equal(res.body.success, false);
+  assert.ok(res.body.error?.code, 'Expected error.code in response');
+});
+
+// ─── P1: Session Revocation on Security-Sensitive Account Changes ────────────
+
+test('Session revocation: refresh token is invalidated after password reset', async () => {
+  const ownerLogin = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const ownerToken = ownerLogin.body.data.token;
+
+  // 1. Create a new staff user to operate on
+  const uniqueEmail = `revoke_pwd_${Date.now()}@testoptical.com`;
+  const createRes = await request
+    .post('/api/v1/users')
+    .set('Authorization', `Bearer ${ownerToken}`)
+    .send({ fullName: 'Revoke PWD Staff', email: uniqueEmail, password: 'OldPass123!', role: 'STAFF' });
+  assert.equal(createRes.status, 201);
+  const targetUserId = createRes.body.data.id;
+
+  // 2. Staff logs in and obtains a refresh token
+  const staffLogin = await request.post('/api/v1/auth/login').send({
+    email: uniqueEmail,
+    password: 'OldPass123!',
+  });
+  assert.equal(staffLogin.status, 200);
+  const staffRefreshToken = staffLogin.body.data.refreshToken;
+  assert.ok(staffRefreshToken, 'Staff must receive a refresh token on login');
+
+  // 3. Owner resets staff password
+  const resetRes = await request
+    .patch(`/api/v1/users/${targetUserId}/password`)
+    .set('Authorization', `Bearer ${ownerToken}`)
+    .send({ password: 'NewSecurePass456!' });
+  assert.equal(resetRes.status, 200);
+
+  // 4. The old refresh token must now be revoked — refresh must fail
+  const refreshRes = await request.post('/api/v1/auth/refresh').send({
+    refreshToken: staffRefreshToken,
+  });
+  assert.equal(
+    refreshRes.status, 401,
+    `Old refresh token should be revoked after password reset, got ${refreshRes.status}: ${JSON.stringify(refreshRes.body)}`
+  );
+  assert.equal(refreshRes.body.error.code, 'REFRESH_TOKEN_REVOKED');
+});
+
+test('Session revocation: refresh token is invalidated after account deactivation', async () => {
+  const ownerLogin = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const ownerToken = ownerLogin.body.data.token;
+
+  // 1. Create a new staff user
+  const uniqueEmail = `revoke_deact_${Date.now()}@testoptical.com`;
+  const createRes = await request
+    .post('/api/v1/users')
+    .set('Authorization', `Bearer ${ownerToken}`)
+    .send({ fullName: 'Revoke Deact Staff', email: uniqueEmail, password: 'DeactPass123!', role: 'STAFF' });
+  assert.equal(createRes.status, 201);
+  const targetUserId = createRes.body.data.id;
+
+  // 2. Staff logs in and gets a refresh token
+  const staffLogin = await request.post('/api/v1/auth/login').send({
+    email: uniqueEmail,
+    password: 'DeactPass123!',
+  });
+  assert.equal(staffLogin.status, 200);
+  const staffRefreshToken = staffLogin.body.data.refreshToken;
+  assert.ok(staffRefreshToken, 'Staff must receive a refresh token on login');
+
+  // 3. Owner deactivates staff account
+  const deactivateRes = await request
+    .patch(`/api/v1/users/${targetUserId}/status`)
+    .set('Authorization', `Bearer ${ownerToken}`)
+    .send({ active: false });
+  assert.equal(deactivateRes.status, 200);
+  assert.equal(deactivateRes.body.data.active, false);
+
+  // 4. The old refresh token must now be revoked — refresh must fail
+  const refreshRes = await request.post('/api/v1/auth/refresh').send({
+    refreshToken: staffRefreshToken,
+  });
+  assert.equal(
+    refreshRes.status, 401,
+    `Old refresh token should be revoked after deactivation, got ${refreshRes.status}: ${JSON.stringify(refreshRes.body)}`
+  );
+  // Either REFRESH_TOKEN_REVOKED or USER_NOT_FOUND (inactive check in refresh) are acceptable
+  assert.ok(
+    ['REFRESH_TOKEN_REVOKED', 'USER_NOT_FOUND'].includes(refreshRes.body.error?.code),
+    `Expected REFRESH_TOKEN_REVOKED or USER_NOT_FOUND, got: ${refreshRes.body.error?.code}`
+  );
+});
+
+// ─── P2: Optional Phone & Prescription PATCH Contract ───────────────────────
+
+test('Customer API: walk-in customer without phone number succeeds with 201', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  const res = await request
+    .post('/api/v1/customers')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      fullName: 'Walk-in Customer No Phone',
+      gender: 'Male',
+      notes: 'Customer has no mobile device',
+    });
+
+  assert.equal(res.status, 201);
+  assert.equal(res.body.success, true);
+  assert.equal(res.body.data.phone, null);
+  assert.equal(res.body.data.full_name, 'Walk-in Customer No Phone');
+});
+
+test('Prescription PATCH: omitted fields retain existing values, while explicit null clears them', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  // 1. Create a customer
+  const custRes = await request
+    .post('/api/v1/customers')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ fullName: 'Rx Patch Test Patient' });
+  assert.equal(custRes.status, 201);
+  const customerId = custRes.body.data.id;
+
+  // 2. Create prescription with rSph, notes, and pd
+  const rxRes = await request
+    .post(`/api/v1/customers/${customerId}/prescriptions`)
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      rSph: -1.5,
+      rCyl: -0.5,
+      rAxis: 90,
+      pd: 63,
+      notes: 'Initial doctor examination note',
+    });
+  assert.equal(rxRes.status, 201);
+  const rxId = rxRes.body.data.id;
+  assert.equal(rxRes.body.data.r_sph, '-1.50');
+  assert.equal(rxRes.body.data.notes, 'Initial doctor examination note');
+  assert.equal(Number(rxRes.body.data.pd), 63);
+
+  // 3. PATCH update rSph only (omit notes and pd) — notes and pd must retain their existing values
+  const patch1 = await request
+    .patch(`/api/v1/customers/${customerId}/prescriptions/${rxId}`)
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      rSph: -2.25,
+    });
+  assert.equal(patch1.status, 200);
+  assert.equal(patch1.body.data.r_sph, '-2.25');
+  assert.equal(patch1.body.data.notes, 'Initial doctor examination note', 'Omitted notes field must retain existing value');
+  assert.equal(Number(patch1.body.data.pd), 63, 'Omitted pd field must retain existing value');
+
+  // 4. PATCH update with explicit null — notes and pd must now be cleared to null
+  const patch2 = await request
+    .patch(`/api/v1/customers/${customerId}/prescriptions/${rxId}`)
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      notes: null,
+      pd: null,
+    });
+  assert.equal(patch2.status, 200);
+  assert.equal(patch2.body.data.r_sph, '-2.25', 'rSph must remain unchanged');
+  assert.equal(patch2.body.data.notes, null, 'Explicit null notes must clear the field');
+  assert.equal(patch2.body.data.pd, null, 'Explicit null pd must clear the field');
+});
+
+// ─── P2: Calendar Date & Query Parameter Validation ─────────────────────────
+
+test('Validation: invalid calendar date in order dueDate is rejected with 400', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  const custRes = await request
+    .post('/api/v1/customers')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ fullName: 'Date Validation Customer' });
+  const customerId = custRes.body.data.id;
+
+  // Send non-existent calendar date (February 31)
+  const orderRes = await request
+    .post('/api/v1/orders')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      customerId,
+      dueDate: '2026-02-31',
+      items: [
+        { itemType: 'FRAME', description: 'Test Frame', quantity: 1, unitPrice: 1000 },
+      ],
+    });
+
+  assert.equal(orderRes.status, 400);
+  assert.equal(orderRes.body.success, false);
+});
+
+test('Validation: reports/custom-range rejects startDate > endDate with 400', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  const res = await request
+    .get('/api/v1/reports/custom-range?startDate=2026-09-30&endDate=2026-09-01')
+    .set('Authorization', `Bearer ${token}`);
+
+  assert.equal(res.status, 400);
+  assert.equal(res.body.success, false);
+});
+
+test('Validation: reports/top-products rejects invalid limit with 400', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  const res = await request
+    .get('/api/v1/reports/top-products?limit=-5')
+    .set('Authorization', `Bearer ${token}`);
+
+  assert.equal(res.status, 400);
+  assert.equal(res.body.success, false);
+});
+
+// ─── P2: Store Logo Upload & Security Validation ────────────────────────────
+
+test('Store Logo: valid PNG image upload succeeds and updates store profile', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  const validPngDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==';
+
+  const res = await request
+    .patch('/api/v1/stores/current')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ logoUrl: validPngDataUrl });
+
+  assert.equal(res.status, 200);
+  assert.equal(res.body.success, true);
+  assert.equal(res.body.data.logoUrl, validPngDataUrl);
+});
+
+test('Store Logo: unsupported file type (fake image spoofing MIME) is rejected with 400', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  // Text disguised as PNG data URL
+  const fakePng = 'data:image/png;base64,' + Buffer.from('This is plain text, not a PNG file').toString('base64');
+
+  const res = await request
+    .patch('/api/v1/stores/current')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ logoUrl: fakePng });
+
+  assert.equal(res.status, 400);
+  assert.equal(res.body.success, false);
+});
+
+test('Store Logo: oversized image (>2MB) is rejected with 400', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  // Construct PNG with size > 2MB
+  const bigBuffer = Buffer.concat([
+    Buffer.from('89504e470d0a1a0a', 'hex'),
+    Buffer.alloc(2.2 * 1024 * 1024),
+  ]);
+  const bigPng = 'data:image/png;base64,' + bigBuffer.toString('base64');
+
+  const res = await request
+    .patch('/api/v1/stores/current')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ logoUrl: bigPng });
+
+  assert.equal(res.status, 400);
+  assert.equal(res.body.success, false);
+});
+
+// ─── P2: Financial Outputs Accuracy ─────────────────────────────────────────
+
+test('Financial outputs: expense late on the end date is included in date-filtered results', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  // Incur an expense at 23:45 late on 2026-08-15
+  const lateDate = '2026-08-15';
+  const lateExpense = await request
+    .post('/api/v1/expenses')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      category: 'MISCELLANEOUS',
+      amount: 450.00,
+      paymentMethod: 'CASH',
+      incurredAt: '2026-08-15T23:45:00+05:30',
+      note: 'Late night cleaning expense',
+    });
+  assert.equal(lateExpense.status, 201);
+  const expenseId = lateExpense.body.data.id;
+
+  // Filter with from=2026-08-15 and to=2026-08-15 — should include the 23:45 expense
+  const filterRes = await request
+    .get(`/api/v1/expenses?from=${lateDate}&to=${lateDate}`)
+    .set('Authorization', `Bearer ${token}`);
+
+  assert.equal(filterRes.status, 200);
+  const found = filterRes.body.data.some((e) => e.id === expenseId);
+  assert.ok(found, 'Expense incurred late on the end date must be included in date filter');
+});
+
+test('Financial outputs: top-product revenue reflects item discounts and allocated order discount', async () => {
+  const loginRes = await request.post('/api/v1/auth/login').send({
+    email: 'owner@visioncare.com',
+    password: 'Password123!',
+  });
+  const token = loginRes.body.data.token;
+
+  const custRes = await request
+    .post('/api/v1/customers')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ fullName: 'Top Product Discount Customer' });
+  const customerId = custRes.body.data.id;
+
+  const uniqueDesc = `Discounted Premium Frame ${Date.now()}`;
+
+  // Item: quantity 2, unitPrice 1000 = 2000 gross. Item discount: 200 => net item price = 1800.
+  // Order discount: 300 => final order total = 1500.
+  // The product's actual allocated revenue should be 1800 - 300 = 1500!
+  const orderRes = await request
+    .post('/api/v1/orders')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      customerId,
+      dueDate: '2026-10-15',
+      items: [
+        {
+          itemType: 'FRAME',
+          description: uniqueDesc,
+          quantity: 2,
+          unitPrice: 1000,
+          discount: 200,
+        },
+      ],
+      discount: 300,
+    });
+  assert.equal(orderRes.status, 201);
+  assert.equal(Number(orderRes.body.data.total_amount), 1500);
+
+  // Check top products report
+  const topRes = await request
+    .get('/api/v1/reports/top-products?limit=50')
+    .set('Authorization', `Bearer ${token}`);
+
+  assert.equal(topRes.status, 200);
+  const prod = topRes.body.data.find((p) => p.description === uniqueDesc);
+  assert.ok(prod, 'Product should appear in top selling products');
+  assert.equal(prod.unitsSold, 2);
+  // Revenue must be 1500 (after item discount of 200 AND order-level discount of 300)
+  assert.equal(prod.totalRevenue, 1500, `Expected totalRevenue to be 1500, got ${prod.totalRevenue}`);
+});
+
+
+

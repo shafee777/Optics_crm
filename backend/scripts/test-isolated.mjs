@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { readdirSync } from 'node:fs';
 import pg from 'pg';
 import { spawnSync } from 'node:child_process';
 dotenv.config();
@@ -11,7 +12,7 @@ await admin.connect();
 try { if (!process.argv[2]) await admin.query('CREATE DATABASE "'+db+'"'); } finally { await admin.end(); }
 url.pathname='/'+db;
 const env={...process.env,DATABASE_URL:url.toString(),NODE_ENV:'test',LOG_LEVEL:'fatal',LOGIN_RATE_LIMIT_MAX:'10000'};
-for(const args of [['database/migrate.js'],['database/seeds/dev_seed.js'],['--test','tests/billing.test.mjs','tests/whatsapp.test.mjs','tests/reliability.test.js','tests/api.test.js']]) {
+for(const args of [['database/migrate.js'],['database/seeds/dev_seed.js'],['--test', ...readdirSync('tests').filter(f => /\.test\.(mjs|js)$/.test(f)).sort().map(f => 'tests/' + f)]]) {
   const result=spawnSync(process.execPath,args,{env,stdio:'inherit'});
   if(result.status!==0){console.error('Failed stage:',args[0],'; retained database:',db);process.exit(result.status||1);}
 }

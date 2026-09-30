@@ -4,11 +4,12 @@ services:
     container_name: optics_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: optics_user
-      POSTGRES_PASSWORD: optics_password
-      POSTGRES_DB: optics_crm
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-optics_crm}
     ports:
-      - "5432:5432"
+      # Bind to localhost only — not exposed on the network
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 

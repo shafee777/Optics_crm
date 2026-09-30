@@ -46,7 +46,8 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
 // Body parser
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Request correlation ID
 app.use(requestIdMiddleware);

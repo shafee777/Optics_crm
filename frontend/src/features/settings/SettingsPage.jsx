@@ -131,19 +131,32 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      alert('Please choose an image file (PNG, JPG, or WebP).');
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    if (!allowedTypes.includes(file.type.toLowerCase())) {
+      setStoreMessage({
+        type: 'error',
+        text: 'Unsupported image format. Please select a PNG, JPEG, or WebP image.',
+      });
+      e.target.value = '';
       return;
     }
 
     if (file.size > 2 * 1024 * 1024) {
-      alert('Logo image size must be under 2MB.');
+      setStoreMessage({
+        type: 'error',
+        text: `Logo image size (${(file.size / (1024 * 1024)).toFixed(2)}MB) exceeds the 2MB limit.`,
+      });
+      e.target.value = '';
       return;
     }
 
+    setStoreMessage(null);
     const reader = new FileReader();
     reader.onload = (event) => {
-      setStoreData(prev => ({ ...prev, logoUrl: event.target.result }));
+      setStoreData((prev) => ({ ...prev, logoUrl: event.target.result }));
+    };
+    reader.onerror = () => {
+      setStoreMessage({ type: 'error', text: 'Failed to read image file.' });
     };
     reader.readAsDataURL(file);
   };

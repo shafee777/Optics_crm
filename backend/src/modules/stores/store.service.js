@@ -1,5 +1,6 @@
 import { storeRepository } from './store.repository.js';
 import { AppError } from '../../shared/errors/AppError.js';
+import { validateStoreLogo } from './logoValidator.js';
 
 export const storeService = {
   async getStore(storeId) {
@@ -28,6 +29,10 @@ export const storeService = {
     const existing = await storeRepository.findById(storeId);
     if (!existing) {
       throw new AppError('Store not found', 404, 'STORE_NOT_FOUND');
+    }
+
+    if (updateData.logoUrl !== undefined) {
+      validateStoreLogo(updateData.logoUrl);
     }
 
     const updated = await storeRepository.update(storeId, updateData);

@@ -17,23 +17,28 @@ import {
   ArrowRight,
   Phone,
   Wrench,
-  ShieldCheck
+  ShieldCheck,
+  AlertCircle,
+  RotateCcw
 } from 'lucide-react';
 
 export default function DashboardPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const { isOwner, user } = useAuth();
   const navigate = useNavigate();
 
   const fetchDashboard = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
       const response = await api.get('/dashboard/today');
       setData(response.data.data);
     } catch (err) {
       console.error('Error fetching dashboard:', err);
+      setError(err.response?.data?.error?.message || 'Failed to load dashboard operational data. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -52,8 +57,22 @@ export default function DashboardPage() {
     );
   }
 
-  if (!data) {
-    return <div className="p-8 text-center text-red-500">Failed to load dashboard operational data</div>;
+  if (error || !data) {
+    return (
+      <div className="max-w-lg mx-auto p-8 text-center bg-[#FEFEFC] rounded-2xl border border-rose-200 shadow-sm space-y-4 my-8">
+        <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mx-auto text-rose-600">
+          <AlertCircle className="w-6 h-6" />
+        </div>
+        <h2 className="text-base font-bold text-[#202D2B]">Unable to load dashboard data</h2>
+        <p className="text-xs text-rose-700">{error || 'Failed to load dashboard operational data'}</p>
+        <button
+          onClick={fetchDashboard}
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold transition shadow-xs"
+        >
+          <RotateCcw className="w-3.5 h-3.5" /> Retry
+        </button>
+      </div>
+    );
   }
 
   const { todaySales, todayExpenses, netCashFlow, counts, readyOrders, overdueOrders } = data;

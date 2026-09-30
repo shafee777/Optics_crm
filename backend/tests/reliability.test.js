@@ -31,7 +31,7 @@ test('concurrent cancellation restores stock only once with an audit entry', asy
   const results=await Promise.allSettled([orderService.transitionStatus(store,order.id,'CANCELLED'),orderService.transitionStatus(store,order.id,'CANCELLED')]);
   assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
   assert.equal(await stock(),5);
-  assert.equal(Number((await pool.query("SELECT COUNT(*) FROM inventory_movements WHERE reason=$1",['CANCEL_ORDER '+order.id])).rows[0].count),1);
+  assert.equal(Number((await pool.query("SELECT COUNT(*) FROM inventory_movements WHERE reason=$1 AND product_id=$2 AND store_id=$3",['CANCEL_ORDER '+order.order_number,product,store])).rows[0].count),1);
 });
 test('concurrent payments cannot overpay the same order', async () => {
   const order=await orderService.createOrder(store,user,orderData(1));

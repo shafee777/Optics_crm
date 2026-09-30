@@ -263,7 +263,13 @@ export const reportRepository = {
         oi.description,
         oi.item_type,
         SUM(oi.quantity)::int AS units_sold,
-        SUM(oi.total_price)::numeric(12,2) AS total_revenue
+        ROUND(SUM(
+          CASE 
+            WHEN o.subtotal > 0 AND o.discount > 0 
+              THEN oi.total_price - (oi.total_price * o.discount / o.subtotal)
+            ELSE oi.total_price 
+          END
+        ), 2)::numeric(12,2) AS total_revenue
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.id
       WHERE o.store_id = $1 AND o.status != 'CANCELLED'

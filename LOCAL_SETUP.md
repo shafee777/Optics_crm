@@ -31,7 +31,7 @@ Backup uses PostgreSQL's consistent custom-format dump, checks that the archive 
 
 Restore creates a NEW database and restores in one transaction. It refuses the active database name and will not overwrite an existing database. On failure, the new empty database may remain for investigation. Verify a restored copy before changing `DATABASE_URL` and restarting. Archive readability is not a substitute for a successful restore drill.
 
-Native PostgreSQL backup tools were unavailable in the Codex execution environment, so the real backup/restore drill and migration of the active shop database were not performed. Only isolated test databases were migrated.
+The 2026-09-30 release verification used bundled PostgreSQL tools for a real backup/restore drill in an isolated cluster. All 18 public tables matched after restoration. The active shop database was not migrated or changed. See `P2_RELEASE_VERIFICATION.md` for evidence and scope.
 
 ## Behavior changes
 
@@ -54,6 +54,27 @@ npm run test:unit
 npm run test:isolated
 ```
 
-`test:isolated` creates a uniquely named local `optics_test_*` database, migrates and seeds only that database, then runs API, billing, stock/concurrency and WhatsApp tests. The PostgreSQL role needs CREATEDB permission. Test databases are retained for inspection. `npm test` uses the configured database and seeded accounts; prefer the isolated runner.
+`test:isolated` creates a uniquely named local `optics_test_*` database, migrates and seeds only that database, then discovers and runs every backend test file, including PDF billing and production safeguards. The PostgreSQL role needs CREATEDB permission. Test databases are retained for inspection. `npm test` uses the configured database and seeded accounts; prefer the isolated runner.
 
-Frontend: `npm run build` and `npm run lint` from `frontend`. The existing Windows install lacks the optional oxlint native binding; repair dependencies with `npm ci` before running lint. Build was verified with bundled Node 24.
+Frontend: `npm run build` and `npm run lint` from `frontend`. Build was verified with bundled Node 24. The missing Windows oxlint binding was repaired during P2 verification; lint runs with 55 warnings and no errors.
+
+For verification without a configured database, run `npm run test:database` from `desktop` with `desktop/vendor/pgsql` present. It initializes a separate PostgreSQL cluster under `work`, applies migrations, reruns the CLI migrator twice, runs every backend test, and compares all public table contents after backup/restore. It stops that cluster on completion. `npm run test:desktop` uses a separate temporary profile and tests the staged app's offline renderer/API workflow and backup/restore. Rebuild with `npm run dist` before testing the release executable with `--smoke-test`.
+
+## Docker Compose (local dev PostgreSQL)
+
+`docker-compose.yml` reads database credentials from environment variables — credentials are not hardcoded in the file. Create a `.env` file **next to `docker-compose.yml`** before running `docker compose up`:
+
+```env
+POSTGRES_USER=optics_user
+POSTGRES_PASSWORD=change_me_to_a_strong_password
+POSTGRES_DB=optics_crm
+```
+
+The PostgreSQL port is bound to `127.0.0.1:5432` only, so the database is not reachable from other machines on the network. Set the matching `DATABASE_URL` in `backend/.env`:
+
+```env
+DATABASE_URL=postgresql://optics_user:change_me_to_a_strong_password@127.0.0.1:5432/optics_crm
+```
+
+Docker Compose will exit with an error if `POSTGRES_USER` or `POSTGRES_PASSWORD` are not set.
+

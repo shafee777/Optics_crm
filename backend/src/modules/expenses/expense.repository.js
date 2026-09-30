@@ -34,12 +34,20 @@ export const expenseRepository = {
 
     if (from) {
       params.push(from);
-      whereClause += ` AND e.incurred_at >= $${params.length}::timestamptz`;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(from)) {
+        whereClause += ` AND (e.incurred_at AT TIME ZONE COALESCE((SELECT timezone FROM stores WHERE id = $1), 'Asia/Kolkata'))::date >= $${params.length}::date`;
+      } else {
+        whereClause += ` AND e.incurred_at >= $${params.length}::timestamptz`;
+      }
     }
 
     if (to) {
       params.push(to);
-      whereClause += ` AND e.incurred_at <= $${params.length}::timestamptz`;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+        whereClause += ` AND (e.incurred_at AT TIME ZONE COALESCE((SELECT timezone FROM stores WHERE id = $1), 'Asia/Kolkata'))::date <= $${params.length}::date`;
+      } else {
+        whereClause += ` AND e.incurred_at <= $${params.length}::timestamptz`;
+      }
     }
 
     const countSql = `SELECT COUNT(*) FROM expenses e ${whereClause};`;

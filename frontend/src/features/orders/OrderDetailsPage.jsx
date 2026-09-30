@@ -51,11 +51,18 @@ export default function OrderDetailsPage() {
   }, [order]);
 
   const fetchOrder = useCallback(async () => {
+    setLoading(true);
+    setError('');
     try {
       const response = await api.get(`/orders/${id}`);
       setOrder(response.data.data);
     } catch (err) {
-      console.error('Order not found:', err);
+      const status = err.response?.status;
+      if (status === 404) {
+        setError('Order not found in this store.');
+      } else {
+        setError(err.response?.data?.error?.message || 'Failed to load order. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -131,11 +138,15 @@ export default function OrderDetailsPage() {
             payments: order.payments,
           });
 
-      sendWhatsApp({ phone: order.customer_phone, message: richMsg });
-      showBanner(`📄 PDF "${filename}" saved to Downloads! WhatsApp draft opened with complete bill & prescription details.`, 'success');
+      const result = sendWhatsApp({ phone: order.customer_phone, message: richMsg });
+      if (result?.success) {
+        showBanner(`📄 PDF "${filename}" saved to Downloads! WhatsApp draft opened — review and send in WhatsApp. The PDF is NOT automatically attached.`, 'success');
+      }
     } else {
-      sendWhatsApp({ phone: order.customer_phone, message: richMsg });
-      showBanner(`WhatsApp draft opened with full bill, power refraction & payment breakdown!`, 'success');
+      const result = sendWhatsApp({ phone: order.customer_phone, message: richMsg });
+      if (result?.success) {
+        showBanner(`WhatsApp draft opened with full bill, power refraction & payment breakdown! Review and press Send in WhatsApp.`, 'success');
+      }
     }
   };
 
@@ -170,11 +181,22 @@ export default function OrderDetailsPage() {
 
   if (!order) {
     return (
-      <div className="p-8 text-center">
-        <p className="text-red-500 font-medium">Order not found in this store</p>
-        <button onClick={() => navigate('/orders')} className="mt-4 text-indigo-600 text-sm underline">
-          Back to Orders
-        </button>
+      <div className="p-8 max-w-lg mx-auto text-center space-y-4">
+        <div className="p-6 bg-rose-50 rounded-2xl border border-rose-200 shadow-xs flex flex-col items-center gap-3">
+          <AlertCircle className="w-8 h-8 text-rose-500" />
+          <p className="text-sm font-semibold text-rose-800">{error || 'Order not found in this store.'}</p>
+          <div className="flex gap-3 mt-1">
+            <button
+              onClick={fetchOrder}
+              className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold shadow-sm transition"
+            >
+              Try Again
+            </button>
+            <button onClick={() => navigate('/orders')} className="px-4 py-2 border border-rose-300 text-rose-700 rounded-xl text-xs font-semibold hover:bg-rose-100 transition">
+              Back to Orders
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -434,24 +456,24 @@ export default function OrderDetailsPage() {
         <div className="flex items-center gap-2 flex-wrap pt-1">
           {order.customer_phone ? (
             <>
-              {/* Send Bill details directly via WhatsApp */}
+              {/* WhatsApp draft — text only, no PDF */}
               <button
                 onClick={() => handleShareOnWhatsApp(false)}
                 className="px-3.5 py-2 bg-[#28766B] hover:bg-[#1E5C53] text-white text-xs font-semibold rounded-xl shadow-xs transition flex items-center gap-1.5"
-                title="Sends complete bill, eyeglass powers, and payment balance directly into WhatsApp"
+                title="Opens a pre-filled WhatsApp draft for you to review and send — text only, no PDF attached"
               >
                 <Share2 className="w-3.5 h-3.5" />
-                Send Bill via WhatsApp
+                WhatsApp Draft (text only)
               </button>
 
-              {/* Share with PDF download */}
+              {/* Download PDF then open WhatsApp draft */}
               <button
                 onClick={() => handleShareOnWhatsApp(true)}
                 className="px-3 py-2 bg-[#FEFEFC] hover:bg-[#F5F7F3] text-[#202D2B] text-xs font-semibold rounded-xl border border-[#E2E7E3] shadow-xs transition flex items-center gap-1.5"
-                title="Saves PDF file to your Downloads and opens WhatsApp draft"
+                title="Downloads PDF to your device and opens a WhatsApp draft. The PDF is NOT automatically attached or sent."
               >
                 <FileDown className="w-3.5 h-3.5 text-[#28766B]" />
-                Share + Download PDF
+                Download PDF + Open WhatsApp Draft
               </button>
 
               {/* Ready for pickup WhatsApp */}
