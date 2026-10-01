@@ -2,7 +2,7 @@ import React from 'react';
 import { Printer, Glasses, Phone, Calendar, User, FileText } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext.jsx';
 
-export default function PrintOrderInvoice({ order, prescription }) {
+export default function PrintOrderInvoice({ order, prescription, hideActions = false }) {
   const { user } = useAuth();
   const store = user?.store || { name: 'Optical Store', phone: '', currency: 'INR' };
 
@@ -13,14 +13,14 @@ export default function PrintOrderInvoice({ order, prescription }) {
   return (
     <div>
       {/* Action Button (Hidden during printing) */}
-      <div className="print:hidden flex justify-end mb-4">
+      {!hideActions && <div className="print:hidden flex justify-end mb-4">
         <button
           onClick={handlePrint}
           className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold shadow-md transition"
         >
           <Printer className="w-4 h-4" /> Print Invoice / Save as PDF
         </button>
-      </div>
+      </div>}
 
       {/* Printable Invoice Container (Visible both on screen and on paper) */}
       <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm print:border-none print:shadow-none print:p-0 print:m-0 text-slate-900 font-sans text-xs">

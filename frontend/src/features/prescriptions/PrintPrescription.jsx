@@ -10,7 +10,7 @@ const formatPower = (val) => {
   return (num > 0 ? '+' : '') + num.toFixed(2);
 };
 
-export default function PrintPrescription({ prescription, customer, onBack }) {
+export default function PrintPrescription({ prescription, customer, onBack, hideActions = false }) {
   const { user } = useAuth();
   const store = user?.store || { name: 'Optical Store', phone: '', currency: 'INR' };
 
@@ -28,7 +28,7 @@ export default function PrintPrescription({ prescription, customer, onBack }) {
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       {/* Action Buttons (Hidden when printing) */}
-      <div className="print:hidden flex justify-between items-center">
+      {!hideActions && <div className="print:hidden flex justify-between items-center">
         {onBack ? (
           <button
             onClick={onBack}
@@ -43,7 +43,7 @@ export default function PrintPrescription({ prescription, customer, onBack }) {
         >
           <Printer className="w-4 h-4" /> Print Prescription / Save as PDF
         </button>
-      </div>
+      </div>}
 
       {/* Printable Prescription Card */}
       <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm print:border-none print:shadow-none print:p-0 print:m-0 text-slate-900 font-sans text-xs">

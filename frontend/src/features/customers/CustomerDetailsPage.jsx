@@ -6,9 +6,9 @@ import NewPrescriptionModal from '../prescriptions/NewPrescriptionModal.jsx';
 import PrintPrescription from '../prescriptions/PrintPrescription.jsx';
 import CustomerFormModal from './CustomerFormModal.jsx';
 import OrderStatusBadge from '../orders/OrderStatusBadge.jsx';
-import { MessageSquare, UserCheck, Edit2, FileDown, Share2, Printer } from 'lucide-react';
-import { sendWhatsApp, sharePdfOnWhatsApp, getRichPrescriptionWhatsAppMessage, getGreetingMessage, getAnnualCheckupMessage } from '../../lib/whatsapp.js';
-import { downloadPrescriptionPdf } from '../../lib/pdfGenerator.js';
+import { MessageSquare, UserCheck, Edit2, Share2, Printer } from 'lucide-react';
+import { sendWhatsApp, getGreetingMessage, getAnnualCheckupMessage } from '../../lib/whatsapp.js';
+import PdfSaveActions from '../../components/common/PdfSaveActions.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { ArrowLeft, Phone, MapPin, Calendar, FileText, ShoppingBag, Hash, PlusCircle, Clock, ArrowRight, AlertCircle, RotateCcw } from 'lucide-react';
 
@@ -25,6 +25,7 @@ export default function CustomerDetailsPage() {
   const [isPrescriptionModalOpen, setIsPrescriptionModalOpen] = useState(false);
   const [editingPrescription, setEditingPrescription] = useState(null);
   const [printingPrescription, setPrintingPrescription] = useState(null);
+  const [sharingPrescription, setSharingPrescription] = useState(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
 
   const fetchCustomerData = useCallback(async () => {
@@ -102,11 +103,13 @@ export default function CustomerDetailsPage() {
   // Dedicated Print / Save PDF View for Prescription
   if (printingPrescription) {
     return (
-      <PrintPrescription
-        prescription={printingPrescription}
-        customer={customer}
-        onBack={() => setPrintingPrescription(null)}
-      />
+      <div className="max-w-3xl mx-auto space-y-4">
+        {sharingPrescription && <>
+          <button className="print:hidden" onClick={() => { setPrintingPrescription(null); setSharingPrescription(false); }}>Back to Customer</button>
+          <PdfSaveActions share phone={customer.phone} customerName={customer.full_name || customer.name} storeName={user?.store?.name} />
+        </>}
+        <PrintPrescription prescription={printingPrescription} customer={customer} hideActions={sharingPrescription} onBack={() => setPrintingPrescription(null)} />
+      </div>
     );
   }
 
@@ -307,7 +310,7 @@ export default function CustomerDetailsPage() {
                       {/* Print Rx / Save as PDF */}
                       <button
                         type="button"
-                        onClick={() => setPrintingPrescription(p)}
+                        onClick={() => { setSharingPrescription(false); setPrintingPrescription(p); }}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#203A36] hover:bg-[#182C29] text-white text-xs font-semibold rounded-xl shadow-xs transition"
                         title="Open clean, print-ready prescription with 1-click Print or Save as PDF"
                       >
@@ -320,43 +323,13 @@ export default function CustomerDetailsPage() {
                         <button
                           type="button"
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#28766B] hover:bg-[#1E5C53] text-white text-xs font-semibold rounded-xl shadow-xs transition"
-                          onClick={() => {
-                            const msg = getRichPrescriptionWhatsAppMessage({
-                              customer,
-                              store: user?.store,
-                              prescription: p,
-                            });
-                            sendWhatsApp({
-                              phone: customer.phone,
-                              message: msg,
-                              label: 'Prescription Details',
-                              customerId: customer.id,
-                              messageType: 'PRESCRIPTION',
-                            });
-                          }}
-                          title="Sends complete prescription refraction powers directly into WhatsApp message"
+                          onClick={() => { setSharingPrescription(true); setPrintingPrescription(p); }}
+                          title="Save the matching prescription through the print dialog, then open a WhatsApp draft and attach it manually"
                         >
                           <Share2 className="w-3.5 h-3.5" />
-                          Send Rx via WhatsApp
+                          Save Rx PDF + WhatsApp
                         </button>
                       )}
-
-                      {/* Download PDF */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          downloadPrescriptionPdf({
-                            prescription: p,
-                            customer,
-                            store: user?.store,
-                          });
-                        }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F5F7F3] hover:bg-[#E2E7E3] text-[#202D2B] text-xs font-semibold rounded-xl border border-[#E2E7E3] transition"
-                        title="Download prescription PDF file"
-                      >
-                        <FileDown className="w-3.5 h-3.5 text-[#66746F]" />
-                        Download PDF
-                      </button>
                     </div>
                   </div>
                 ))}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api.js';
+import InventoryHistory from './InventoryHistory.jsx';
 import { SkeletonTable, SkeletonStatGrid, SkeletonCard } from '../../components/common/Skeleton.jsx';
 import { 
   Package, 
@@ -27,7 +28,6 @@ import RecordSupplierPaymentModal from '../inventory/RecordSupplierPaymentModal.
 
 export default function ProductsPage() {
   const [movements, setMovements] = useState(null);
-  const [historyError, setHistoryError] = useState('');
   const [activeTab, setActiveTab] = useState('inventory'); // 'inventory' | 'purchases' | 'suppliers'
 
   // Stock inventory state
@@ -183,15 +183,7 @@ export default function ProductsPage() {
           </button>
         </div>
       )}
-      {historyError && <p role="alert" className="p-3 bg-rose-50 text-rose-800 rounded-xl text-xs">{historyError}</p>}
-      {movements && <section aria-label="Inventory movement history" className="p-4 bg-white rounded-xl border">
-        <h2 className="font-semibold">Stock history: {movements.name}</h2>
-        <button type="button" onClick={() => setMovements(null)}>Close history</button>
-        <p className="text-sm">Most recent 200 movements</p>
-        <table className="w-full text-sm"><thead><tr><th>Date</th><th>Change</th><th>Balance</th><th>Reason</th></tr></thead><tbody>
-          {movements.rows.map(row => <tr key={row.id}><td>{new Date(row.created_at).toLocaleString()}</td><td>{row.quantity_change}</td><td>{row.balance_after}</td><td>{row.reason}</td></tr>)}
-        </tbody></table>
-      </section>}
+      {movements && <InventoryHistory key={movements.id} product={movements} onClose={() => setMovements(null)} />}
       {/* Top Header & Tab Navigation */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -395,10 +387,7 @@ export default function ProductsPage() {
                             </div>
                           </td>
                           <td className="py-3 px-4 text-right space-x-1.5">
-                            <button type="button" className="text-sm underline" onClick={async () => {
-                              try { setHistoryError(''); const res = await api.get('/products/' + p.id + '/movements'); setMovements({ name: p.name, rows: res.data.data }); }
-                              catch { setHistoryError('Could not load stock history. Check that database migrations have run.'); }
-                            }}>History</button>
+                            <button type="button" className="text-sm underline" onClick={() => setMovements({ id: p.id, name: p.name })}>History</button>
                             <button aria-label="Edit product"
                               onClick={() => {
                                 setEditingProduct(p);

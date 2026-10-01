@@ -4,8 +4,9 @@ import api from '../../services/api.js';
 import OrderStatusBadge from './OrderStatusBadge.jsx';
 import RecordPaymentModal from '../payments/RecordPaymentModal.jsx';
 import PrintOrderInvoice from './PrintOrderInvoice.jsx';
-import { sendWhatsApp, sharePdfOnWhatsApp, getRichOrderWhatsAppMessage, showBanner, getOrderReadyMessage, getGoogleReviewMessage } from '../../lib/whatsapp.js';
-import { downloadInvoicePdf, downloadBillAndPrescriptionPdf } from '../../lib/pdfGenerator.js';
+import { sendWhatsApp, getOrderReadyMessage, getGoogleReviewMessage } from '../../lib/whatsapp.js';
+import PdfSaveActions from '../../components/common/PdfSaveActions.jsx';
+import { prescriptionAvailability } from '../../lib/printPdf.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { SkeletonCard, SkeletonTable } from '../../components/common/Skeleton.jsx';
 
@@ -20,10 +21,8 @@ import {
   Plus,
   Printer,
   FileDown,
-  Share2,
   MessageSquare,
-  Star,
-  FileText
+  Star
 } from 'lucide-react';
 
 export default function OrderDetailsPage() {
@@ -38,17 +37,23 @@ export default function OrderDetailsPage() {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
-  // Fetch linked prescription if order has prescription_id
+  const [prescriptionState, setPrescriptionState] = useState('loading');
+  const [prescriptionRetry, setPrescriptionRetry] = useState(0);
   useEffect(() => {
-    if (order?.prescription_id && order?.customer_id) {
-      api.get(`/customers/${order.customer_id}/prescriptions`)
-        .then((res) => {
-          const found = res.data.data.find((p) => p.id === order.prescription_id);
-          if (found) setLinkedPrescription(found);
-        })
-        .catch((err) => console.error(err));
+    let active = true;
+    setLinkedPrescription(null);
+    setPrescriptionState(order?.prescription_id ? 'loading' : 'ready');
+    if (order?.prescription_id) {
+      api.get(`/customers/${order.customer_id}/prescriptions`).then(res => {
+        if (!active) return;
+        const found = res.data.data.find(p => String(p.id) === String(order.prescription_id));
+        setLinkedPrescription(found || null);
+        setPrescriptionState(found ? 'ready' : 'missing');
+      }).catch(() => { if (active) setPrescriptionState('error'); });
     }
-  }, [order]);
+    return () => { active = false; };
+  }, [order?.prescription_id, order?.customer_id, prescriptionRetry]);
+  const prescriptionBlocked = prescriptionAvailability(order, linkedPrescription, prescriptionState);
 
   const fetchOrder = useCallback(async () => {
     setLoading(true);
@@ -72,83 +77,8 @@ export default function OrderDetailsPage() {
     fetchOrder();
   }, [fetchOrder]);
 
-  const handleDownloadBillAndRxPdf = () => {
-    downloadBillAndPrescriptionPdf({
-      order,
-      customer: {
-        name: order.customer_name,
-        phone: order.customer_phone,
-        customer_code: order.customer_code,
-        address: order.customer_address,
-      },
-      store: user?.store,
-      items: order.items,
-      payments: order.payments,
-      prescription: linkedPrescription,
-    });
-  };
-
-  const handleDownloadInvoicePdf = () => {
-    downloadInvoicePdf({
-      order,
-      customer: {
-        name: order.customer_name,
-        phone: order.customer_phone,
-        customer_code: order.customer_code,
-        address: order.customer_address,
-      },
-      store: user?.store,
-      items: order.items,
-      payments: order.payments,
-    });
-  };
-
-  const handleShareOnWhatsApp = (withDownload = false) => {
-    const richMsg = getRichOrderWhatsAppMessage({
-      order,
-      store: user?.store,
-      prescription: linkedPrescription,
-    });
-
-    if (withDownload) {
-      const filename = linkedPrescription
-        ? downloadBillAndPrescriptionPdf({
-            order,
-            customer: {
-              name: order.customer_name,
-              phone: order.customer_phone,
-              customer_code: order.customer_code,
-              address: order.customer_address,
-            },
-            store: user?.store,
-            items: order.items,
-            payments: order.payments,
-            prescription: linkedPrescription,
-          })
-        : downloadInvoicePdf({
-            order,
-            customer: {
-              name: order.customer_name,
-              phone: order.customer_phone,
-              customer_code: order.customer_code,
-              address: order.customer_address,
-            },
-            store: user?.store,
-            items: order.items,
-            payments: order.payments,
-          });
-
-      const result = sendWhatsApp({ phone: order.customer_phone, message: richMsg });
-      if (result?.success) {
-        showBanner(`📄 PDF "${filename}" saved to Downloads! WhatsApp draft opened — review and send in WhatsApp. The PDF is NOT automatically attached.`, 'success');
-      }
-    } else {
-      const result = sendWhatsApp({ phone: order.customer_phone, message: richMsg });
-      if (result?.success) {
-        showBanner(`WhatsApp draft opened with full bill, power refraction & payment breakdown! Review and press Send in WhatsApp.`, 'success');
-      }
-    }
-  };
+  const handleDownloadBillAndRxPdf = () => setShowPrintView('download');
+  const handleShareOnWhatsApp = () => setShowPrintView('share');
 
   const handleStatusTransition = async (nextStatus) => {
     if (nextStatus === 'DELIVERED' && order.balance_due > 0) {
@@ -213,16 +143,11 @@ export default function OrderDetailsPage() {
             <ArrowLeft className="w-4 h-4" />
             Back to Order Details
           </button>
-          <button
-            onClick={() => window.print()}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-sm transition flex items-center gap-1.5"
-          >
-            <Printer className="w-4 h-4" />
-            Print Document
-          </button>
+
         </div>
+        <PdfSaveActions key={showPrintView} share={showPrintView === 'share'} phone={order.customer_phone} customerName={order.customer_name} storeName={user?.store?.name} orderNumber={order.order_number} blocked={prescriptionBlocked} onRetry={() => setPrescriptionRetry(n => n + 1)} />
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm print:shadow-none print:p-0 print:border-none">
-          <PrintOrderInvoice order={order} prescription={linkedPrescription} />
+          {!prescriptionBlocked && <PrintOrderInvoice order={order} prescription={linkedPrescription} hideActions />}
         </div>
       </div>
     );
@@ -267,11 +192,11 @@ export default function OrderDetailsPage() {
           {/* Download Bill + Rx PDF */}
           <button
             onClick={handleDownloadBillAndRxPdf}
-            title={linkedPrescription ? 'Download print-ready Bill & Prescription PDF' : 'Download Invoice PDF (no prescription linked)'}
+            title="Save the matching print layout as PDF through the print dialog"
             className="px-3 py-2 bg-[#F5F7F3] hover:bg-[#E2E7E3] text-[#202D2B] text-xs font-semibold rounded-xl border border-[#E2E7E3] transition flex items-center gap-1.5"
           >
             <FileDown className="w-4 h-4 text-[#66746F]" />
-            {linkedPrescription ? 'Download Bill+Rx PDF' : 'Download Invoice PDF'}
+            {order.prescription_id ? 'Download Bill+Rx PDF' : 'Download Invoice PDF'}
           </button>
 
           {order.status === 'PENDING' && (
@@ -449,31 +374,15 @@ export default function OrderDetailsPage() {
             WhatsApp Actions & PDF Sharing
           </span>
           <span className="text-[11px] text-[#66746F]">
-            Instant WhatsApp summary & optional PDF download
+            Save PDF, then manually attach in WhatsApp
           </span>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap pt-1">
           {order.customer_phone ? (
             <>
-              {/* WhatsApp draft — text only, no PDF */}
-              <button
-                onClick={() => handleShareOnWhatsApp(false)}
-                className="px-3.5 py-2 bg-[#28766B] hover:bg-[#1E5C53] text-white text-xs font-semibold rounded-xl shadow-xs transition flex items-center gap-1.5"
-                title="Opens a pre-filled WhatsApp draft for you to review and send — text only, no PDF attached"
-              >
-                <Share2 className="w-3.5 h-3.5" />
-                WhatsApp Draft (text only)
-              </button>
-
-              {/* Download PDF then open WhatsApp draft */}
-              <button
-                onClick={() => handleShareOnWhatsApp(true)}
-                className="px-3 py-2 bg-[#FEFEFC] hover:bg-[#F5F7F3] text-[#202D2B] text-xs font-semibold rounded-xl border border-[#E2E7E3] shadow-xs transition flex items-center gap-1.5"
-                title="Downloads PDF to your device and opens a WhatsApp draft. The PDF is NOT automatically attached or sent."
-              >
-                <FileDown className="w-3.5 h-3.5 text-[#28766B]" />
-                Download PDF + Open WhatsApp Draft
+              <button onClick={handleShareOnWhatsApp} className="px-3 py-2 rounded-xl border text-xs font-semibold" title="Use Save as PDF, then manually attach the file in WhatsApp">
+                <FileDown className="w-3.5 h-3.5 inline mr-1" /> Save PDF + Open WhatsApp Draft
               </button>
 
               {/* Ready for pickup WhatsApp */}

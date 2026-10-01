@@ -13,7 +13,7 @@ router.post('/', validate(createProductSchema), productController.create);
 router.get('/', validate(listProductsSchema), productController.list);
 router.get('/:id/movements', validate(productIdSchema), async (req, res, next) => {
   try {
-    const result = await query('SELECT * FROM inventory_movements WHERE store_id = $1 AND product_id = $2 ORDER BY id DESC LIMIT 200', [req.user.storeId, req.params.id]);
+    const result = await query('SELECT * FROM inventory_movements WHERE store_id = $1 AND product_id = $2 ORDER BY created_at DESC, id DESC LIMIT 200', [req.user.storeId, req.params.id]);
     res.json({ success: true, data: result.rows });
   } catch (error) { next(error); }
 });
