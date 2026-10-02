@@ -16,6 +16,19 @@ The production backend serves `frontend/dist` and `/api/v1` together. `Build-Loc
 
 Disconnect internet and verify the real shop workflow after installation. The computer and local PostgreSQL must stay on. WhatsApp explicitly warns when the browser reports offline; browser online status does not guarantee internet reachability.
 
+## Updating the Windows desktop app
+
+The installed desktop app bundles its own frontend and backend. Editing this
+repository or starting the browser application does not update an installed app.
+With Node.js 22.12+ on PATH, run `npm run dist` from `desktop`, close Optics CRM
+using File → Quit, then run the new installer from `desktop/release`. Install
+over the existing installation; shop records and configuration remain in
+`%APPDATA%/Optics CRM`. Make a shop backup before upgrading.
+
+Desktop `start`, `pack`, and `dist` now build the current frontend with the local
+API URL and stage the current backend and migrations automatically. For local
+desktop development, use `npm start` from `desktop` and restart after changes.
+
 ## Backup and restore
 
 Install PostgreSQL command-line tools matching the database server's major version (this project's Compose file uses PostgreSQL 16). Put them on PATH or set `PG_BIN` to the folder containing `pg_dump` and `pg_restore`. In PowerShell, for example: `$env:PG_BIN = 'C:\path\to\postgresql\bin'`.

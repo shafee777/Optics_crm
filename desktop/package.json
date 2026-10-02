@@ -1,12 +1,12 @@
 {
   "name": "optics-crm-desktop",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Offline optical shop billing and CRM",
   "author": "Optics CRM",
   "main": "main.cjs",
   "scripts": {
-    "start": "electron .",
+    "start": "npm run prepare && electron .",
     "pack": "npm run prepare && electron-builder --dir --win --x64",
     "dist": "npm run prepare && electron-builder --win nsis --x64",
     "install:runtime": "node node_modules/electron/install.js",

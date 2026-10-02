@@ -17,7 +17,19 @@ async function copy(source, destination) {
 (async () => {
   const root = path.resolve(__dirname, '../..'),
     payload = path.join(root, 'desktop/payload');
+  // Always compile current sources, even when an older dist folder exists.
+  console.log('Building current frontend for the local desktop API…');
+  execFileSync(
+    process.platform === 'win32' ? 'npm.cmd' : 'npm',
+    ['run', 'build'],
+    { cwd: path.join(root, 'frontend'), stdio: 'inherit', shell: true,
+      env: { ...process.env, VITE_API_URL: '/api/v1' } }
+  );
+
   await fs.mkdir(path.join(payload, 'backend'), { recursive: true });
+  // Remove staged source first so renamed/deleted files cannot survive an update.
+  for (const name of ['backend/src', 'backend/database', 'shared'])
+    await fs.rm(path.join(payload, name), { recursive: true, force: true });
 
   // Copy backend source, migrations, and lock file
   for (const name of ['src', 'database/migrations', 'package.json', 'package-lock.json'])
