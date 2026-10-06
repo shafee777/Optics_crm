@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Optics CRM - Complete Backup, Cloud Sync & Restoration Guide</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 14mm 14mm 14mm 14mm;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+      color: #1e293b;
+      background: #ffffff;
+      line-height: 1.5;
+      font-size: 13px;
+    }
+    .header {
+      border-bottom: 2px solid #28766B;
+      padding-bottom: 14px;
+      margin-bottom: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .brand-title {
+      font-size: 24px;
+      font-weight: 800;
+      color: #28766B;
+      letter-spacing: -0.5px;
+    }
+    .doc-subtitle {
+      font-size: 13px;
+      color: #64748b;
+      margin-top: 3px;
+      font-weight: 500;
+    }
+    .badge {
+      display: inline-block;
+      background: #e6f4f1;
+      color: #28766B;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: 1px solid #bfe3dc;
+    }
+    .section {
+      margin-bottom: 20px;
+    }
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .section-title .number-badge {
+      background: #28766B;
+      color: #ffffff;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+    }
+    .card-title {
+      font-weight: 700;
+      font-size: 13px;
+      color: #1e293b;
+      margin-bottom: 5px;
+    }
+    .step-list {
+      list-style: none;
+      padding-left: 0;
+    }
+    .step-list li {
+      position: relative;
+      padding-left: 24px;
+      margin-bottom: 8px;
+      font-size: 12.5px;
+      color: #334155;
+    }
+    .step-list li::before {
+      content: "✔";
+      position: absolute;
+      left: 0;
+      top: 0;
+      color: #28766B;
+      font-weight: bold;
+      font-size: 12px;
+    }
+    .step-num-list {
+      list-style: none;
+      counter-reset: step-counter;
+      padding-left: 0;
+    }
+    .step-num-list li {
+      counter-increment: step-counter;
+      position: relative;
+      padding-left: 28px;
+      margin-bottom: 8px;
+      font-size: 12.5px;
+      color: #334155;
+    }
+    .step-num-list li::before {
+      content: counter(step-counter);
+      position: absolute;
+      left: 0;
+      top: 0px;
+      background: #e6f4f1;
+      color: #28766B;
+      width: 19px;
+      height: 19px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid #bfe3dc;
+    }
+    .alert-box {
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 12px;
+      margin-top: 10px;
+      margin-bottom: 10px;
+    }
+    .alert-info {
+      background: #eff6ff;
+      border-left: 4px solid #3b82f6;
+      color: #1e40af;
+    }
+    .alert-warning {
+      background: #fffbeb;
+      border-left: 4px solid #f59e0b;
+      color: #92400e;
+    }
+    .alert-success {
+      background: #f0fdf4;
+      border-left: 4px solid #10b981;
+      color: #065f46;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 6px;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 7px 10px;
+      text-align: left;
+    }
+    th {
+      background: #f1f5f9;
+      font-weight: 700;
+      color: #334155;
+    }
+    .footer {
+      margin-top: 24px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 10px;
+      font-size: 11px;
+      color: #94a3b8;
+      text-align: center;
+    }
+    .page-break {
+      page-break-before: always;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div>
+      <div class="brand-title">Optics CRM</div>
+      <div class="doc-subtitle">User Guide: Complete Backup, Google Drive Cloud Sync & Restoration</div>
+    </div>
+    <div>
+      <span class="badge">Official Guide</span>
+    </div>
+  </div>
+
+  <!-- SECTION 1: OVERVIEW & GUARANTEE -->
+  <div class="section">
+    <div class="section-title">
+      <span class="number-badge">1</span>
+      <span>Data Safety & Overview</span>
+    </div>
+    <div class="alert-success">
+      <strong>Your Data Is 100% Protected:</strong> All 300+ inventory items, 1,000+ customers, prescriptions, sales history, and invoices are fully bundled into a single secure backup file (<code>.dump</code>). Deleting or reinstalling the application will not lose any data as long as you follow this guide.
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Data Category</th>
+          <th>What Is Included in the Backup</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Inventory / Products (300+)</strong></td>
+          <td>Frames, lenses, contact lenses, accessories, stock levels, buy/sell prices, movements.</td>
+        </tr>
+        <tr>
+          <td><strong>Customers (1,000+)</strong></td>
+          <td>Full names, mobile numbers, addresses, visit histories, loyalty records.</td>
+        </tr>
+        <tr>
+          <td><strong>Clinical / Prescriptions</strong></td>
+          <td>Eye test parameters (Sphere, Cylinder, Axis, Addition, VA) for all customer visits.</td>
+        </tr>
+        <tr>
+          <td><strong>Billing & Financials</strong></td>
+          <td>Tax invoices, GST calculations, order status, discount allocations, payment receipts.</td>
+        </tr>
+        <tr>
+          <td><strong>Store Configuration</strong></td>
+          <td>Store name, receipt settings, Owner login, staff user accounts.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- SECTION 2: GOOGLE DRIVE CLOUD SYNC -->
+  <div class="section">
+    <div class="section-title">
+      <span class="number-badge">2</span>
+      <span>Google Drive Cloud Sync Setup (Recommended & Easiest)</span>
+    </div>
+    <p style="margin-bottom: 8px; color: #475569;">
+      By linking Google Drive on your computer, your backups are automatically uploaded to the cloud the moment you click Save in Optics CRM.
+    </p>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Step A: One-Time Google Drive Setup</div>
+        <ul class="step-num-list">
+          <li>Install <strong>Google Drive for Desktop</strong> from <code>google.com/drive/download</code>.</li>
+          <li>Log in with your Gmail / Google account.</li>
+          <li>Windows creates a Drive folder (e.g., <code>G:\My Drive</code> or <code>Google Drive</code>).</li>
+          <li>Inside it, create a new folder: <strong>Optics CRM Backups</strong>.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Step B: Saving to Google Drive</div>
+        <ul class="step-num-list">
+          <li>Open <strong>Optics CRM</strong> and log in as <strong>Owner</strong>.</li>
+          <li>Go to <strong>Settings</strong> &rarr; <strong>Desktop backups</strong>.</li>
+          <li>Click the green <strong>"Save backup"</strong> button.</li>
+          <li>Select your <strong>Optics CRM Backups</strong> folder inside Google Drive.</li>
+          <li>Click <strong>Save</strong>. Google Drive syncs it to cloud immediately!</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="alert-info">
+      <strong>Double Protection:</strong> Optics CRM also automatically maintains a local backup on your computer (inside <code>%APPDATA%\Optics CRM\backups</code>). This means you always have both a <strong>local copy</strong> and a <strong>cloud copy</strong>!
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- HEADER PAGE 2 -->
+  <div class="header">
+    <div>
+      <div class="brand-title">Optics CRM</div>
+      <div class="doc-subtitle">Part II: Reinstallation, Restoration & Best Practices</div>
+    </div>
+    <div>
+      <span class="badge">Restore Procedures</span>
+    </div>
+  </div>
+
+  <!-- SECTION 3: REINSTALLING & RESTORING -->
+  <div class="section">
+    <div class="section-title">
+      <span class="number-badge">3</span>
+      <span>Reinstallation & How to Restore Data</span>
+    </div>
+
+    <div class="card" style="border-left: 4px solid #28766B;">
+      <div class="card-title" style="color: #28766B; font-size: 14px;">Scenario A: Reinstalling on the SAME Computer</div>
+      <p style="margin-bottom: 6px; color: #475569;">When you uninstall and reinstall on the same PC using the installer from <code>desktop/release</code>:</p>
+      <ul class="step-num-list">
+        <li>The installer preserves your local data folder automatically.</li>
+        <li>Open the newly installed app &mdash; it will open directly to your <strong>regular Login Screen</strong>.</li>
+        <li>Enter your existing Owner email & password. <strong>All 300+ products and 1,000+ customers are immediately there!</strong></li>
+      </ul>
+    </div>
+
+    <div class="card" style="border-left: 4px solid #0284c7;">
+      <div class="card-title" style="color: #0284c7; font-size: 14px;">Scenario B: Restoring on a NEW Computer (or after formatting Windows)</div>
+      <p style="margin-bottom: 6px; color: #475569;">When moving to a fresh computer or completely wiped system:</p>
+      <ul class="step-num-list">
+        <li>Install Optics CRM on the new computer and launch it.</li>
+        <li>Because it is brand new, you will see the <strong>"Welcome to Optics CRM: Set up your shop"</strong> screen.</li>
+        <li>Enter any quick temporary shop name, email, and password to enter the app.</li>
+        <li>Go to <strong>Settings</strong> &rarr; <strong>Desktop backups</strong>.</li>
+        <li>Click <strong>"Restore backup"</strong> and select your <code>.dump</code> file (from your USB drive or Google Drive).</li>
+        <li>Click <strong>"Restore and restart"</strong> in the confirmation box.</li>
+        <li>The app automatically restores all records and restarts.</li>
+        <li>On the login screen, enter your <strong>Original Owner Email and Password</strong>.</li>
+        <li><strong>Done!</strong> Everything is restored in full.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- SECTION 4: MISTAKES & PRECAUTIONS -->
+  <div class="section">
+    <div class="section-title">
+      <span class="number-badge">4</span>
+      <span>Important Rules & Mistakes to Avoid</span>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 45%;">Common Mistake</th>
+          <th>What to Do Instead</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Unplugging USB drive too early</strong></td>
+          <td>Always wait until you see the confirmation message: <em>"Backup saved. Keep a copy on a separate drive."</em> before removing your flash drive.</td>
+        </tr>
+        <tr>
+          <td><strong>Manually copying AppData folder</strong></td>
+          <td>Do not copy system folders manually. Credentials are encrypted per Windows profile. Always use the built-in <strong>"Save backup"</strong> button.</td>
+        </tr>
+        <tr>
+          <td><strong>Confusing CSV Export with Backup</strong></td>
+          <td>CSV Export is for viewing data in Excel / filing taxes. To restore software data, always use the <code>.dump</code> file from <strong>Desktop backups</strong>.</td>
+        </tr>
+        <tr>
+          <td><strong>Forgetting the Owner Password</strong></td>
+          <td>After restoring, you must log in with your <strong>original</strong> owner password. Keep your password noted in a secure notebook.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    Optics CRM &bull; Offline Optical Shop Billing & Management System &bull; Confidential
+  </div>
+
+</body>
+</html>
