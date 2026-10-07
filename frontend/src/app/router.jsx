@@ -8,6 +8,7 @@ import CustomerDetailsPage from '../features/customers/CustomerDetailsPage.jsx';
 import OrdersPage from '../features/orders/OrdersPage.jsx';
 import CreateOrderPage from '../features/orders/CreateOrderPage.jsx';
 import QuickOrderFlowPage from '../features/orders/QuickOrderFlowPage.jsx';
+import QuickAddCustomerPage from '../features/customers/QuickAddCustomerPage.jsx';
 import OrderDetailsPage from '../features/orders/OrderDetailsPage.jsx';
 import FinancePage from '../features/finance/FinancePage.jsx';
 import DashboardPage from '../features/dashboard/DashboardPage.jsx';
@@ -30,7 +31,9 @@ export default function AppRouter() {
           }
         >
         <Route index element={<DashboardPage />} />
+        <Route path="quick-add" element={<QuickAddCustomerPage />} />
         <Route path="customers" element={<CustomersPage />} />
+        <Route path="customers/quick-add" element={<QuickAddCustomerPage />} />
         <Route path="customers/:id" element={<CustomerDetailsPage />} />
         <Route path="orders" element={<OrdersPage />} />
         <Route path="orders/quick" element={<QuickOrderFlowPage />} />

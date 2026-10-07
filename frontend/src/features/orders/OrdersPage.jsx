@@ -64,11 +64,11 @@ export default function OrdersPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => navigate('/orders/quick')}
+            onClick={() => navigate('/quick-add')}
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#EBF3F1] hover:bg-[#DDEAE7] text-[#28766B] rounded-xl text-xs font-semibold border border-[#28766B]/20 transition"
           >
             <Zap className="w-4 h-4" />
-            Quick Order Flow
+            Quick Add Customer
           </button>
           <button
             onClick={() => navigate('/orders/new')}

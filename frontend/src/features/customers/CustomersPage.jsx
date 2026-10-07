@@ -4,7 +4,7 @@ import api from '../../services/api.js';
 import CustomerFormModal from './CustomerFormModal.jsx';
 import AnnualRemindersTab from './AnnualRemindersTab.jsx';
 import { SkeletonTable } from '../../components/common/Skeleton.jsx';
-import { Search, UserPlus, Phone, Eye, UserCheck, Hash, Clock, Users, Edit2, AlertCircle, RotateCcw } from 'lucide-react';
+import { Search, UserPlus, Phone, Eye, UserCheck, Hash, Clock, Users, Edit2, AlertCircle, RotateCcw, Zap } from 'lucide-react';
 
 export default function CustomersPage() {
   const [activeTab, setActiveTab] = useState('directory'); // 'directory' | 'reminders'
@@ -51,16 +51,25 @@ export default function CustomersPage() {
           <h1 className="text-xl font-bold text-[#202D2B]">Customer Directory</h1>
           <p className="text-xs text-[#66746F] mt-0.5">Search walk-in customers by Customer ID, phone, or name</p>
         </div>
-        <button
-          onClick={() => {
-            setEditingCustomer(null);
-            setIsModalOpen(true);
-          }}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold shadow-sm transition"
-        >
-          <UserPlus className="w-4 h-4" />
-          Add Customer
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate('/quick-add')}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#EBF3F1] hover:bg-[#DDEAE7] text-[#28766B] rounded-xl text-xs font-semibold border border-[#28766B]/20 transition"
+          >
+            <Zap className="w-4 h-4" />
+            Quick Add Customer
+          </button>
+          <button
+            onClick={() => {
+              setEditingCustomer(null);
+              setIsModalOpen(true);
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold shadow-sm transition"
+          >
+            <UserPlus className="w-4 h-4" />
+            Add Customer
+          </button>
+        </div>
       </div>
 
       {/* Tab Switcher */}

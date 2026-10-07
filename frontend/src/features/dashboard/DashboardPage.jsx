@@ -19,7 +19,8 @@ import {
   Wrench,
   ShieldCheck,
   AlertCircle,
-  RotateCcw
+  RotateCcw,
+  Zap,
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -99,16 +100,23 @@ export default function DashboardPage() {
 
         <div className="flex flex-wrap items-center gap-2">
           <button
+            onClick={() => navigate('/quick-add')}
+            className="px-4 py-2 bg-[#28766B] hover:bg-[#1E5C53] text-white text-xs font-bold rounded-xl shadow-sm transition flex items-center gap-1.5"
+            title="Fast single-page customer registration, refraction, and order flow"
+          >
+            <Zap className="w-4 h-4 text-emerald-300" /> Quick Add Customer
+          </button>
+          <button
             onClick={() => navigate('/customers')}
             className="px-3.5 py-2 bg-[#EBF3F1] hover:bg-[#DDEAE7] text-[#28766B] text-xs font-semibold rounded-xl border border-[#28766B]/20 transition flex items-center gap-1.5"
           >
-            <UserPlus className="w-3.5 h-3.5" /> New Customer
+            <UserPlus className="w-3.5 h-3.5" /> Customer Directory
           </button>
           <button
             onClick={() => navigate('/orders/new')}
-            className="px-3.5 py-2 bg-[#28766B] hover:bg-[#1E5C53] text-white text-xs font-semibold rounded-xl shadow-sm transition flex items-center gap-1.5"
+            className="px-3.5 py-2 bg-white hover:bg-[#F5F7F3] text-[#202D2B] text-xs font-semibold rounded-xl border border-[#E2E7E3] transition flex items-center gap-1.5"
           >
-            <ShoppingBag className="w-3.5 h-3.5" /> Create Order
+            <ShoppingBag className="w-3.5 h-3.5 text-[#66746F]" /> Create Order
           </button>
           <button
             onClick={() => navigate('/finance')}
@@ -117,6 +125,29 @@ export default function DashboardPage() {
             <Receipt className="w-3.5 h-3.5 text-[#66746F]" /> Record Expense
           </button>
         </div>
+      </div>
+
+      {/* Quick Intake Banner for walk-in desk */}
+      <div
+        onClick={() => navigate('/quick-add')}
+        className="bg-gradient-to-r from-[#203A36] to-[#28766B] p-4 sm:p-5 rounded-2xl text-white shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 cursor-pointer hover:opacity-95 transition"
+      >
+        <div className="flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0">
+            <Zap className="w-5 h-5 text-emerald-300" />
+          </div>
+          <div>
+            <div className="font-bold text-sm">Quick Add Walk-in Customer</div>
+            <div className="text-xs text-white/80">Register customer, record optical eye test, and bill spectacles on a single continuous page</div>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); navigate('/quick-add'); }}
+          className="px-4 py-2 bg-white text-[#203A36] hover:bg-[#F5F7F3] font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 shrink-0"
+        >
+          Open Quick Add Flow <ArrowRight className="w-3.5 h-3.5" />
+        </button>
       </div>
 
       {/* Top Financial Stat Cards - EXCLUSIVE TO OWNER */}
