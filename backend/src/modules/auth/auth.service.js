@@ -5,6 +5,10 @@ import { env } from '../../config/env.js';
 import { AppError } from '../../shared/errors/AppError.js';
 import { authRepository } from './auth.repository.js';
 import { withTransaction } from '../../config/database.js';
+import { generateRecoveryKey, normalizeRecoveryKey } from '../../utils/recoveryKey.js';
+
+// Pre-computed dummy bcrypt hash of a random string with 10 salt rounds for constant-time comparison
+const DUMMY_HASH = '$2b$10$v09gN9m2rM81Ew8q5B97j.s3Z3UuL3H4kU6a8uQeA0FzN3L0P5l1q';
 
 export const authService = {
   async login(email, password) {
@@ -172,4 +176,83 @@ export const authService = {
       },
     };
   },
-};
+
+  /**
+   * Recovers an owner account using a previously saved recovery key.
+   * Mitigates timing attacks and prevents user/role enumeration.
+   */
+  async recoverPassword(email, recoveryKey, newPassword) {
+    const normalizedEmail = (email || '').toLowerCase().trim();
+    const normalizedKey = normalizeRecoveryKey(recoveryKey);
+
+    const user = await authRepository.findByEmailForRecovery(normalizedEmail);
+
+    // If user does not exist, is deactivated, is NOT an OWNER, or has no recovery key set:
+    // Execute dummy bcrypt comparison to ensure constant-time response and prevent account enumeration.
+    if (!user || !user.active || user.role !== 'OWNER' || !user.recovery_key_hash) {
+      await bcrypt.compare(normalizedKey, DUMMY_HASH);
+      throw new AppError('Invalid recovery credentials.', 401, 'INVALID_RECOVERY_CREDENTIALS');
+    }
+
+    // Check account lockout
+    if (user.recovery_locked_until && new Date(user.recovery_locked_until) > new Date()) {
+      throw new AppError('Too many recovery attempts. Please try again later.', 429, 'RATE_LIMITED');
+    }
+
+    const isMatch = await bcrypt.compare(normalizedKey, user.recovery_key_hash);
+    if (!isMatch) {
+      const attempts = (user.recovery_failed_attempts || 0) + 1;
+      let lockUntil = null;
+      if (attempts >= 5) {
+        lockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minute lockout
+      }
+      await authRepository.recordFailedRecoveryAttempt(user.id, attempts, lockUntil);
+      throw new AppError('Invalid recovery credentials.', 401, 'INVALID_RECOVERY_CREDENTIALS');
+    }
+
+    // Key is valid - hash new password and update
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+    await withTransaction(async (client) => {
+      await authRepository.resetPasswordFromRecovery(user.id, newPasswordHash, client);
+      await authRepository.revokeAllUserSessions(user.id, client);
+    });
+
+    return {
+      message: 'Password reset successful. Please sign in with your new password.',
+    };
+  },
+
+  /**
+   * Retrieves whether the authenticated owner currently has an active recovery key.
+   */
+  async getRecoveryKeyStatus(userId) {
+    const hasRecoveryKey = await authRepository.getRecoveryKeyStatus(userId);
+    return { hasRecoveryKey };
+  },
+
+  /**
+   * Generates or regenerates an owner recovery key.
+   * Requires the owner's current password for verification.
+   * Returns the plaintext key ONCE.
+   */
+  async generateRecoveryKey(userId, currentPassword) {
+    const currentHash = await authRepository.getUserPasswordHash(userId);
+    if (!currentHash) {
+      throw new AppError('User not found.', 404, 'USER_NOT_FOUND');
+    }
+
+    const isPasswordValid = await bcrypt.compare(currentPassword, currentHash);
+    if (!isPasswordValid) {
+      throw new AppError('Current password is incorrect.', 401, 'INVALID_CREDENTIALS');
+    }
+
+    const plaintextKey = generateRecoveryKey();
+    const keyHash = await bcrypt.hash(plaintextKey, 10);
+
+    await authRepository.updateRecoveryKeyHash(userId, keyHash);
+
+    return {
+      recoveryKey: plaintextKey,
+    };
+  },
+};

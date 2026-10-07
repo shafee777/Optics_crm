@@ -42,21 +42,34 @@ async function requireOwner(token) {
   const permitted = await db.client(config.database, client => client.query("SELECT 1 FROM users WHERE id=$1 AND store_id=$2 AND role='OWNER' AND active=true", [decoded.userId, decoded.storeId]));
   if (!permitted.rowCount) throw new Error('Sign in as the owner to manage backups.');
 }
+function generateRecoveryKey() {
+  const CHARSET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const bytes = crypto.randomBytes(16);
+  let keyChars = '';
+  for (let i = 0; i < 16; i++) {
+    keyChars += CHARSET[bytes[i] % CHARSET.length];
+  }
+  return `${keyChars.slice(0, 4)}-${keyChars.slice(4, 8)}-${keyChars.slice(8, 12)}-${keyChars.slice(12, 16)}`;
+}
 async function createOwner(details) {
   const { z } = requireBackend('zod');
+  const bcrypt = requireBackend('bcrypt');
   const data = z.object({ shop: z.string().trim().min(1).max(255), name: z.string().trim().min(1).max(255), email: z.string().trim().email().transform(s => s.toLowerCase()), password: z.string().min(10).max(72) }).parse(details);
-  const hash = await requireBackend('bcrypt').hash(data.password, 12);
+  const hash = await bcrypt.hash(data.password, 12);
+  const recoveryKey = generateRecoveryKey();
+  const recoveryKeyHash = await bcrypt.hash(recoveryKey, 10);
   await db.client(config.database, async client => {
     await client.query('BEGIN');
     try {
       await client.query('SELECT pg_advisory_xact_lock(904126)');
       if ((await client.query('SELECT 1 FROM users LIMIT 1')).rowCount) throw new Error('This shop is already set up. Sign in with its existing owner account.');
       const store = await client.query('INSERT INTO stores(name) VALUES($1) RETURNING id', [data.shop]);
-      await client.query("INSERT INTO users(store_id,email,password_hash,full_name,role) VALUES($1,$2,$3,$4,'OWNER')", [store.rows[0].id, data.email, hash, data.name]);
+      await client.query("INSERT INTO users(store_id,email,password_hash,full_name,role,recovery_key_hash) VALUES($1,$2,$3,$4,'OWNER',$5)", [store.rows[0].id, data.email, hash, data.name, recoveryKeyHash]);
       await client.query('COMMIT');
     } catch (error) { await client.query('ROLLBACK'); throw error; }
   });
   await db.backup();
+  return { recoveryKey };
 }
 async function startApi() {
   let port;
@@ -91,7 +104,8 @@ function createWindow() {
     { role: 'editMenu' }, { label: 'View', submenu: [{ role: 'reload' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }] }
   ]));
 }
-ipcMain.handle('setup-owner', async (event, details) => { trusted(event, true); await createOwner(details); await win.loadURL(origin + '/login'); return true; });
+ipcMain.handle('setup-owner', async (event, details) => { trusted(event, true); return await createOwner(details); });
+ipcMain.handle('setup-complete', async (event) => { trusted(event, true); await win.loadURL(origin + '/login'); return true; });
 ipcMain.handle('backup', async (event, token) => {
   trusted(event); await requireOwner(token);
   const result = await dialog.showSaveDialog(win, { title: 'Save shop backup', defaultPath: 'optics-' + new Date().toISOString().slice(0, 10) + '.dump', filters: [{ name: 'PostgreSQL backup', extensions: ['dump'] }] });

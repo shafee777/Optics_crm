@@ -1,5 +1,7 @@
 import DesktopBackups from './DesktopBackups.jsx';
+import SecurityTab from './SecurityTab.jsx';
 import React, { useState, useEffect, useCallback } from 'react';
+
 import api from '../../services/api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { SkeletonTable, SkeletonCard } from '../../components/common/Skeleton.jsx';
@@ -292,8 +294,21 @@ export default function SettingsPage() {
                 <Database className="w-3.5 h-3.5" />
                 Data Backup
               </button>
+
+              <button
+                onClick={() => setActiveTab('security')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition ${
+                  activeTab === 'security'
+                    ? 'bg-[#FEFEFC] text-[#28766B] shadow-xs'
+                    : 'text-[#66746F] hover:text-[#202D2B]'
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5" />
+                Security &amp; Recovery
+              </button>
             </>
           )}
+
         </div>
       </div>
 
@@ -770,7 +785,11 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {/* TAB 5: Owner Account Security & Recovery */}
+      {activeTab === 'security' && isOwner && <SecurityTab />}
+
       {isOwner && <DesktopBackups />}
+
 
       {/* Add Staff Modal */}
       <AddStaffModal

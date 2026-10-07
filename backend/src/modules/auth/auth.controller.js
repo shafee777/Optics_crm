@@ -43,4 +43,33 @@ export const authController = {
       next(error);
     }
   },
-};
+
+  async recoverPassword(req, res, next) {
+    try {
+      const { email, recoveryKey, newPassword } = req.body;
+      const result = await authService.recoverPassword(email, recoveryKey, newPassword);
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getRecoveryKeyStatus(req, res, next) {
+    try {
+      const result = await authService.getRecoveryKeyStatus(req.user.userId);
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async generateRecoveryKey(req, res, next) {
+    try {
+      const { currentPassword } = req.body;
+      const result = await authService.generateRecoveryKey(req.user.userId, currentPassword);
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  },
+};

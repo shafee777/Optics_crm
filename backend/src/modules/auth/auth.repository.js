@@ -97,4 +97,72 @@ export const authRepository = {
       [userId]
     );
   },
-};
+
+  async findByEmailForRecovery(email) {
+    const sql = `
+      SELECT 
+        id, store_id, email, password_hash, role, active,
+        recovery_key_hash, recovery_failed_attempts, recovery_locked_until
+      FROM users
+      WHERE LOWER(email) = LOWER($1);
+    `;
+    const result = await query(sql, [email.trim()]);
+    return result.rows[0] || null;
+  },
+
+  async getRecoveryKeyStatus(userId) {
+    const sql = `
+      SELECT (recovery_key_hash IS NOT NULL) AS has_recovery_key
+      FROM users
+      WHERE id = $1;
+    `;
+    const result = await query(sql, [userId]);
+    return Boolean(result.rows[0]?.has_recovery_key);
+  },
+
+  async getUserPasswordHash(userId) {
+    const sql = `
+      SELECT password_hash
+      FROM users
+      WHERE id = $1;
+    `;
+    const result = await query(sql, [userId]);
+    return result.rows[0]?.password_hash || null;
+  },
+
+  async updateRecoveryKeyHash(userId, hash) {
+    const sql = `
+      UPDATE users
+      SET recovery_key_hash = $2,
+          recovery_failed_attempts = 0,
+          recovery_locked_until = NULL,
+          updated_at = NOW()
+      WHERE id = $1;
+    `;
+    await query(sql, [userId, hash]);
+  },
+
+  async recordFailedRecoveryAttempt(userId, failedAttempts, lockUntil) {
+    const sql = `
+      UPDATE users
+      SET recovery_failed_attempts = $2,
+          recovery_locked_until = $3,
+          updated_at = NOW()
+      WHERE id = $1;
+    `;
+    await query(sql, [userId, failedAttempts, lockUntil]);
+  },
+
+  async resetPasswordFromRecovery(userId, passwordHash, db = { query }) {
+    const sql = `
+      UPDATE users
+      SET password_hash = $2,
+          recovery_failed_attempts = 0,
+          recovery_locked_until = NULL,
+          updated_at = NOW()
+      WHERE id = $1;
+    `;
+    await db.query(sql, [userId, passwordHash]);
+  },
+};
+

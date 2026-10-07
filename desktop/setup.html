@@ -1,2 +1,59 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'"><title>Set up Optics CRM</title><link rel="stylesheet" href="setup.css"></head><body><main><div class="brand-header"><img src="icon.png" alt="Optics CRM Logo" class="brand-logo"><h1>Welcome to Optics CRM</h1></div><p>Set up your shop on this computer. Your records stay here.</p><form id="setup"><label for="shop">Shop name</label><input id="shop" name="shop" required maxlength="255" autocomplete="organization"><label for="name">Owner name</label><input id="name" name="name" required maxlength="255" autocomplete="name"><label for="email">Owner email</label><input id="email" name="email" type="email" required autocomplete="username"><label for="password">Password (at least 10 characters)</label><input id="password" name="password" type="password" required minlength="10" maxlength="72" autocomplete="new-password"><label for="confirm">Confirm password</label><input id="confirm" type="password" required autocomplete="new-password"><p id="status" role="status" aria-live="polite"></p><button type="submit">Create shop & continue</button></form><p class="small">Keep your owner password safe. Make regular backups to a separate drive.</p></main><script src="setup.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'">
+  <title>Set up Optics CRM</title>
+  <link rel="stylesheet" href="setup.css">
+</head>
+<body>
+  <main>
+    <div class="brand-header">
+      <img src="icon.png" alt="Optics CRM Logo" class="brand-logo">
+      <h1>Welcome to Optics CRM</h1>
+    </div>
+    <p id="intro-text">Set up your shop on this computer. Your records stay here.</p>
 
+    <form id="setup">
+      <label for="shop">Shop name</label>
+      <input id="shop" name="shop" required maxlength="255" autocomplete="organization">
+      <label for="name">Owner name</label>
+      <input id="name" name="name" required maxlength="255" autocomplete="name">
+      <label for="email">Owner email</label>
+      <input id="email" name="email" type="email" required autocomplete="username">
+      <label for="password">Password (at least 10 characters)</label>
+      <input id="password" name="password" type="password" required minlength="10" maxlength="72" autocomplete="new-password">
+      <label for="confirm">Confirm password</label>
+      <input id="confirm" type="password" required autocomplete="new-password">
+      <p id="status" role="status" aria-live="polite"></p>
+      <button type="submit">Create shop &amp; continue</button>
+      <p class="small">Keep your owner password safe. Make regular backups to a separate drive.</p>
+    </form>
+
+    <div id="recovery-view" class="hidden">
+      <h2 class="recovery-title">Save Your Owner Recovery Key</h2>
+      <p class="recovery-desc">Your shop is ready! Below is your unique Owner Recovery Key. If you ever forget your password, this key is the only way to recover your account offline.</p>
+      
+      <div class="key-card">
+        <span class="key-label">Owner Recovery Key</span>
+        <div id="recovery-key-text" class="key-text" tabindex="0"></div>
+      </div>
+
+      <button type="button" id="copy-key-btn" class="btn-secondary">Copy Recovery Key</button>
+
+      <div class="warning-box">
+        <strong>Important:</strong> This recovery key will <u>never</u> be shown again. Write it down or save it in a secure password manager.
+      </div>
+
+      <label class="confirm-label">
+        <input type="checkbox" id="confirm-saved">
+        <span>I have securely saved this recovery key</span>
+      </label>
+
+      <button type="button" id="continue-login-btn" disabled>Continue to Login</button>
+    </div>
+  </main>
+  <script src="setup.js"></script>
+</body>
+</html>
