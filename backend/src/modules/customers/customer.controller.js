@@ -74,7 +74,6 @@ export const customerController = {
       next(error);
     }
   },
-  // Add inside customerController in backend/src/modules/customers/customer.controller.js:
   async getDueReminders(req, res, next) {
     try {
       const dueCustomers = await customerRepository.findDueForAnnualCheckup(req.user.storeId);
@@ -83,4 +82,28 @@ export const customerController = {
       next(err);
     }
   },
-};
+
+  async bulkUpdateTags(req, res, next) {
+    try {
+      const result = await customerService.bulkUpdateTags(req.user.storeId, req.body);
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async broadcastWhatsApp(req, res, next) {
+    try {
+      const result = await customerService.broadcastWhatsApp(req.user.storeId, req.body);
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+};

@@ -5,6 +5,8 @@ import {
   updateCustomerSchema,
   listCustomersSchema,
   customerIdSchema,
+  bulkTagSchema,
+  broadcastWhatsAppSchema,
 } from './customer.schema.js';
 import { validate } from '../../middleware/validate.middleware.js';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
@@ -17,10 +19,13 @@ router.use(authMiddleware);
 router.get('/next-code', customerController.getNextCode);
 router.get('/due-reminders', customerController.getDueReminders);
 
+router.post('/bulk-tags', validate(bulkTagSchema), customerController.bulkUpdateTags);
+router.post('/broadcast-whatsapp', validate(broadcastWhatsAppSchema), customerController.broadcastWhatsApp);
+
 router.post('/', validate(createCustomerSchema), customerController.create);
 router.get('/', validate(listCustomersSchema), customerController.list);
 router.get('/:id', validate(customerIdSchema), customerController.getById);
 router.patch('/:id', validate(updateCustomerSchema), customerController.update);
 router.delete('/:id', validate(customerIdSchema), customerController.archive);
 
-export default router;
+export default router;

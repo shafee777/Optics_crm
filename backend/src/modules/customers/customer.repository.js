@@ -98,9 +98,9 @@ export const customerRepository = {
 
     const sql = `
       INSERT INTO customers (
-        store_id, customer_code, full_name, phone, email, gender, age, address, notes
+        store_id, customer_code, full_name, phone, email, gender, age, address, notes, tags, category
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING *;
     `;
     const values = [
@@ -113,6 +113,8 @@ export const customerRepository = {
       data.age || null,
       data.address?.trim() || null,
       data.notes?.trim() || null,
+      data.tags || [],
+      data.category || 'REGULAR',
     ];
     const res = await query(sql, values);
     return res.rows[0];
@@ -154,6 +156,14 @@ export const customerRepository = {
     if (data.customerCode !== undefined) {
       fields.push(`customer_code = $${idx++}`);
       values.push(data.customerCode.trim());
+    }
+    if (data.tags !== undefined) {
+      fields.push(`tags = $${idx++}`);
+      values.push(data.tags);
+    }
+    if (data.category !== undefined) {
+      fields.push(`category = $${idx++}`);
+      values.push(data.category);
     }
 
     if (fields.length === 0) {
@@ -199,37 +209,155 @@ export const customerRepository = {
     return rows;
   },
 
-  async list(storeId, { search, page = 1, limit = 10 }) {
+  async list(storeId, {
+    search,
+    page = 1,
+    limit = 10,
+    startDate,
+    endDate,
+    segment = 'ALL',
+    tag,
+    category,
+    hasBalance,
+    sortBy = 'created_at',
+    sortOrder = 'desc',
+  }) {
     const offset = (page - 1) * limit;
-    let whereClause = 'WHERE store_id = $1 AND archived_at IS NULL';
     const params = [storeId];
+    const filterConditions = [];
 
     if (search && search.trim() !== '') {
       params.push(`%${search.trim().toLowerCase()}%`);
-      whereClause += ` AND (
-        LOWER(customer_code) LIKE $2 OR 
-        phone ILIKE $2 OR 
-        LOWER(full_name) LIKE $2
-      )`;
+      const searchParamIdx = params.length;
+      filterConditions.push(`(
+        LOWER(c.customer_code) LIKE $${searchParamIdx} OR 
+        c.phone ILIKE $${searchParamIdx} OR 
+        LOWER(c.full_name) LIKE $${searchParamIdx} OR
+        LOWER(COALESCE(c.email, '')) LIKE $${searchParamIdx}
+      )`);
     }
 
-    const countSql = `SELECT COUNT(*) FROM customers ${whereClause};`;
+    if (startDate) {
+      params.push(startDate);
+      filterConditions.push(`c.created_at >= $${params.length}::timestamptz`);
+    }
+
+    if (endDate) {
+      params.push(endDate);
+      filterConditions.push(`c.created_at <= ($${params.length}::date + INTERVAL '1 day')::timestamptz`);
+    }
+
+    if (tag && tag.trim() !== '') {
+      params.push(tag.trim());
+      filterConditions.push(`$${params.length} = ANY(COALESCE(c.tags, '{}'))`);
+    }
+
+    if (category && category.trim() !== '') {
+      params.push(category.trim().toLowerCase());
+      filterConditions.push(`LOWER(COALESCE(c.category, 'REGULAR')) = $${params.length}`);
+    }
+
+    if (hasBalance === 'true') {
+      filterConditions.push(`COALESCE(co.balance_due, 0) > 0`);
+    } else if (hasBalance === 'false') {
+      filterConditions.push(`COALESCE(co.balance_due, 0) <= 0`);
+    }
+
+    if (segment && segment !== 'ALL') {
+      const seg = segment.toUpperCase();
+      if (seg === 'VIP') {
+        filterConditions.push(`(c.category = 'VIP' OR COALESCE(co.total_spend, 0) >= 5000)`);
+      } else if (seg === 'PENDING_BALANCE') {
+        filterConditions.push(`COALESCE(co.balance_due, 0) > 0`);
+      } else if (seg === 'DUE_EYE_TEST') {
+        filterConditions.push(`cr.last_test_date IS NOT NULL AND cr.last_test_date <= NOW() - INTERVAL '330 days'`);
+      } else if (seg === 'NEW_THIS_MONTH') {
+        filterConditions.push(`c.created_at >= NOW() - INTERVAL '30 days'`);
+      } else if (seg === 'INACTIVE_6M') {
+        filterConditions.push(`(co.last_order_date IS NULL OR co.last_order_date <= CURRENT_DATE - INTERVAL '180 days')`);
+      } else if (seg === 'REPEAT') {
+        filterConditions.push(`COALESCE(co.order_count, 0) >= 2`);
+      } else if (seg === 'NO_ORDERS') {
+        filterConditions.push(`COALESCE(co.order_count, 0) = 0`);
+      }
+    }
+
+    const whereExtra = filterConditions.length > 0 ? ` AND ${filterConditions.join(' AND ')}` : '';
+
+    const cte = `
+      WITH customer_orders AS (
+        SELECT 
+          o.customer_id,
+          COUNT(o.id) AS order_count,
+          COALESCE(SUM(o.total_amount), 0) AS total_spend,
+          COALESCE(SUM(o.total_amount - COALESCE(p.paid_sum, 0)), 0) AS balance_due,
+          MAX(o.order_date) AS last_order_date
+        FROM orders o
+        LEFT JOIN (
+          SELECT order_id, SUM(amount) AS paid_sum
+          FROM payments
+          GROUP BY order_id
+        ) p ON p.order_id = o.id
+        WHERE o.store_id = $1 AND o.status != 'CANCELLED'
+        GROUP BY o.customer_id
+      ),
+      customer_rx AS (
+        SELECT 
+          customer_id,
+          COUNT(id) AS prescription_count,
+          MAX(tested_at) AS last_test_date
+        FROM prescriptions
+        WHERE store_id = $1
+        GROUP BY customer_id
+      )
+    `;
+
+    const countSql = `
+      ${cte}
+      SELECT COUNT(*) AS total
+      FROM customers c
+      LEFT JOIN customer_orders co ON co.customer_id = c.id
+      LEFT JOIN customer_rx cr ON cr.customer_id = c.id
+      WHERE c.store_id = $1 AND c.archived_at IS NULL ${whereExtra};
+    `;
+
     const countRes = await query(countSql, params);
-    const total = parseInt(countRes.rows[0].count, 10);
+    const total = parseInt(countRes.rows[0]?.total || 0, 10);
+
+    let orderColumn = 'c.created_at';
+    if (sortBy === 'total_spend') orderColumn = 'COALESCE(co.total_spend, 0)';
+    else if (sortBy === 'balance_due') orderColumn = 'COALESCE(co.balance_due, 0)';
+    else if (sortBy === 'last_order_date') orderColumn = 'co.last_order_date';
+    else if (sortBy === 'full_name') orderColumn = 'LOWER(c.full_name)';
+
+    const direction = (sortOrder || 'desc').toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+    const nullsClause = direction === 'DESC' ? 'NULLS LAST' : 'NULLS FIRST';
+
+    params.push(limit);
+    const limitIdx = params.length;
+    params.push(offset);
+    const offsetIdx = params.length;
 
     const dataSql = `
+      ${cte}
       SELECT 
         c.*,
-        (SELECT COUNT(*) FROM prescriptions p WHERE p.customer_id = c.id) AS prescription_count,
-        (SELECT COUNT(*) FROM orders o WHERE o.customer_id = c.id) AS order_count
+        COALESCE(co.order_count, 0)::int AS order_count,
+        COALESCE(co.total_spend, 0)::numeric(12,2) AS total_spend,
+        COALESCE(co.balance_due, 0)::numeric(12,2) AS balance_due,
+        co.last_order_date,
+        COALESCE(cr.prescription_count, 0)::int AS prescription_count,
+        cr.last_test_date
       FROM customers c
-      ${whereClause}
-      ORDER BY c.created_at DESC
-      LIMIT $${params.length + 1} OFFSET $${params.length + 2};
+      LEFT JOIN customer_orders co ON co.customer_id = c.id
+      LEFT JOIN customer_rx cr ON cr.customer_id = c.id
+      WHERE c.store_id = $1 AND c.archived_at IS NULL ${whereExtra}
+      ORDER BY ${orderColumn} ${direction} ${nullsClause}
+      LIMIT $${limitIdx} OFFSET $${offsetIdx};
     `;
-    const dataParams = [...params, limit, offset];
-    const dataRes = await query(dataSql, dataParams);
-    
+
+    const dataRes = await query(dataSql, params);
+
     return {
       customers: dataRes.rows,
       meta: {
@@ -239,6 +367,54 @@ export const customerRepository = {
         totalPages: Math.ceil(total / limit) || 1,
       },
     };
+  },
+
+  async findByIds(storeId, customerIds) {
+    if (!customerIds || customerIds.length === 0) return [];
+    const sql = `
+      SELECT id, customer_code, full_name, phone, email, tags, category
+      FROM customers
+      WHERE store_id = $1 AND id = ANY($2::uuid[]) AND archived_at IS NULL;
+    `;
+    const res = await query(sql, [storeId, customerIds]);
+    return res.rows;
+  },
+
+  async bulkUpdateTags(storeId, customerIds, tagsToAdd = [], tagsToRemove = [], category = null) {
+    if (!customerIds || customerIds.length === 0) return 0;
+    
+    let sql = `
+      UPDATE customers
+      SET updated_at = NOW()
+    `;
+    const params = [storeId, customerIds];
+    let idx = 3;
+
+    if (category) {
+      sql += `, category = $${idx++}`;
+      params.push(category);
+    }
+
+    if (tagsToAdd && tagsToAdd.length > 0) {
+      sql += `, tags = ARRAY(
+        SELECT DISTINCT e
+        FROM unnest(array_cat(COALESCE(tags, '{}'), $${idx++}::text[])) e
+      )`;
+      params.push(tagsToAdd);
+    }
+
+    if (tagsToRemove && tagsToRemove.length > 0) {
+      sql += `, tags = ARRAY(
+        SELECT e
+        FROM unnest(COALESCE(tags, '{}')) e
+        WHERE e != ALL($${idx++}::text[])
+      )`;
+      params.push(tagsToRemove);
+    }
+
+    sql += ` WHERE store_id = $1 AND id = ANY($2::uuid[]) AND archived_at IS NULL RETURNING id;`;
+    const res = await query(sql, params);
+    return res.rowCount;
   },
 
   async softDelete(storeId, customerId) {
@@ -251,4 +427,4 @@ export const customerRepository = {
     const res = await query(sql, [storeId, customerId]);
     return res.rowCount > 0;
   },
-};
+};

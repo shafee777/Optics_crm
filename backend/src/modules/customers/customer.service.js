@@ -1,5 +1,9 @@
 import { customerRepository } from './customer.repository.js';
+import { storeRepository } from '../stores/store.repository.js';
+import { messageRepository } from '../messages/message.repository.js';
+import { whatsappService } from '../whatsapp/whatsapp.service.js';
 import { AppError } from '../../shared/errors/AppError.js';
+
 
 export const customerService = {
   async getNextCode(storeId) {
@@ -73,4 +77,94 @@ export const customerService = {
     }
     return { id: customerId, archived: true };
   },
-};
+
+  async bulkUpdateTags(storeId, { customerIds, tagsToAdd = [], tagsToRemove = [], category = null }) {
+    const updatedCount = await customerRepository.bulkUpdateTags(
+      storeId,
+      customerIds,
+      tagsToAdd,
+      tagsToRemove,
+      category
+    );
+    return { updatedCount };
+  },
+
+  async broadcastWhatsApp(storeId, { customerIds, messageTemplate, imageUrl = null, campaignName = 'Campaign' }) {
+    const store = await storeRepository.findById(storeId);
+    const customers = await customerRepository.findByIds(storeId, customerIds);
+
+    const storeName = store?.name || 'Optics Store';
+    const storePhone = store?.phone || '';
+    const storeAddress = store?.address || '';
+
+    const preparedMessages = [];
+    let cloudSentCount = 0;
+
+    const isCloudConfigured = Boolean(
+      store?.whatsapp_config?.provider === 'META' &&
+      store?.whatsapp_config?.metaAccessToken &&
+      store?.whatsapp_config?.metaPhoneNumberId
+    );
+
+    for (const customer of customers) {
+      if (!customer.phone || customer.phone.trim() === '') continue;
+
+      let cleanPhone = customer.phone.replace(/[^0-9]/g, '');
+      if (cleanPhone.length === 10) cleanPhone = '91' + cleanPhone;
+
+      let text = messageTemplate
+        .replace(/\{customerName\}/g, customer.full_name || 'Valued Customer')
+        .replace(/\{customerCode\}/g, customer.customer_code || '')
+        .replace(/\{storeName\}/g, storeName)
+        .replace(/\{storePhone\}/g, storePhone)
+        .replace(/\{storeAddress\}/g, storeAddress);
+
+      if (imageUrl && imageUrl.trim()) {
+        text += `\n\n🖼️ View Image/Offer: ${imageUrl.trim()}`;
+      }
+
+      const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
+
+      preparedMessages.push({
+        customerId: customer.id,
+        customerName: customer.full_name,
+        customerCode: customer.customer_code,
+        phone: cleanPhone,
+        message: text,
+        waUrl,
+      });
+
+      // Log to messages audit table
+      try {
+        await messageRepository.logMessage(storeId, customer.id, 'CAMPAIGN', 'WHATSAPP');
+      } catch (_err) {
+        // Continue even if logging encounters a minor issue
+      }
+
+      // If store has automated Cloud API configured, attempt direct send
+      if (isCloudConfigured) {
+        try {
+          await whatsappService.sendMessage(storeId, {
+            phone: cleanPhone,
+            message: text,
+            customerId: customer.id,
+            messageType: 'CAMPAIGN',
+          });
+          cloudSentCount++;
+        } catch (_err) {
+          // Cloud send failed for this customer, client can still use wa.me fallback
+        }
+      }
+    }
+
+    return {
+      campaignName,
+      totalSelected: customerIds.length,
+      totalPrepared: preparedMessages.length,
+      skippedNoPhone: customerIds.length - preparedMessages.length,
+      cloudSentCount: isCloudConfigured ? cloudSentCount : 0,
+      deliveryMode: isCloudConfigured ? 'CLOUD_SENT' : 'QUEUE_READY',
+      messages: preparedMessages,
+    };
+  },
+};

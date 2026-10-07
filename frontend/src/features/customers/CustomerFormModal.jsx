@@ -32,6 +32,8 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, 
           age: customer.age !== null && customer.age !== undefined ? customer.age.toString() : '',
           address: customer.address || '',
           notes: customer.notes || '',
+          category: customer.category || 'REGULAR',
+          tags: Array.isArray(customer.tags) ? customer.tags.join(', ') : '',
         });
       } else {
         setFormData({
@@ -43,7 +45,10 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, 
           age: '',
           address: '',
           notes: '',
+          category: 'REGULAR',
+          tags: '',
         });
+
 
         api.get('/customers/next-code')
           .then((res) => {
@@ -101,9 +106,12 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, 
         age: formData.age ? parseInt(formData.age, 10) : null,
         address: formData.address?.trim() || null,
         notes: formData.notes?.trim() || null,
+        category: formData.category || 'REGULAR',
+        tags: formData.tags ? formData.tags.split(',').map((s) => s.trim()).filter(Boolean) : [],
       };
 
       let result;
+
       if (isEditing) {
         const response = await api.patch(`/customers/${customer.id}`, payload);
         result = response.data.data;
@@ -259,6 +267,41 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, 
             />
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="CustomerFormModal-field-category" className="block text-xs font-semibold text-[#202D2B] mb-1">
+                Customer Category / Tier
+              </label>
+              <select
+                id="CustomerFormModal-field-category"
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] bg-white text-xs text-[#202D2B] focus:ring-2 focus:ring-[#28766B]/30 focus:border-[#28766B] focus:outline-none"
+              >
+                <option value="REGULAR">Regular Customer</option>
+                <option value="VIP">VIP / High Spender</option>
+                <option value="WALK_IN">Walk-in / Occasional</option>
+                <option value="CORPORATE">Corporate Account</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="CustomerFormModal-field-tags" className="block text-xs font-semibold text-[#202D2B] mb-1">
+                Tags (Comma-separated)
+              </label>
+              <input
+                id="CustomerFormModal-field-tags"
+                type="text"
+                name="tags"
+                placeholder="e.g. VIP, Progressive, Kids"
+                value={formData.tags}
+                onChange={handleChange}
+                className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] bg-white text-xs text-[#202D2B] placeholder:text-[#9AA8A3] focus:ring-2 focus:ring-[#28766B]/30 focus:border-[#28766B] focus:outline-none"
+              />
+            </div>
+          </div>
+
           <div>
             <label htmlFor="CustomerFormModal-field-6" className="block text-xs font-semibold text-[#202D2B] mb-1">Notes</label>
             <textarea
@@ -271,6 +314,7 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, 
               className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] bg-white text-xs text-[#202D2B] placeholder:text-[#9AA8A3] focus:ring-2 focus:ring-[#28766B]/30 focus:border-[#28766B] focus:outline-none"
             />
           </div>
+
 
           <div className="flex justify-end gap-2.5 pt-4 border-t border-[#E2E7E3]">
             <button
