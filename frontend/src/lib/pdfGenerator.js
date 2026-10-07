@@ -417,7 +417,7 @@ export function renderPrescriptionSection(doc, { prescription, customer, store, 
   if (customer?.phone) details.push(`Ph: ${customer.phone}`);
   doc.text(details.join('  |  '), leftX + 4, currentY + 16.5);
 
-  // Test / Optometrist Info
+  // Test / Optometrist Info — store info only (no "Examined By" / "Tested by")
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
   doc.setTextColor(...PRIMARY_COLOR);
@@ -429,12 +429,10 @@ export function renderPrescriptionSection(doc, { prescription, customer, store, 
 
   const testDate = prescription?.tested_at || prescription?.testedAt || prescription?.created_at;
   const formattedTestDate = testDate ? new Date(testDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : new Date().toLocaleDateString('en-IN');
-  const optometristName = prescription?.optometrist_name || prescription?.optometristName || store?.name || 'Licensed Optometrist';
 
   doc.text(`Test Date: ${formattedTestDate}`, rightX + 4, currentY + 11.5);
-  doc.text(`Examined By: ${optometristName}`, rightX + 4, currentY + 16.5);
   if (orderNumber) {
-    doc.text(`Linked Order: #${orderNumber}`, rightX + 4, currentY + 20.5);
+    doc.text(`Linked Order: #${orderNumber}`, rightX + 4, currentY + 16.5);
   }
 
   currentY += 30;
@@ -531,7 +529,7 @@ export function renderPrescriptionSection(doc, { prescription, customer, store, 
     doc.text(splitRemarks, 18, rxBottomY + 22);
   }
 
-  // Optometrist Sign Box
+  // Signatory Footer — store name only, no "Examined By" / "Tested by"
   const signY = Math.max(doc.internal.pageSize.getHeight() - 32, rxBottomY + 36);
 
   doc.setFont('helvetica', 'normal');
@@ -543,11 +541,11 @@ export function renderPrescriptionSection(doc, { prescription, customer, store, 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
   doc.setTextColor(...TEXT_DARK);
-  doc.text(optometristName, pageWidth - 14, signY, { align: 'right' });
+  doc.text(store?.name || 'Optics Store', pageWidth - 14, signY, { align: 'right' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(...TEXT_MUTED);
-  doc.text('Consulting Optometrist / Refractionist', pageWidth - 14, signY + 5, { align: 'right' });
+  doc.text('Authorized Signatory', pageWidth - 14, signY + 5, { align: 'right' });
 
   drawFooter(doc, store, 1, 1);
 }

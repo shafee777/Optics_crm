@@ -23,7 +23,8 @@
   },
   "overrides": {
     "tar": "^7.5.22",
-    "builder-util-runtime": "^9.7.0"
+    "builder-util-runtime": "^9.7.0",
+    "@noble/hashes": "1.8.0"
   },
   "build": {
     "appId": "com.opticscrm.desktop",

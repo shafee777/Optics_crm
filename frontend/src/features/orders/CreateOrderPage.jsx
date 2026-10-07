@@ -2,7 +2,7 @@ import { calculateBilling } from '../../../../shared/billing.mjs';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../services/api.js';
-import { ArrowLeft, Plus, Trash2, ShoppingBag, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, ShoppingBag, AlertCircle, Zap } from 'lucide-react';
 
 export default function CreateOrderPage() {
   const [searchParams] = useSearchParams();
@@ -188,14 +188,24 @@ export default function CreateOrderPage() {
         Back
       </button>
 
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-[#28766B] text-white flex items-center justify-center shadow-sm">
-          <ShoppingBag className="w-5 h-5" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#28766B] text-white flex items-center justify-center shadow-sm">
+            <ShoppingBag className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-[#202D2B]">New Optical Order</h1>
+            <p className="text-xs text-[#66746F]">Select stock items or enter custom frames & lenses</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-xl font-bold text-[#202D2B]">New Optical Order</h1>
-          <p className="text-xs text-[#66746F]">Select stock items or enter custom frames & lenses</p>
-        </div>
+        <button
+          type="button"
+          onClick={() => navigate(selectedCustomerId ? `/orders/quick?customerId=${selectedCustomerId}` : '/orders/quick')}
+          className="inline-flex items-center gap-2 px-3.5 py-2 bg-[#EBF3F1] hover:bg-[#DDEAE7] text-[#28766B] rounded-xl text-xs font-semibold border border-[#28766B]/20 transition self-start sm:self-auto"
+        >
+          <Zap className="w-4 h-4" />
+          Guided Flow (Customer + Rx + Order)
+        </button>
       </div>
 
       {error && (

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../services/api.js';
 import OrderStatusBadge from './OrderStatusBadge.jsx';
 import { SkeletonTable } from '../../components/common/Skeleton.jsx';
-import { Search, Plus, Calendar, AlertTriangle, ArrowRight, AlertCircle, RotateCcw } from 'lucide-react';
+import { Search, Plus, Calendar, AlertTriangle, ArrowRight, AlertCircle, RotateCcw, Zap } from 'lucide-react';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -62,13 +62,22 @@ export default function OrdersPage() {
           <h1 className="text-xl font-bold text-[#202D2B]">Orders & Deliveries</h1>
           <p className="text-xs text-[#66746F] mt-0.5">Track spectacle orders from frame selection to customer delivery</p>
         </div>
-        <button
-          onClick={() => navigate('/orders/new')}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold shadow-sm transition"
-        >
-          <Plus className="w-4 h-4" />
-          Create Order
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate('/orders/quick')}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#EBF3F1] hover:bg-[#DDEAE7] text-[#28766B] rounded-xl text-xs font-semibold border border-[#28766B]/20 transition"
+          >
+            <Zap className="w-4 h-4" />
+            Quick Order Flow
+          </button>
+          <button
+            onClick={() => navigate('/orders/new')}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold shadow-sm transition"
+          >
+            <Plus className="w-4 h-4" />
+            Create Order
+          </button>
+        </div>
       </div>
 
       {/* Tabs & Search */}

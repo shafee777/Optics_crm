@@ -10,7 +10,7 @@ import { MessageSquare, UserCheck, Edit2, Share2, Printer } from 'lucide-react';
 import { sendWhatsApp, getGreetingMessage, getAnnualCheckupMessage } from '../../lib/whatsapp.js';
 import PdfSaveActions from '../../components/common/PdfSaveActions.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { ArrowLeft, Phone, MapPin, Calendar, FileText, ShoppingBag, Hash, PlusCircle, Clock, ArrowRight, AlertCircle, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Phone, MapPin, Calendar, FileText, ShoppingBag, Hash, PlusCircle, Clock, ArrowRight, AlertCircle, RotateCcw, Zap } from 'lucide-react';
 
 export default function CustomerDetailsPage() {
   const { user } = useAuth();
@@ -181,6 +181,14 @@ export default function CustomerDetailsPage() {
             New Eye Test
           </button>
           <button
+            onClick={() => navigate(`/orders/quick?customerId=${id}`)}
+            className="px-3.5 py-2 bg-[#EBF3F1] hover:bg-[#DDEAE7] text-[#28766B] rounded-xl text-xs font-semibold border border-[#28766B]/20 transition flex items-center gap-1.5"
+            title="Start guided flow for customer, prescription and order"
+          >
+            <Zap className="w-3.5 h-3.5" />
+            Quick Flow
+          </button>
+          <button
             onClick={() => navigate(`/orders/new?customerId=${id}`)}
             className="px-3.5 py-2 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold shadow-sm transition flex items-center gap-1.5"
           >
@@ -284,11 +292,6 @@ export default function CustomerDetailsPage() {
                       </div>
                       
                       <div className="flex items-center gap-3">
-                        {p.tested_by_name && (
-                          <span className="text-[#66746F]">
-                            Tested by: <strong className="text-[#202D2B]">{p.tested_by_name}</strong>
-                          </span>
-                        )}
                         <button
                           type="button"
                           onClick={() => {

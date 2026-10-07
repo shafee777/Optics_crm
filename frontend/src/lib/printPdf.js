@@ -21,8 +21,14 @@ export function openPdfWhatsApp(phone, message, browser = window) {
   if (digits.length === 10) digits = '91' + digits;
   if (!/^[1-9]\d{7,14}$/.test(digits)) throw new Error('Enter a valid customer phone number with country code.');
   if (browser.navigator?.onLine === false) throw new Error('Connect to the internet to open WhatsApp.');
+  const url = `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+  const isDesktop = Boolean(browser.opticsDesktop || (typeof window !== 'undefined' && window.opticsDesktop));
+  if (isDesktop) {
+    browser.open(url, '_blank', 'noopener,noreferrer');
+    return;
+  }
   const popup = browser.open('about:blank', '_blank');
   if (!popup) throw new Error('WhatsApp was blocked. Allow pop-ups and try again.');
   popup.opener = null;
-  popup.location.href = `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+  popup.location.href = url;
 }

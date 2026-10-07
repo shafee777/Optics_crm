@@ -23,7 +23,6 @@ export default function PrintPrescription({ prescription, customer, onBack, hide
     ? new Date(testDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
     : new Date().toLocaleDateString('en-IN');
 
-  const optometristName = prescription?.tested_by_name || prescription?.optometrist_name || store.name;
 
   return (
     <div className="max-w-3xl mx-auto space-y-4">
@@ -101,29 +100,17 @@ export default function PrintPrescription({ prescription, customer, onBack, hide
         </div>
 
         {/* Patient Details */}
-        <div className="grid grid-cols-2 gap-6 py-4 border-b border-slate-200">
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Patient Details</div>
-            <div className="font-bold text-slate-900 text-sm">{customer?.full_name || customer?.name || 'Patient'}</div>
-            <div className="text-slate-600 mt-0.5 font-mono">
-              Phone: {customer?.phone || 'N/A'} {customer?.customer_code ? `• Code: #${customer.customer_code}` : ''}
-            </div>
-            {(customer?.age || customer?.gender) && (
-              <div className="text-slate-500 text-[11px] mt-0.5">
-                {[customer?.age ? `Age: ${customer.age} yrs` : null, customer?.gender ? `Gender: ${customer.gender}` : null].filter(Boolean).join(' • ')}
-              </div>
-            )}
+        <div className="py-4 border-b border-slate-200">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Patient Details</div>
+          <div className="font-bold text-slate-900 text-sm">{customer?.full_name || customer?.name || 'Patient'}</div>
+          <div className="text-slate-600 mt-0.5 font-mono">
+            Phone: {customer?.phone || 'N/A'} {customer?.customer_code ? `• Code: #${customer.customer_code}` : ''}
           </div>
-
-          <div className="text-right space-y-1">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Clinical Details</div>
-            <div className="text-slate-700">
-              <strong>Examined By:</strong> {optometristName}
+          {(customer?.age || customer?.gender) && (
+            <div className="text-slate-500 text-[11px] mt-0.5">
+              {[customer?.age ? `Age: ${customer.age} yrs` : null, customer?.gender ? `Gender: ${customer.gender}` : null].filter(Boolean).join(' • ')}
             </div>
-            <div className="text-slate-500 text-[11px]">
-              Optometry & Vision Screening
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Prescription Refraction Chart */}
@@ -202,8 +189,8 @@ export default function PrintPrescription({ prescription, customer, onBack, hide
           </div>
           <div className="text-right">
             <div className="w-44 border-b border-slate-300 mb-1"></div>
-            <div className="font-bold text-slate-800 text-xs">{optometristName}</div>
-            <div className="text-slate-400 text-[10px]">Consulting Optometrist / Refractionist</div>
+            <div className="font-bold text-slate-800 text-xs">{store.name}</div>
+            <div className="text-slate-400 text-[10px]">Authorized Signatory</div>
           </div>
         </div>
 

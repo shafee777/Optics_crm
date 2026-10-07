@@ -230,7 +230,6 @@ export function getRichPrescriptionWhatsAppMessage({ customer, store, prescripti
     `━━━━━━━━━━━━━━━━━━━━━`,
     `👤 Patient: *${customerName}*`,
     `📅 Exam Date: *${testDate}*`,
-    prescription?.tested_by_name ? `👨‍⚕️ Optometrist: ${prescription.tested_by_name}` : '',
     ``,
     `👁️ *REFRACTION POWER SPECIFICATIONS:*`,
     `• *Right Eye (OD):* SPH ${formatPwr(prescription?.r_sph)} | CYL ${formatPwr(prescription?.r_cyl)} | AXIS ${prescription?.r_axis ? `${prescription.r_axis}°` : '—'} | ADD ${formatPwr(prescription?.r_add)}`,
