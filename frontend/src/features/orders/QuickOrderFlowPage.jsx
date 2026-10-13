@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../services/api.js';
 import CustomerFormModal from '../customers/CustomerFormModal.jsx';
+import RecordPaymentModal from '../payments/RecordPaymentModal.jsx';
 import {
   ArrowLeft,
   ArrowRight,
@@ -137,12 +138,18 @@ function StepIndicator({ currentStep, onStepClick }) {
 }
 
 // ─── Step 1: Customer Selection ──────────────────────────────────────────────
-function CustomerStep({ selectedCustomer, onCustomerSelected, onNext }) {
+function CustomerStep({ selectedCustomer, onCustomerSelected, onNext, flowDate, onSetFlowDate }) {
   const [query, setQuery] = useState('');
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showNewModal, setShowNewModal] = useState(false);
   const [error, setError] = useState('');
+
+  const getYesterdayDate = () => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -182,14 +189,28 @@ function CustomerStep({ selectedCustomer, onCustomerSelected, onNext }) {
           </h2>
           <p className="text-xs text-[#66746F] mt-0.5">Search an existing customer or register a new walk-in client</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowNewModal(true)}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold shadow-sm transition"
-        >
-          <UserPlus className="w-3.5 h-3.5" />
-          Add New Customer
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => {
+              if (onSetFlowDate) onSetFlowDate(getYesterdayDate());
+              setShowNewModal(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-semibold transition"
+            title="Register a customer who visited yesterday"
+          >
+            <Calendar className="w-3.5 h-3.5 text-amber-700" />
+            Add Yesterday's Customer
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowNewModal(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold shadow-sm transition"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            Add New Customer
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -257,15 +278,28 @@ function CustomerStep({ selectedCustomer, onCustomerSelected, onNext }) {
               <div className="text-xs text-[#66746F] py-6 text-center">Searching customer records...</div>
             )}
             {!loading && customers.length === 0 && (
-              <div className="text-xs text-[#66746F] py-6 text-center space-y-2">
+              <div className="text-xs text-[#66746F] py-6 text-center space-y-2.5">
                 <p>No customers match your search.</p>
-                <button
-                  type="button"
-                  onClick={() => setShowNewModal(true)}
-                  className="inline-flex items-center gap-1 text-[#28766B] font-semibold hover:underline"
-                >
-                  <UserPlus className="w-3.5 h-3.5" /> Click here to register as a new customer
-                </button>
+                <div className="flex items-center justify-center gap-3 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onSetFlowDate) onSetFlowDate(getYesterdayDate());
+                      setShowNewModal(true);
+                    }}
+                    className="inline-flex items-center gap-1 text-amber-800 font-semibold hover:underline"
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-amber-700" /> Register yesterday's walk-in customer
+                  </button>
+                  <span className="text-[#CCDCD0] hidden sm:inline">•</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewModal(true)}
+                    className="inline-flex items-center gap-1 text-[#28766B] font-semibold hover:underline"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" /> Register new customer
+                  </button>
+                </div>
               </div>
             )}
             {!loading &&
@@ -303,6 +337,7 @@ function CustomerStep({ selectedCustomer, onCustomerSelected, onNext }) {
 
       <CustomerFormModal
         isOpen={showNewModal}
+        initialVisitDate={flowDate}
         onClose={() => setShowNewModal(false)}
         onCustomerCreated={(newCustomer) => {
           onCustomerSelected(newCustomer);
@@ -721,8 +756,8 @@ function OrderStep({
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e, overrideAdvanceAmount = null) => {
+    if (e && e.preventDefault) e.preventDefault();
     if (loading) return;
     setError('');
 
@@ -738,6 +773,8 @@ function OrderStep({
       setError('Please fill in descriptions and valid prices for all order items.');
       return;
     }
+
+    const effectiveAdvance = overrideAdvanceAmount !== null ? overrideAdvanceAmount : advanceAmount;
 
     setLoading(true);
     try {
@@ -759,8 +796,8 @@ function OrderStep({
         })),
         discount: parseFloat(orderDiscount) || 0,
         notes,
-        advancePayment: advanceAmount && parseFloat(advanceAmount) > 0
-          ? { amount: parseFloat(advanceAmount), paymentMethod, reference: paymentRef, paidAt: orderDate || undefined }
+        advancePayment: effectiveAdvance && parseFloat(effectiveAdvance) > 0
+          ? { amount: parseFloat(effectiveAdvance), paymentMethod, reference: paymentRef, paidAt: orderDate || undefined }
           : null,
       };
 
@@ -1190,31 +1227,50 @@ function OrderStep({
         </div>
       </div>
 
-      <div className="flex items-center justify-between pt-3 border-t border-[#E2E7E3]">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t border-[#E2E7E3]">
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#66746F] hover:bg-[#F5F7F3] rounded-xl transition"
+          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#66746F] hover:bg-[#F5F7F3] rounded-xl transition"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Prescription
         </button>
-        <button
-          type="submit"
-          disabled={loading}
-          className="px-6 py-2.5 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold shadow-sm disabled:opacity-50 transition flex items-center gap-2"
-        >
-          {loading ? 'Creating Order...' : 'Confirm & Create Order'}
-        </button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          {grandTotal > 0 && parseFloat(advanceAmount || 0) < grandTotal - 0.01 && (
+            <button
+              type="button"
+              disabled={loading}
+              onClick={(e) => {
+                setOrderData((prev) => ({ ...prev, advanceAmount: grandTotal.toFixed(2) }));
+                handleSubmit(e, grandTotal.toFixed(2));
+              }}
+              className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-sm transition flex items-center justify-center gap-1.5"
+            >
+              <Zap className="w-3.5 h-3.5 fill-current" />
+              ⚡ Create as Full Paid (₹{grandTotal.toFixed(2)})
+            </button>
+          )}
+          <button
+            type="submit"
+            disabled={loading}
+            className="px-6 py-2.5 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-bold shadow-sm disabled:opacity-50 transition flex items-center justify-center gap-2"
+          >
+            {loading ? 'Creating Order...' : 'Confirm & Create Order'}
+          </button>
+        </div>
       </div>
     </form>
   );
 }
 
 // ─── Step 4: Success State ────────────────────────────────────────────────────
-function SuccessStep({ order, customer, onViewOrder, onNewFlow }) {
+function SuccessStep({ order, customer, onViewOrder, onNewFlow, onOrderUpdated }) {
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const balanceDue = Number(order?.balance_due || 0);
+
   return (
-    <div className="flex flex-col items-center gap-6 py-8 text-center animate-in fade-in zoom-in-95 duration-200">
+    <div className="flex flex-col items-center gap-6 py-6 text-center animate-in fade-in zoom-in-95 duration-200 max-w-lg mx-auto">
       <div className="w-16 h-16 rounded-2xl bg-[#EBF3F1] border-2 border-[#28766B]/30 flex items-center justify-center text-[#28766B] shadow-sm">
         <Check className="w-8 h-8" />
       </div>
@@ -1225,7 +1281,37 @@ function SuccessStep({ order, customer, onViewOrder, onNewFlow }) {
           <strong>{customer?.full_name}</strong> (#{customer?.customer_code || 'ID'}).
         </p>
       </div>
-      <div className="flex gap-3">
+
+      {/* Financial Summary Card */}
+      <div className="w-full bg-[#F5F7F3] p-4 rounded-2xl border border-[#E2E7E3] text-left space-y-2.5">
+        <div className="flex justify-between items-center text-xs">
+          <span className="text-[#66746F] font-semibold">Total Bill Amount:</span>
+          <span className="font-bold text-[#202D2B] tabular-nums">₹{Number(order?.total_amount || 0).toLocaleString()}</span>
+        </div>
+        <div className="flex justify-between items-center text-xs text-emerald-700">
+          <span className="font-semibold">Paid Amount:</span>
+          <span className="font-bold tabular-nums">₹{Number(order?.total_paid || 0).toLocaleString()}</span>
+        </div>
+        <div className="pt-2 border-t border-[#E2E7E3] flex justify-between items-center text-sm font-bold">
+          <span>Balance Due:</span>
+          <span className={`tabular-nums ${balanceDue > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+            {balanceDue > 0 ? `₹${balanceDue.toLocaleString()}` : '✓ Fully Paid'}
+          </span>
+        </div>
+
+        {balanceDue > 0 && (
+          <button
+            type="button"
+            onClick={() => setIsPaymentModalOpen(true)}
+            className="w-full mt-2 py-2.5 bg-[#28766B] hover:bg-[#1E5C53] text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center justify-center gap-1.5"
+          >
+            <Zap className="w-3.5 h-3.5 fill-current" />
+            Quick Full Paid (₹{balanceDue.toLocaleString()})
+          </button>
+        )}
+      </div>
+
+      <div className="flex gap-3 w-full sm:w-auto justify-center">
         <button
           type="button"
           onClick={onNewFlow}
@@ -1242,6 +1328,25 @@ function SuccessStep({ order, customer, onViewOrder, onNewFlow }) {
           <ArrowRight className="w-3.5 h-3.5" />
         </button>
       </div>
+
+      {order && (
+        <RecordPaymentModal
+          isOpen={isPaymentModalOpen}
+          onClose={() => setIsPaymentModalOpen(false)}
+          orderId={order.id}
+          orderNumber={order.order_number}
+          balanceDue={balanceDue}
+          initialAmount={balanceDue}
+          isReadyForPickup={order.status === 'READY_FOR_PICKUP'}
+          onPaymentRecorded={() => {
+            api.get(`/orders/${order.id}`)
+              .then((res) => {
+                if (onOrderUpdated) onOrderUpdated(res.data?.data || res.data);
+              })
+              .catch(() => {});
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -1258,8 +1363,17 @@ export default function QuickOrderFlowPage() {
   const [prescriptions, setPrescriptions] = useState([]);
   const [createdOrder, setCreatedOrder] = useState(null);
 
+  const getTodayDate = () => new Date().toISOString().split('T')[0];
+  const getYesterdayDate = () => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+  };
+
+  const [flowDate, setFlowDate] = useState(getTodayDate());
+
   // Prescription Form State (Preserved across step navigation)
-  const todayDateStr = new Date().toISOString().split('T')[0];
+  const todayDateStr = getTodayDate();
   const [rxData, setRxData] = useState({
     rSph: '', rCyl: '', rAxis: '', rAdd: '',
     lSph: '', lCyl: '', lAxis: '', lAdd: '',
@@ -1287,6 +1401,21 @@ export default function QuickOrderFlowPage() {
     paymentMethod: 'UPI',
     paymentRef: '',
   });
+
+  const handleSetFlowDate = (date) => {
+    setFlowDate(date);
+    // Sync eye test date
+    setRxData((prev) => ({ ...prev, testedAt: date }));
+    // Sync order date & auto-adjust due date to date + 3 days
+    const nextDue = new Date(date);
+    nextDue.setDate(nextDue.getDate() + 3);
+    const dueDateStr = nextDue.toISOString().split('T')[0];
+    setOrderData((prev) => ({
+      ...prev,
+      orderDate: date,
+      dueDate: dueDateStr,
+    }));
+  };
 
   // Ensure dueDate is string
   useEffect(() => {
@@ -1365,6 +1494,8 @@ export default function QuickOrderFlowPage() {
   };
 
   const resetFlow = () => {
+    const today = getTodayDate();
+    setFlowDate(today);
     setStep(1);
     setSelectedCustomer(null);
     setSavedPrescription(null);
@@ -1374,6 +1505,7 @@ export default function QuickOrderFlowPage() {
       rSph: '', rCyl: '', rAxis: '', rAdd: '',
       lSph: '', lCyl: '', lAxis: '', lAdd: '',
       pd: '63.0', notes: '',
+      testedAt: today,
     });
     const d = new Date();
     d.setDate(d.getDate() + 3);
@@ -1384,6 +1516,7 @@ export default function QuickOrderFlowPage() {
         { productId: null, itemType: 'LENS', description: '', quantity: 1, unitPrice: '', discount: 0, hsnCode: '9001', gstRate: 18 },
       ],
       selectedPrescriptionId: '',
+      orderDate: today,
       dueDate: d.toISOString().split('T')[0],
       orderDiscount: 0,
       notes: '',
@@ -1417,6 +1550,63 @@ export default function QuickOrderFlowPage() {
         </div>
       </div>
 
+      {/* Global Entry Date Bar (Applies across all 3 steps: Customer, Rx, and Order) */}
+      {step < 4 && (
+        <div className="bg-[#FEFEFC] p-3.5 rounded-2xl border border-[#E2E7E3] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-[#EBF3F1] text-[#28766B] flex items-center justify-center border border-[#28766B]/20 shrink-0">
+              <Calendar className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-[#202D2B] flex items-center gap-1.5 flex-wrap">
+                <span>Entry & Bill Date:</span>
+                <span className="font-extrabold text-[#28766B]">
+                  {flowDate === getTodayDate() ? 'Today' : flowDate === getYesterdayDate() ? 'Yesterday' : flowDate}
+                </span>
+                {flowDate === getYesterdayDate() && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                    Backdating Active (Yesterday)
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-[#66746F]">
+                Entering an order from yesterday? Click <strong>Yesterday</strong> to synchronize customer registration, eye test, and bill date.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 self-start sm:self-auto flex-wrap">
+            <button
+              type="button"
+              onClick={() => handleSetFlowDate(getTodayDate())}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 ${
+                flowDate === getTodayDate()
+                  ? 'bg-[#28766B] text-white shadow-xs'
+                  : 'bg-[#EBF3F1] text-[#28766B] hover:bg-[#D5E6E2]'
+              }`}
+            >
+              📅 Today
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSetFlowDate(getYesterdayDate())}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 ${
+                flowDate === getYesterdayDate()
+                  ? 'bg-amber-700 text-white shadow-xs'
+                  : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
+              }`}
+            >
+              ⏪ Yesterday
+            </button>
+            <input
+              type="date"
+              value={flowDate}
+              onChange={(e) => handleSetFlowDate(e.target.value)}
+              className="px-2.5 py-1 rounded-xl border border-[#E2E7E3] text-xs font-bold text-[#202D2B] bg-white focus:outline-none focus:ring-2 focus:ring-[#28766B]/30"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Step Indicator Header (Visible in steps 1, 2, 3) */}
       {step < 4 && (
         <div className="bg-[#FEFEFC] p-3 rounded-2xl border border-[#E2E7E3] shadow-xs">
@@ -1438,6 +1628,8 @@ export default function QuickOrderFlowPage() {
             selectedCustomer={selectedCustomer}
             onCustomerSelected={handleCustomerSelected}
             onNext={() => setStep(2)}
+            flowDate={flowDate}
+            onSetFlowDate={handleSetFlowDate}
           />
         </div>
 
@@ -1470,6 +1662,7 @@ export default function QuickOrderFlowPage() {
             customer={selectedCustomer}
             onViewOrder={() => navigate(`/orders/${createdOrder?.id}`)}
             onNewFlow={resetFlow}
+            onOrderUpdated={(updated) => setCreatedOrder(updated)}
           />
         )}
       </div>
