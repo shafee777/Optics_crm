@@ -1,9 +1,10 @@
 import { useModalAccessibility } from '../../hooks/useModalAccessibility.js';
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api.js';
-import { X, UserPlus, AlertCircle, Hash, UserCheck, Edit2 } from 'lucide-react';
+import { X, UserPlus, AlertCircle, Hash, UserCheck, Edit2, Calendar } from 'lucide-react';
 
-export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, onCustomerSaved, customer = null }) {
+export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, onCustomerSaved, customer = null, initialVisitDate = null }) {
+  const todayStr = new Date().toISOString().split('T')[0];
   const [formData, setFormData] = useState({
     customerCode: '',
     fullName: '',
@@ -13,6 +14,9 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, 
     age: '',
     address: '',
     notes: '',
+    category: 'REGULAR',
+    tags: '',
+    visitDate: initialVisitDate || todayStr,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -34,6 +38,7 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, 
           notes: customer.notes || '',
           category: customer.category || 'REGULAR',
           tags: Array.isArray(customer.tags) ? customer.tags.join(', ') : '',
+          visitDate: customer.created_at ? String(customer.created_at).slice(0, 10) : (initialVisitDate || todayStr),
         });
       } else {
         setFormData({
@@ -47,6 +52,7 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, 
           notes: '',
           category: 'REGULAR',
           tags: '',
+          visitDate: initialVisitDate || todayStr,
         });
 
 
@@ -108,6 +114,8 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, 
         notes: formData.notes?.trim() || null,
         category: formData.category || 'REGULAR',
         tags: formData.tags ? formData.tags.split(',').map((s) => s.trim()).filter(Boolean) : [],
+        createdAt: formData.visitDate || null,
+        visitDate: formData.visitDate || null,
       };
 
       let result;
@@ -130,6 +138,16 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, 
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSetToday = () => {
+    setFormData((prev) => ({ ...prev, visitDate: todayStr }));
+  };
+
+  const handleSetYesterday = () => {
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    setFormData((prev) => ({ ...prev, visitDate: y.toISOString().split('T')[0] }));
   };
 
   return (
@@ -159,6 +177,51 @@ export default function CustomerFormModal({ isOpen, onClose, onCustomerCreated, 
         )}
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Visit Date / Registration Date Picker */}
+          <div className="p-3 bg-[#F5F7F3] border border-[#E2E7E3] rounded-xl space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-[#202D2B]">
+                <Calendar className="w-3.5 h-3.5 text-[#28766B]" />
+                Customer Visit / Registration Date *
+              </label>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={handleSetToday}
+                  className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold transition border ${
+                    formData.visitDate === todayStr
+                      ? 'bg-[#28766B] text-white border-[#28766B] shadow-2xs'
+                      : 'bg-white text-[#66746F] border-[#CCDCD0] hover:bg-[#EBF3F1]'
+                  }`}
+                >
+                  📅 Today
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSetYesterday}
+                  className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold transition border ${
+                    formData.visitDate === new Date(Date.now() - 86400000).toISOString().split('T')[0]
+                      ? 'bg-[#28766B] text-white border-[#28766B] shadow-2xs'
+                      : 'bg-white text-[#66746F] border-[#CCDCD0] hover:bg-[#EBF3F1]'
+                  }`}
+                >
+                  ⏪ Yesterday
+                </button>
+              </div>
+            </div>
+            <input
+              type="date"
+              name="visitDate"
+              required
+              value={formData.visitDate}
+              onChange={handleChange}
+              className="w-full px-3 py-1.5 rounded-lg border border-[#E2E7E3] bg-white text-xs font-bold text-[#202D2B] focus:ring-2 focus:ring-[#28766B]/30 focus:border-[#28766B] focus:outline-none"
+            />
+            <p className="text-[10px] text-[#66746F]">
+              Did this customer visit yesterday? Click <strong>⏪ Yesterday</strong> to record their details under yesterday&apos;s records.
+            </p>
+          </div>
+
           {/* Customer ID & Mobile */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>

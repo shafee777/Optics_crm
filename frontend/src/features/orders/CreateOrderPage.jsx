@@ -41,6 +41,8 @@ export default function CreateOrderPage() {
   ]);
 
   // Order Settings
+  const todayDateStr = new Date().toISOString().split('T')[0];
+  const [orderDate, setOrderDate] = useState(todayDateStr);
   const [dueDate, setDueDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 3);
@@ -57,6 +59,23 @@ export default function CreateOrderPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(null);
+
+  const handleSetOrderToday = () => {
+    setOrderDate(todayDateStr);
+    const d = new Date();
+    d.setDate(d.getDate() + 3);
+    setDueDate(d.toISOString().split('T')[0]);
+  };
+
+  const handleSetOrderYesterday = () => {
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    const yStr = y.toISOString().split('T')[0];
+    setOrderDate(yStr);
+    const d = new Date(y);
+    d.setDate(d.getDate() + 3);
+    setDueDate(d.toISOString().split('T')[0]);
+  };
 
   // Fetch customers and stock products
   useEffect(() => {
@@ -142,6 +161,7 @@ export default function CreateOrderPage() {
       const payload = {
         customerId: selectedCustomerId,
         prescriptionId: selectedPrescriptionId || null,
+        orderDate: orderDate || null,
         dueDate,
         isGstBill,
         items: items.map((i) => ({
@@ -162,6 +182,7 @@ export default function CreateOrderPage() {
                 amount: parseFloat(advanceAmount),
                 paymentMethod,
                 reference: paymentRef,
+                paidAt: orderDate || undefined,
               }
             : null,
       };
@@ -488,44 +509,138 @@ export default function CreateOrderPage() {
           </div>
         </div>
 
-        {/* Step 3: Advance Payment & Due Date */}
+        {/* Step 3: Order Date, Due Date & Advance Payment */}
         <div className="bg-[#FEFEFC] p-6 rounded-2xl border border-[#E2E7E3] shadow-sm space-y-4">
-          <h2 className="font-bold text-[#202D2B] text-sm">3. Advance Payment & Due Date</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label htmlFor="CreateOrderPage-field-7" className="block text-xs font-semibold text-[#202D2B] mb-1">Expected Delivery Date *</label>
+          <h2 className="font-bold text-[#202D2B] text-sm">3. Order Date, Delivery & Payment</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-2">
+            {/* Order / Bill Date */}
+            <div className="p-3 bg-[#F5F7F3] border border-[#E2E7E3] rounded-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-[#202D2B]">
+                  Order / Bill Date *
+                </label>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={handleSetOrderToday}
+                    className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold transition border ${
+                      orderDate === todayDateStr
+                        ? 'bg-[#28766B] text-white border-[#28766B] shadow-2xs'
+                        : 'bg-white text-[#66746F] border-[#CCDCD0] hover:bg-[#EBF3F1]'
+                    }`}
+                  >
+                    📅 Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSetOrderYesterday}
+                    className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold transition border ${
+                      orderDate === new Date(Date.now() - 86400000).toISOString().split('T')[0]
+                        ? 'bg-[#28766B] text-white border-[#28766B] shadow-2xs'
+                        : 'bg-white text-[#66746F] border-[#CCDCD0] hover:bg-[#EBF3F1]'
+                    }`}
+                  >
+                    ⏪ Yesterday
+                  </button>
+                </div>
+              </div>
+              <input
+                type="date"
+                required
+                value={orderDate}
+                onChange={(e) => setOrderDate(e.target.value)}
+                className="w-full px-3 py-1.5 rounded-lg border border-[#E2E7E3] bg-white text-xs font-bold text-[#202D2B] focus:outline-none"
+              />
+              <p className="text-[10px] text-[#66746F]">
+                Entering yesterday&apos;s bill? Click <strong>⏪ Yesterday</strong> to record sales under yesterday.
+              </p>
+            </div>
+
+            {/* Expected Delivery Date */}
+            <div className="p-3 bg-[#F5F7F3] border border-[#E2E7E3] rounded-xl space-y-2">
+              <label htmlFor="CreateOrderPage-field-7" className="block text-xs font-semibold text-[#202D2B]">
+                Expected Delivery Date *
+              </label>
               <input id="CreateOrderPage-field-7"
                 type="date"
                 required
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs text-[#202D2B] focus:outline-none"
+                className="w-full px-3 py-1.5 rounded-lg border border-[#E2E7E3] bg-white text-xs font-bold text-[#202D2B] focus:outline-none"
               />
+              <p className="text-[10px] text-[#66746F]">
+                Target pickup/dispatch date for the customer.
+              </p>
+            </div>
+          </div>
+
+          {/* Payment Section with 1-Click Full Paid */}
+          <div className="pt-2 border-t border-[#E2E7E3] space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <label htmlFor="CreateOrderPage-field-8" className="block text-xs font-bold text-[#202D2B] uppercase tracking-wider">
+                Payment Collection (Advance / Full Payment)
+              </label>
+
+              {/* ⚡ Quick Payment Shortcuts */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setAdvanceAmount(grandTotal > 0 ? grandTotal.toFixed(2) : '')}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px] font-bold transition flex items-center gap-1 shadow-2xs"
+                  title="Click to mark 100% full payment"
+                >
+                  ⚡ Full Paid (₹{grandTotal.toFixed(2)})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAdvanceAmount(grandTotal > 0 ? (grandTotal / 2).toFixed(2) : '')}
+                  className="px-2 py-1 rounded-lg bg-[#F5F7F3] hover:bg-[#E2E7E3] text-[#202D2B] border border-[#CCDCD0] text-[11px] font-semibold transition"
+                >
+                  50% (₹{(grandTotal / 2).toFixed(2)})
+                </button>
+                {advanceAmount && (
+                  <button
+                    type="button"
+                    onClick={() => setAdvanceAmount('')}
+                    className="px-2 py-1 rounded-lg bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-[11px] font-semibold transition"
+                  >
+                    Clear (₹0)
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div>
-              <label htmlFor="CreateOrderPage-field-8" className="block text-xs font-semibold text-[#202D2B] mb-1">Advance Amount (₹)</label>
-              <input id="CreateOrderPage-field-8"
-                type="number"
-                placeholder="e.g. 1000"
-                value={advanceAmount}
-                onChange={(e) => setAdvanceAmount(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs tabular-nums text-[#202D2B] focus:outline-none"
-              />
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="CreateOrderPage-field-8" className="block text-xs font-semibold text-[#202D2B] mb-1">
+                  Amount Received (₹)
+                </label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-[#66746F] font-bold text-xs">₹</span>
+                  <input id="CreateOrderPage-field-8"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={advanceAmount}
+                    onChange={(e) => setAdvanceAmount(e.target.value)}
+                    className="w-full pl-7 pr-3 py-2 rounded-xl border border-[#E2E7E3] text-sm font-bold tabular-nums text-[#202D2B] focus:outline-none focus:ring-2 focus:ring-[#28766B]/30 focus:border-[#28766B] bg-white"
+                  />
+                </div>
+              </div>
 
-            <div>
-              <label htmlFor="CreateOrderPage-field-9" className="block text-xs font-semibold text-[#202D2B] mb-1">Payment Method</label>
-              <select id="CreateOrderPage-field-9"
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs text-[#202D2B] bg-white focus:outline-none"
-              >
-                <option value="UPI">Google Pay / PhonePe (UPI)</option>
-                <option value="CASH">Cash</option>
-                <option value="CARD">Credit / Debit Card</option>
-                <option value="BANK_TRANSFER">Bank Transfer</option>
-              </select>
+              <div>
+                <label htmlFor="CreateOrderPage-field-9" className="block text-xs font-semibold text-[#202D2B] mb-1">Payment Method</label>
+                <select id="CreateOrderPage-field-9"
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs font-semibold text-[#202D2B] bg-white focus:outline-none"
+                >
+                  <option value="UPI">Google Pay / PhonePe / Paytm (UPI)</option>
+                  <option value="CASH">Cash</option>
+                  <option value="CARD">Credit / Debit Card</option>
+                  <option value="BANK_TRANSFER">Bank Transfer</option>
+                </select>
+              </div>
             </div>
           </div>
 

@@ -7,11 +7,16 @@ export const paymentRepository = {
   },
 
   async createTx(db, storeId, orderId, userId, data) {
+    const customPaidAt = data.paidAt || data.paymentDate || null;
+    const paidAtTimestamp = customPaidAt
+      ? (customPaidAt.includes('T') ? customPaidAt : `${customPaidAt} 12:00:00+05:30`)
+      : null;
+
     const sql = `
       INSERT INTO payments (
-        store_id, order_id, amount, payment_method, reference, created_by, notes
+        store_id, order_id, amount, payment_method, reference, created_by, notes, paid_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8::timestamptz, NOW()))
       RETURNING *;
     `;
     const values = [
@@ -22,6 +27,7 @@ export const paymentRepository = {
       data.reference || null,
       userId,
       data.notes || null,
+      paidAtTimestamp,
     ];
     const res = await db.query(sql, values);
     return res.rows[0];

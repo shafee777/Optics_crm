@@ -89,7 +89,7 @@ export const customerService = {
     return { updatedCount };
   },
 
-  async broadcastWhatsApp(storeId, { customerIds, messageTemplate, imageUrl = null, campaignName = 'Campaign' }) {
+  async broadcastWhatsApp(storeId, { customerIds, messageTemplate, imageUrl = null, mediaFileName = null, mediaType = null, mediaDataUrl = null, campaignName = 'Campaign' }) {
     const store = await storeRepository.findById(storeId);
     const customers = await customerRepository.findByIds(storeId, customerIds);
 
@@ -120,7 +120,9 @@ export const customerService = {
         .replace(/\{storeAddress\}/g, storeAddress);
 
       if (imageUrl && imageUrl.trim()) {
-        text += `\n\n🖼️ View Image/Offer: ${imageUrl.trim()}`;
+        if (/^https?:\/\//i.test(imageUrl.trim())) {
+          text += `\n\n🖼️ View Image/Offer: ${imageUrl.trim()}`;
+        }
       }
 
       const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
@@ -131,6 +133,9 @@ export const customerService = {
         customerCode: customer.customer_code,
         phone: cleanPhone,
         message: text,
+        mediaFileName: mediaFileName || null,
+        mediaType: mediaType || (imageUrl ? 'IMAGE' : null),
+        mediaDataUrl: mediaDataUrl || null,
         waUrl,
       });
 

@@ -12,6 +12,8 @@ export const createCustomerSchema = z.object({
     notes: z.string().optional().or(z.literal('')).nullable(),
     tags: z.array(z.string().trim()).optional().default([]),
     category: z.string().trim().optional().default('REGULAR'),
+    createdAt: z.string().optional().or(z.literal('')).nullable(),
+    visitDate: z.string().optional().or(z.literal('')).nullable(),
   }),
 });
 
@@ -30,6 +32,8 @@ export const updateCustomerSchema = z.object({
     notes: z.string().optional().or(z.literal('')).nullable(),
     tags: z.array(z.string().trim()).optional(),
     category: z.string().trim().optional(),
+    createdAt: z.string().optional().or(z.literal('')).nullable(),
+    visitDate: z.string().optional().or(z.literal('')).nullable(),
   }),
 });
 
@@ -69,6 +73,10 @@ export const broadcastWhatsAppSchema = z.object({
     customerIds: z.array(z.string().uuid('Invalid customer ID')).min(1, 'At least one customer must be selected'),
     messageTemplate: z.string().min(1, 'Message cannot be empty').trim(),
     imageUrl: z.string().optional().or(z.literal('')).nullable(),
+    mediaFileName: z.string().optional().nullable(),
+    mediaType: z.string().optional().nullable(),
+    mediaDataUrl: z.string().optional().nullable(),
     campaignName: z.string().optional().default('Marketing Broadcast'),
   }),
 });
+

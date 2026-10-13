@@ -9,6 +9,8 @@ export const recordPaymentSchema = z.object({
     paymentMethod: z.enum(['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'OTHER']),
     reference: z.string().optional().or(z.literal('')),
     notes: z.string().optional().or(z.literal('')),
+    paidAt: z.string().optional().or(z.literal('')).nullable(),
+    paymentDate: z.string().optional().or(z.literal('')).nullable(),
     markDelivered: z.boolean().optional().default(false),
   }),
 });

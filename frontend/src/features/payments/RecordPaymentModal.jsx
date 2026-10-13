@@ -1,7 +1,7 @@
 import { useModalAccessibility } from '../../hooks/useModalAccessibility.js';
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api.js';
-import { X, IndianRupee, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, IndianRupee, AlertCircle, CheckCircle2, Calendar, Zap } from 'lucide-react';
 
 export default function RecordPaymentModal({
   isOpen,
@@ -10,9 +10,18 @@ export default function RecordPaymentModal({
   orderNumber,
   balanceDue,
   isReadyForPickup,
+  initialAmount,
   onPaymentRecorded,
 }) {
+  const getTodayDate = () => new Date().toISOString().split('T')[0];
+  const getYesterdayDate = () => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+  };
+
   const [amount, setAmount] = useState('');
+  const [paymentDate, setPaymentDate] = useState(getTodayDate());
   const [paymentMethod, setPaymentMethod] = useState('UPI');
   const [reference, setReference] = useState('');
   const [notes, setNotes] = useState('');
@@ -22,11 +31,16 @@ export default function RecordPaymentModal({
 
   useEffect(() => {
     if (isOpen) {
-      setAmount(balanceDue ? balanceDue.toString() : '');
+      if (initialAmount !== undefined && initialAmount !== null && initialAmount !== '') {
+        setAmount(initialAmount.toString());
+      } else {
+        setAmount(balanceDue ? balanceDue.toString() : '');
+      }
+      setPaymentDate(getTodayDate());
       setMarkDelivered(isReadyForPickup);
       setError('');
     }
-  }, [isOpen, balanceDue, isReadyForPickup]);
+  }, [isOpen, balanceDue, initialAmount, isReadyForPickup]);
 
   const modalRef = useModalAccessibility(isOpen, onClose);
   if (!isOpen) return null;
@@ -49,6 +63,8 @@ export default function RecordPaymentModal({
         paymentMethod,
         reference,
         notes,
+        paidAt: paymentDate,
+        paymentDate,
         markDelivered: isReadyForPickup && markDelivered,
       });
 
@@ -94,6 +110,46 @@ export default function RecordPaymentModal({
                 Balance Due: ₹{balanceDue?.toLocaleString()}
               </span>
             </div>
+
+            {/* Quick Fill Chips */}
+            {balanceDue > 0 && (
+              <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+                <span className="text-[11px] font-medium text-[#66746F]">Quick Fill:</span>
+                <button
+                  type="button"
+                  onClick={() => setAmount(balanceDue.toString())}
+                  className={`px-2 py-0.5 text-xs font-bold rounded-lg border transition flex items-center gap-1 ${
+                    Number(amount) === Number(balanceDue)
+                      ? 'bg-[#28766B] text-white border-[#28766B] shadow-xs'
+                      : 'bg-[#EBF3F1] text-[#28766B] border-[#28766B]/30 hover:bg-[#D5E6E2]'
+                  }`}
+                >
+                  <Zap className="w-3 h-3 fill-current" />
+                  Full (₹{balanceDue?.toLocaleString()})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAmount(Math.round(balanceDue / 2).toString())}
+                  className={`px-2 py-0.5 text-xs font-medium rounded-lg border transition ${
+                    Number(amount) === Math.round(balanceDue / 2)
+                      ? 'bg-[#28766B] text-white border-[#28766B] shadow-xs'
+                      : 'bg-white text-[#202D2B] border-[#E2E7E3] hover:bg-[#F5F7F3]'
+                  }`}
+                >
+                  50% (₹{Math.round(balanceDue / 2).toLocaleString()})
+                </button>
+                {amount && (
+                  <button
+                    type="button"
+                    onClick={() => setAmount('')}
+                    className="px-2 py-0.5 text-xs text-[#66746F] hover:text-[#202D2B] hover:bg-[#E2E7E3]/60 rounded-lg transition"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
+
             <div className="relative">
               <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-[#66746F] font-bold text-sm">₹</span>
               <input id="RecordPaymentModal-field-0"
@@ -106,6 +162,47 @@ export default function RecordPaymentModal({
                 className="w-full pl-8 pr-4 py-2.5 tabular-nums text-lg font-bold text-[#202D2B] rounded-xl border border-[#E2E7E3] focus:ring-2 focus:ring-[#28766B]/30 focus:border-[#28766B] focus:outline-none bg-white"
               />
             </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label htmlFor="RecordPaymentModal-payment-date" className="text-xs font-semibold text-[#202D2B] flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#28766B]" />
+                Payment Date *
+              </label>
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setPaymentDate(getTodayDate())}
+                  className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition ${
+                    paymentDate === getTodayDate()
+                      ? 'bg-[#28766B] text-white shadow-xs'
+                      : 'bg-[#EBF3F1] text-[#28766B] hover:bg-[#D5E6E2]'
+                  }`}
+                >
+                  📅 Today
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentDate(getYesterdayDate())}
+                  className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition ${
+                    paymentDate === getYesterdayDate()
+                      ? 'bg-amber-700 text-white shadow-xs'
+                      : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
+                  }`}
+                >
+                  ⏪ Yesterday
+                </button>
+              </div>
+            </div>
+            <input
+              id="RecordPaymentModal-payment-date"
+              type="date"
+              required
+              value={paymentDate}
+              onChange={(e) => setPaymentDate(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs font-medium text-[#202D2B] bg-white focus:ring-2 focus:ring-[#28766B]/30 focus:border-[#28766B] focus:outline-none"
+            />
           </div>
 
           <div>

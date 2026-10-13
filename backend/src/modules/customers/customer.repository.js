@@ -95,12 +95,13 @@ export const customerRepository = {
 
   async create(storeId, data) {
     const customerCode = data.customerCode?.trim() || (await this.getNextCustomerCode(storeId));
+    const customDate = data.createdAt || data.visitDate || null;
 
     const sql = `
       INSERT INTO customers (
-        store_id, customer_code, full_name, phone, email, gender, age, address, notes, tags, category
+        store_id, customer_code, full_name, phone, email, gender, age, address, notes, tags, category, created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, COALESCE($12::timestamptz, NOW()))
       RETURNING *;
     `;
     const values = [
@@ -115,6 +116,7 @@ export const customerRepository = {
       data.notes?.trim() || null,
       data.tags || [],
       data.category || 'REGULAR',
+      customDate ? (customDate.includes('T') ? customDate : `${customDate} 12:00:00+05:30`) : null,
     ];
     const res = await query(sql, values);
     return res.rows[0];
@@ -164,6 +166,13 @@ export const customerRepository = {
     if (data.category !== undefined) {
       fields.push(`category = $${idx++}`);
       values.push(data.category);
+    }
+    if (data.createdAt !== undefined || data.visitDate !== undefined) {
+      const customDate = data.createdAt || data.visitDate || null;
+      if (customDate) {
+        fields.push(`created_at = $${idx++}`);
+        values.push(customDate.includes('T') ? customDate : `${customDate} 12:00:00+05:30`);
+      }
     }
 
     if (fields.length === 0) {

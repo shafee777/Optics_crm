@@ -22,7 +22,8 @@ import {
   Printer,
   FileDown,
   MessageSquare,
-  Star
+  Star,
+  Zap,
 } from 'lucide-react';
 
 export default function OrderDetailsPage() {
@@ -36,6 +37,7 @@ export default function OrderDetailsPage() {
   const [linkedPrescription, setLinkedPrescription] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentModalAmount, setPaymentModalAmount] = useState(null);
 
   const [prescriptionState, setPrescriptionState] = useState('loading');
   const [prescriptionRetry, setPrescriptionRetry] = useState(0);
@@ -284,7 +286,10 @@ export default function OrderDetailsPage() {
               <h3 className="font-bold text-[#202D2B] text-xs uppercase tracking-wider">Payments Collected</h3>
               {order.status !== 'CANCELLED' && order.balance_due > 0 && (
                 <button
-                  onClick={() => setIsPaymentModalOpen(true)}
+                  onClick={() => {
+                    setPaymentModalAmount(order.balance_due);
+                    setIsPaymentModalOpen(true);
+                  }}
                   className="inline-flex items-center gap-1 text-xs font-semibold text-[#28766B] hover:underline"
                 >
                   <Plus className="w-3.5 h-3.5" /> Record Payment
@@ -355,12 +360,26 @@ export default function OrderDetailsPage() {
               </div>
 
               {order.balance_due > 0 && order.status !== 'CANCELLED' && (
-                <button
-                  onClick={() => setIsPaymentModalOpen(true)}
-                  className="w-full mt-3 py-2 bg-[#28766B] hover:bg-[#1E5C53] text-white font-semibold text-xs rounded-xl shadow-sm transition flex items-center justify-center gap-1"
-                >
-                  <IndianRupee className="w-3.5 h-3.5" /> Collect Remaining Balance
-                </button>
+                <div className="pt-2 space-y-2">
+                  <button
+                    onClick={() => {
+                      setPaymentModalAmount(order.balance_due);
+                      setIsPaymentModalOpen(true);
+                    }}
+                    className="w-full py-2.5 bg-[#28766B] hover:bg-[#1E5C53] text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center justify-center gap-1.5"
+                  >
+                    <Zap className="w-3.5 h-3.5 fill-current" /> Quick Full Paid (₹{order.balance_due.toLocaleString()})
+                  </button>
+                  <button
+                    onClick={() => {
+                      setPaymentModalAmount('');
+                      setIsPaymentModalOpen(true);
+                    }}
+                    className="w-full py-2 bg-[#F5F7F3] hover:bg-[#E2E7E3] text-[#202D2B] font-semibold text-xs rounded-xl border border-[#E2E7E3] transition flex items-center justify-center gap-1"
+                  >
+                    <IndianRupee className="w-3.5 h-3.5 text-[#28766B]" /> Custom Partial Payment
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -431,6 +450,7 @@ export default function OrderDetailsPage() {
         orderId={order.id}
         orderNumber={order.order_number}
         balanceDue={order.balance_due}
+        initialAmount={paymentModalAmount}
         isReadyForPickup={order.status === 'READY_FOR_PICKUP'}
         onPaymentRecorded={fetchOrder}
       />

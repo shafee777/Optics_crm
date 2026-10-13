@@ -26,6 +26,7 @@ export const createOrderSchema = z.object({
   body: z.object({
     customerId: z.string().uuid('Invalid customer ID format'),
     prescriptionId: z.string().uuid('Invalid prescription ID format').optional().nullable(),
+    orderDate: z.string().refine((val) => !val || isValidCalendarDate(val), { message: 'Order date must be a valid calendar date (YYYY-MM-DD)' }).optional().nullable().or(z.literal('')),
     dueDate: z.string().refine(isValidCalendarDate, { message: 'Due date must be a valid calendar date (YYYY-MM-DD)' }),
     isGstBill: z.boolean().default(true),
     items: z
@@ -50,6 +51,7 @@ export const createOrderSchema = z.object({
         amount: z.coerce.number().multipleOf(0.01).min(0.01, 'Advance amount must be greater than 0'),
         paymentMethod: z.enum(['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'OTHER']),
         reference: z.string().trim().optional().nullable(),
+        paidAt: z.string().optional().nullable(),
       })
       .optional()
       .nullable(),

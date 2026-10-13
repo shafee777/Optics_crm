@@ -71,15 +71,18 @@ export const orderRepository = {
         );
       }
 
+      const customOrderDate = data.orderDate || null;
+      const customCreatedAt = customOrderDate ? (customOrderDate.includes('T') ? customOrderDate : `${customOrderDate} 12:00:00+05:30`) : null;
+
       const orderQuery = `
         INSERT INTO orders (
           store_id, customer_id, prescription_id, order_number,
           order_date, due_date, status,
           subtotal, discount, tax, total_amount,
           is_gst_bill, total_taxable_value, total_cgst, total_sgst,
-          notes, created_by, discount_allocated
+          notes, created_by, discount_allocated, created_at
         )
-        VALUES ($1, $2, $3, $4, CURRENT_DATE, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, true)
+        VALUES ($1, $2, $3, $4, COALESCE($5::date, CURRENT_DATE), $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, true, COALESCE($18::timestamptz, NOW()))
         RETURNING *;
       `;
       const { rows: orderRows } = await client.query(orderQuery, [
@@ -87,6 +90,7 @@ export const orderRepository = {
         data.customerId,
         data.prescriptionId || null,
         orderNumber,
+        customOrderDate,
         data.dueDate,
         ORDER_STATUS.PENDING,
         subtotal,
@@ -99,6 +103,7 @@ export const orderRepository = {
         Math.round(totalSgst * 100) / 100,
         data.notes || null,
         userId,
+        customCreatedAt,
       ]);
       const createdOrder = orderRows[0];
 
@@ -147,12 +152,16 @@ export const orderRepository = {
       }
 
       if (data.advancePayment && data.advancePayment.amount > 0) {
+        const advancePaidAt = data.advancePayment.paidAt
+          ? (data.advancePayment.paidAt.includes('T') ? data.advancePayment.paidAt : `${data.advancePayment.paidAt} 12:00:00+05:30`)
+          : customCreatedAt;
+
         await client.query(
           `
             INSERT INTO payments (
-              store_id, order_id, amount, payment_method, reference, created_by
+              store_id, order_id, amount, payment_method, reference, created_by, paid_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6);
+            VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7::timestamptz, NOW()));
           `,
           [
             storeId,
@@ -161,6 +170,7 @@ export const orderRepository = {
             data.advancePayment.paymentMethod,
             data.advancePayment.reference || null,
             userId,
+            advancePaidAt,
           ]
         );
       }

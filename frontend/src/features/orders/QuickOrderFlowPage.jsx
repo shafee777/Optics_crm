@@ -20,6 +20,7 @@ import {
   SkipForward,
   ChevronRight,
   Zap,
+  Calendar,
 } from 'lucide-react';
 
 // ─── Power helpers (mirrored from NewPrescriptionModal) ─────────────────────
@@ -398,6 +399,7 @@ function PrescriptionStep({
         lAdd: rxData.lAdd !== '' ? parseFloat(rxData.lAdd) : null,
         pd: rxData.pd !== '' ? parseFloat(rxData.pd) : null,
         notes: rxData.notes || null,
+        testedAt: rxData.testedAt ? (rxData.testedAt.includes('T') ? rxData.testedAt : `${rxData.testedAt} 12:00:00+05:30`) : null,
       };
 
       let res;
@@ -428,6 +430,49 @@ function PrescriptionStep({
 
   return (
     <div className="space-y-4">
+      {/* Eye Test Date Bar */}
+      <div className="p-3 bg-[#F5F7F3] border border-[#E2E7E3] rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-[#28766B]" />
+          <span className="text-xs font-bold text-[#202D2B]">Eye Test Refraction Date:</span>
+          <span className="text-[11px] text-[#66746F]">(Tested yesterday? Choose Yesterday)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setRxData((prev) => ({ ...prev, testedAt: new Date().toISOString().split('T')[0] }))}
+            className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold border transition ${
+              rxData.testedAt === new Date().toISOString().split('T')[0]
+                ? 'bg-[#28766B] text-white border-[#28766B] shadow-2xs'
+                : 'bg-white text-[#66746F] border-[#CCDCD0] hover:bg-[#EBF3F1]'
+            }`}
+          >
+            Today
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const y = new Date();
+              y.setDate(y.getDate() - 1);
+              setRxData((prev) => ({ ...prev, testedAt: y.toISOString().split('T')[0] }));
+            }}
+            className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold border transition ${
+              rxData.testedAt === new Date(Date.now() - 86400000).toISOString().split('T')[0]
+                ? 'bg-[#28766B] text-white border-[#28766B] shadow-2xs'
+                : 'bg-white text-[#66746F] border-[#CCDCD0] hover:bg-[#EBF3F1]'
+            }`}
+          >
+            Yesterday
+          </button>
+          <input
+            type="date"
+            name="testedAt"
+            value={rxData.testedAt || ''}
+            onChange={handleChange}
+            className="px-2.5 py-1 bg-white border border-[#E2E7E3] rounded-lg text-xs font-bold text-[#202D2B] focus:outline-none"
+          />
+        </div>
+      </div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E2E7E3]">
         <div>
           <h2 className="font-bold text-[#202D2B] text-base flex items-center gap-2">
@@ -618,6 +663,7 @@ function OrderStep({
     isGstBill,
     items,
     selectedPrescriptionId,
+    orderDate,
     dueDate,
     orderDiscount,
     notes,
@@ -698,6 +744,7 @@ function OrderStep({
       const payload = {
         customerId: customer.id,
         prescriptionId: selectedPrescriptionId || null,
+        orderDate: orderDate || null,
         dueDate,
         isGstBill,
         items: items.map((i) => ({
@@ -713,7 +760,7 @@ function OrderStep({
         discount: parseFloat(orderDiscount) || 0,
         notes,
         advancePayment: advanceAmount && parseFloat(advanceAmount) > 0
-          ? { amount: parseFloat(advanceAmount), paymentMethod, reference: paymentRef }
+          ? { amount: parseFloat(advanceAmount), paymentMethod, reference: paymentRef, paidAt: orderDate || undefined }
           : null,
       };
 
@@ -984,42 +1031,137 @@ function OrderStep({
         </div>
       </div>
 
-      {/* Advance Payment & Delivery Due Date */}
+      {/* Order Date, Delivery Due Date & Payment */}
       <div className="bg-[#FEFEFC] p-5 rounded-2xl border border-[#E2E7E3] space-y-4 shadow-xs">
-        <h3 className="font-bold text-[#202D2B] text-xs">Advance Payment & Due Date</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-[#202D2B] mb-1">Expected Delivery Date *</label>
+        <h3 className="font-bold text-[#202D2B] text-xs">Order Date, Delivery & Payment</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-2">
+          {/* Order / Bill Date */}
+          <div className="p-3 bg-[#F5F7F3] border border-[#E2E7E3] rounded-xl space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold text-[#202D2B]">
+                Order / Bill Date *
+              </label>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setOrderData((prev) => ({ ...prev, orderDate: new Date().toISOString().split('T')[0] }))}
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition ${
+                    orderDate === new Date().toISOString().split('T')[0]
+                      ? 'bg-[#28766B] text-white border-[#28766B] shadow-2xs'
+                      : 'bg-white text-[#66746F] border-[#CCDCD0] hover:bg-[#EBF3F1]'
+                  }`}
+                >
+                  📅 Today
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const y = new Date();
+                    y.setDate(y.getDate() - 1);
+                    setOrderData((prev) => ({ ...prev, orderDate: y.toISOString().split('T')[0] }));
+                  }}
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition ${
+                    orderDate === new Date(Date.now() - 86400000).toISOString().split('T')[0]
+                      ? 'bg-[#28766B] text-white border-[#28766B] shadow-2xs'
+                      : 'bg-white text-[#66746F] border-[#CCDCD0] hover:bg-[#EBF3F1]'
+                  }`}
+                >
+                  ⏪ Yesterday
+                </button>
+              </div>
+            </div>
+            <input
+              type="date"
+              required
+              value={orderDate || ''}
+              onChange={(e) => setOrderData((prev) => ({ ...prev, orderDate: e.target.value }))}
+              className="w-full px-3 py-1.5 rounded-lg border border-[#E2E7E3] bg-white text-xs font-bold text-[#202D2B] focus:outline-none"
+            />
+            <p className="text-[10px] text-[#66746F]">
+              Did this order take place yesterday? Click <strong>⏪ Yesterday</strong>.
+            </p>
+          </div>
+
+          {/* Expected Delivery Date */}
+          <div className="p-3 bg-[#F5F7F3] border border-[#E2E7E3] rounded-xl space-y-2">
+            <label className="block text-xs font-semibold text-[#202D2B]">Expected Delivery Date *</label>
             <input
               type="date"
               required
               value={dueDate}
               onChange={(e) => setOrderData((prev) => ({ ...prev, dueDate: e.target.value }))}
-              className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs text-[#202D2B] focus:outline-none"
+              className="w-full px-3 py-1.5 rounded-lg border border-[#E2E7E3] bg-white text-xs font-bold text-[#202D2B] focus:outline-none"
             />
+            <p className="text-[10px] text-[#66746F]">
+              Estimated pickup date for glasses fitting.
+            </p>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-[#202D2B] mb-1">Advance Amount Paid (₹)</label>
-            <input
-              type="number"
-              placeholder="e.g. 1000"
-              value={advanceAmount}
-              onChange={(e) => setOrderData((prev) => ({ ...prev, advanceAmount: e.target.value }))}
-              className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs tabular-nums text-[#202D2B] focus:outline-none"
-            />
+        </div>
+
+        {/* Payment Collection with Quick 1-Click Full Paid */}
+        <div className="pt-2 border-t border-[#E2E7E3] space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <label className="block text-xs font-bold text-[#202D2B] uppercase tracking-wider">
+              Payment Collection
+            </label>
+
+            {/* Quick Payment Chips */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setOrderData((prev) => ({ ...prev, advanceAmount: grandTotal > 0 ? grandTotal.toFixed(2) : '' }))}
+                className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px] font-bold transition flex items-center gap-1 shadow-2xs"
+                title="Click to fill 100% full payment"
+              >
+                ⚡ Full Paid (₹{grandTotal.toFixed(2)})
+              </button>
+              <button
+                type="button"
+                onClick={() => setOrderData((prev) => ({ ...prev, advanceAmount: grandTotal > 0 ? (grandTotal / 2).toFixed(2) : '' }))}
+                className="px-2 py-1 rounded-lg bg-[#F5F7F3] hover:bg-[#E2E7E3] text-[#202D2B] border border-[#CCDCD0] text-[11px] font-semibold transition"
+              >
+                50% (₹{(grandTotal / 2).toFixed(2)})
+              </button>
+              {advanceAmount && (
+                <button
+                  type="button"
+                  onClick={() => setOrderData((prev) => ({ ...prev, advanceAmount: '' }))}
+                  className="px-2 py-1 rounded-lg bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-[11px] font-semibold transition"
+                >
+                  Clear (₹0)
+                </button>
+              )}
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-[#202D2B] mb-1">Payment Method</label>
-            <select
-              value={paymentMethod}
-              onChange={(e) => setOrderData((prev) => ({ ...prev, paymentMethod: e.target.value }))}
-              className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs text-[#202D2B] bg-white focus:outline-none"
-            >
-              <option value="UPI">Google Pay / PhonePe (UPI)</option>
-              <option value="CASH">Cash</option>
-              <option value="CARD">Credit / Debit Card</option>
-              <option value="BANK_TRANSFER">Bank Transfer</option>
-            </select>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-[#202D2B] mb-1">Payment Received (₹)</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-[#66746F] font-bold text-xs">₹</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={advanceAmount}
+                  onChange={(e) => setOrderData((prev) => ({ ...prev, advanceAmount: e.target.value }))}
+                  className="w-full pl-7 pr-3 py-2 rounded-xl border border-[#E2E7E3] text-sm font-bold tabular-nums text-[#202D2B] focus:outline-none focus:ring-2 focus:ring-[#28766B]/30 focus:border-[#28766B] bg-white"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[#202D2B] mb-1">Payment Method</label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setOrderData((prev) => ({ ...prev, paymentMethod: e.target.value }))}
+                className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs font-semibold text-[#202D2B] bg-white focus:outline-none"
+              >
+                <option value="UPI">Google Pay / PhonePe / Paytm (UPI)</option>
+                <option value="CASH">Cash</option>
+                <option value="CARD">Credit / Debit Card</option>
+                <option value="BANK_TRANSFER">Bank Transfer</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -1117,10 +1259,12 @@ export default function QuickOrderFlowPage() {
   const [createdOrder, setCreatedOrder] = useState(null);
 
   // Prescription Form State (Preserved across step navigation)
+  const todayDateStr = new Date().toISOString().split('T')[0];
   const [rxData, setRxData] = useState({
     rSph: '', rCyl: '', rAxis: '', rAdd: '',
     lSph: '', lCyl: '', lAxis: '', lAdd: '',
     pd: '63.0', notes: '',
+    testedAt: todayDateStr,
   });
 
   // Order Form State (Preserved across step navigation)
@@ -1131,6 +1275,7 @@ export default function QuickOrderFlowPage() {
       { productId: null, itemType: 'LENS', description: '', quantity: 1, unitPrice: '', discount: 0, hsnCode: '9001', gstRate: 18 },
     ],
     selectedPrescriptionId: '',
+    orderDate: todayDateStr,
     dueDate: () => {
       const d = new Date();
       d.setDate(d.getDate() + 3);
