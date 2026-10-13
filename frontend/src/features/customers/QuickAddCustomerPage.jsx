@@ -2,6 +2,7 @@ import { calculateBilling } from '../../../../shared/billing.mjs';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api.js';
+import RecordPaymentModal from '../payments/RecordPaymentModal.jsx';
 import {
   ArrowLeft,
   ArrowRight,
@@ -25,6 +26,7 @@ import {
   RotateCcw,
   Clock,
   Sparkles,
+  Calendar,
 } from 'lucide-react';
 
 // ─── Power helpers ──────────────────────────────────────────────────────────
@@ -121,6 +123,16 @@ export default function QuickAddCustomerPage() {
   // Stored IDs for idempotent safe retries
   const [persistedCustomerId, setPersistedCustomerId] = useState(null);
   const [persistedPrescriptionId, setPersistedPrescriptionId] = useState(null);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+
+  const getTodayDate = () => new Date().toISOString().split('T')[0];
+  const getYesterdayDate = () => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+  };
+
+  const [flowDate, setFlowDate] = useState(getTodayDate());
 
   // ──────────────────────────────────────────────────────────────────────────
   // 1. CUSTOMER STATE & DUPLICATE PHONE DETECTION
@@ -134,7 +146,22 @@ export default function QuickAddCustomerPage() {
     age: '',
     address: '',
     notes: '',
+    visitDate: getTodayDate(),
   });
+
+  const handleSetFlowDate = (date) => {
+    setFlowDate(date);
+    setCustomerForm((prev) => ({ ...prev, visitDate: date }));
+    setRxData((prev) => ({ ...prev, testedAt: date }));
+    const nextDue = new Date(date);
+    nextDue.setDate(nextDue.getDate() + 3);
+    const dueDateStr = nextDue.toISOString().split('T')[0];
+    setOrderState((prev) => ({
+      ...prev,
+      orderDate: date,
+      dueDate: dueDateStr,
+    }));
+  };
 
   const [existingMatch, setExistingMatch] = useState(null);
   const [isCheckingPhone, setIsCheckingPhone] = useState(false);
@@ -246,6 +273,7 @@ export default function QuickAddCustomerPage() {
     rSph: '', rCyl: '', rAxis: '', rAdd: '',
     lSph: '', lCyl: '', lAxis: '', lAdd: '',
     pd: '63.0', notes: '',
+    testedAt: getTodayDate(),
   });
   const [copySuccess, setCopySuccess] = useState(false);
   const [prescriptionError, setPrescriptionError] = useState('');
@@ -352,6 +380,7 @@ export default function QuickAddCustomerPage() {
 
   const [orderState, setOrderState] = useState({
     isGstBill: true,
+    orderDate: getTodayDate(),
     items: [
       { productId: null, itemType: 'FRAME', description: '', quantity: 1, unitPrice: '', discount: 0, hsnCode: '9004', gstRate: 12 },
       { productId: null, itemType: 'LENS', description: '', quantity: 1, unitPrice: '', discount: 0, hsnCode: '9001', gstRate: 18 },
@@ -443,7 +472,7 @@ export default function QuickAddCustomerPage() {
     }
   };
 
-  const handleConfirmOrder = () => {
+  const handleConfirmOrder = (overrideAdvance = null) => {
     setOrderError('');
 
     if (billingError) {
@@ -457,6 +486,10 @@ export default function QuickAddCustomerPage() {
     if (!dueDate) {
       setOrderError('Please select an expected delivery due date.');
       return;
+    }
+
+    if (overrideAdvance !== null && overrideAdvance !== undefined) {
+      setOrderState((prev) => ({ ...prev, advanceAmount: String(overrideAdvance) }));
     }
 
     setIsOrderConfirmed(true);
@@ -496,6 +529,8 @@ export default function QuickAddCustomerPage() {
           age: customerForm.age ? parseInt(customerForm.age, 10) : null,
           address: customerForm.address?.trim() || null,
           notes: customerForm.notes?.trim() || null,
+          visitDate: customerForm.visitDate || null,
+          createdAt: customerForm.visitDate ? `${customerForm.visitDate}T12:00:00.000Z` : null,
         };
 
         const custRes = await api.post('/customers', customerPayload);
@@ -522,6 +557,7 @@ export default function QuickAddCustomerPage() {
           lAdd: rxData.lAdd !== '' ? parseFloat(rxData.lAdd) : null,
           pd: rxData.pd !== '' ? parseFloat(rxData.pd) : null,
           notes: rxData.notes?.trim() || null,
+          testedAt: rxData.testedAt ? (rxData.testedAt.includes('T') ? rxData.testedAt : `${rxData.testedAt} 12:00:00+05:30`) : null,
         };
 
         const rxRes = await api.post(`/customers/${finalCustomerId}/prescriptions`, rxPayload);
@@ -534,6 +570,7 @@ export default function QuickAddCustomerPage() {
       const orderPayload = {
         customerId: finalCustomerId,
         prescriptionId: finalPrescriptionId || null,
+        orderDate: orderState.orderDate || null,
         dueDate,
         isGstBill,
         items: items.map((i) => ({
@@ -553,6 +590,7 @@ export default function QuickAddCustomerPage() {
               amount: parseFloat(advanceAmount),
               paymentMethod,
               reference: paymentRef?.trim() || null,
+              paidAt: orderState.orderDate || undefined,
             }
           : null,
       };
@@ -591,6 +629,8 @@ export default function QuickAddCustomerPage() {
     setSubmitError('');
     setCreatedResult(null);
 
+    setFlowDate(getTodayDate());
+
     const d = new Date();
     d.setDate(d.getDate() + 3);
 
@@ -603,14 +643,17 @@ export default function QuickAddCustomerPage() {
       age: '',
       address: '',
       notes: '',
+      visitDate: getTodayDate(),
     });
     setRxData({
       rSph: '', rCyl: '', rAxis: '', rAdd: '',
       lSph: '', lCyl: '', lAxis: '', lAdd: '',
       pd: '63.0', notes: '',
+      testedAt: getTodayDate(),
     });
     setOrderState({
       isGstBill: true,
+      orderDate: getTodayDate(),
       items: [
         { productId: null, itemType: 'FRAME', description: '', quantity: 1, unitPrice: '', discount: 0, hsnCode: '9004', gstRate: 12 },
         { productId: null, itemType: 'LENS', description: '', quantity: 1, unitPrice: '', discount: 0, hsnCode: '9001', gstRate: 18 },
@@ -641,6 +684,11 @@ export default function QuickAddCustomerPage() {
   // ──────────────────────────────────────────────────────────────────────────
   if (activeStep === 'success' && createdResult) {
     const { order, customer } = createdResult;
+    const totalAmount = parseFloat(order.total_amount ?? grandTotal ?? 0);
+    const paidAmount = parseFloat(order.paid_amount ?? advanceAmount ?? 0);
+    const balanceDue = Math.max(0, parseFloat(order.balance_due ?? (totalAmount - paidAmount)));
+    const paymentStatus = order.payment_status || (balanceDue <= 0 ? 'PAID' : paidAmount > 0 ? 'PARTIAL' : 'UNPAID');
+
     return (
       <div className="max-w-3xl mx-auto space-y-6 py-6 animate-in fade-in duration-200">
         <div className="bg-[#FEFEFC] rounded-3xl border border-[#E2E7E3] p-8 shadow-sm text-center space-y-6">
@@ -656,20 +704,60 @@ export default function QuickAddCustomerPage() {
             </p>
           </div>
 
-          <div className="p-4 bg-[#F5F7F3] rounded-2xl border border-[#E2E7E3] max-w-md mx-auto grid grid-cols-2 gap-3 text-left text-xs">
+          {/* Financial Breakdown Card */}
+          <div className="p-4 bg-[#F5F7F3] rounded-2xl border border-[#E2E7E3] max-w-lg mx-auto grid grid-cols-1 sm:grid-cols-3 gap-3 text-left text-xs">
             <div>
               <span className="text-[#66746F] block text-[11px]">Customer:</span>
               <strong className="text-[#202D2B]">{customer.fullName || customer.full_name}</strong>
               <div className="text-[10px] text-[#66746F]">{customer.phone || 'No phone'}</div>
             </div>
             <div>
-              <span className="text-[#66746F] block text-[11px]">Order Total:</span>
-              <strong className="text-[#28766B] font-bold text-sm">
-                ₹{parseFloat(order.total_amount || grandTotal).toLocaleString()}
-              </strong>
-              <div className="text-[10px] text-[#66746F]">Status: {order.status}</div>
+              <span className="text-[#66746F] block text-[11px]">Billing:</span>
+              <div className="text-[11px] text-[#202D2B]">Total: <strong className="text-[#28766B]">₹{totalAmount.toLocaleString()}</strong></div>
+              <div className="text-[10px] text-[#66746F]">Paid: ₹{paidAmount.toLocaleString()}</div>
+            </div>
+            <div>
+              <span className="text-[#66746F] block text-[11px]">Payment Status:</span>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                  paymentStatus === 'PAID'
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                    : paymentStatus === 'PARTIAL'
+                    ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                    : 'bg-rose-100 text-rose-800 border border-rose-300'
+                }`}>
+                  {paymentStatus}
+                </span>
+                {balanceDue > 0 && (
+                  <span className="font-bold text-rose-700 text-xs tabular-nums">
+                    Due: ₹{balanceDue.toLocaleString()}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
+
+          {/* Quick Full Paid Option in Success View if balance remaining */}
+          {balanceDue > 0 && (
+            <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200 max-w-lg mx-auto flex items-center justify-between gap-3 text-left">
+              <div>
+                <div className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                  <Zap className="w-4 h-4 text-emerald-600" />
+                  Remaining Balance: ₹{balanceDue.toLocaleString()}
+                </div>
+                <div className="text-[11px] text-emerald-800">
+                  Customer wants to clear full bill right now?
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPaymentModalOpen(true)}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition shrink-0"
+              >
+                ⚡ Quick Full Paid (₹{balanceDue.toLocaleString()})
+              </button>
+            </div>
+          )}
 
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <button
@@ -690,6 +778,33 @@ export default function QuickAddCustomerPage() {
             </button>
           </div>
         </div>
+
+        {isPaymentModalOpen && order && (
+          <RecordPaymentModal
+            isOpen={isPaymentModalOpen}
+            onClose={() => setIsPaymentModalOpen(false)}
+            order={{
+              ...order,
+              balance_due: balanceDue,
+              total_amount: totalAmount,
+              paid_amount: paidAmount,
+            }}
+            onPaymentRecorded={(payment) => {
+              setIsPaymentModalOpen(false);
+              const newPaid = paidAmount + (parseFloat(payment.amount) || 0);
+              const newBal = Math.max(0, totalAmount - newPaid);
+              setCreatedResult((prev) => ({
+                ...prev,
+                order: {
+                  ...prev.order,
+                  paid_amount: newPaid,
+                  balance_due: newBal,
+                  payment_status: newBal <= 0 ? 'PAID' : 'PARTIAL',
+                },
+              }));
+            }}
+          />
+        )}
       </div>
     );
   }
@@ -842,6 +957,51 @@ export default function QuickAddCustomerPage() {
         </div>
       </div>
 
+      {/* Master Flow Entry Date Selector (Backdated / Yesterday Entry) */}
+      <div className="bg-[#FEFEFC] p-4 rounded-2xl border border-[#E2E7E3] flex flex-wrap items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-[#EBF3F1] text-[#28766B] flex items-center justify-center">
+            <Calendar className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="text-xs font-bold text-[#202D2B]">Transaction Entry Date</span>
+            <p className="text-[11px] text-[#66746F]">Forgot to enter yesterday's customer or bill? Select yesterday to synchronize all entry dates.</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => handleSetFlowDate(getTodayDate())}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition ${
+              flowDate === getTodayDate()
+                ? 'bg-[#28766B] text-white border-[#28766B] shadow-xs'
+                : 'bg-white text-[#66746F] border-[#E2E7E3] hover:bg-[#F5F7F3]'
+            }`}
+          >
+            📅 Today
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSetFlowDate(getYesterdayDate())}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition ${
+              flowDate === getYesterdayDate()
+                ? 'bg-[#28766B] text-white border-[#28766B] shadow-xs'
+                : 'bg-white text-[#66746F] border-[#E2E7E3] hover:bg-[#F5F7F3]'
+            }`}
+          >
+            ⏪ Yesterday
+          </button>
+          <input
+            type="date"
+            value={flowDate}
+            onChange={(e) => {
+              if (e.target.value) handleSetFlowDate(e.target.value);
+            }}
+            className="px-2.5 py-1.5 text-xs font-semibold rounded-xl border border-[#E2E7E3] bg-white text-[#202D2B] focus:outline-none"
+          />
+        </div>
+      </div>
+
       {/* ─────────────────────────────────────────────────────────────────── */}
       {/* SECTION 1: CUSTOMER DETAILS                                         */}
       {/* ─────────────────────────────────────────────────────────────────── */}
@@ -918,6 +1078,7 @@ export default function QuickAddCustomerPage() {
                   </div>
                   <div className="text-xs text-[#66746F] tabular-nums mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
                     <span>Phone: {customerForm.phone || 'N/A'}</span>
+                    <span>• Visit Date: {customerForm.visitDate || 'Today'}</span>
                     {customerForm.gender && <span>• {customerForm.gender}</span>}
                     {customerForm.age && <span>• Age: {customerForm.age}</span>}
                     {customerForm.address && <span>• Address: {customerForm.address}</span>}
@@ -975,7 +1136,7 @@ export default function QuickAddCustomerPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Mobile Phone with live duplicate check */}
                 <div>
                   <label className="block text-xs font-semibold text-[#202D2B] mb-1">
@@ -1015,6 +1176,38 @@ export default function QuickAddCustomerPage() {
                     value={customerForm.fullName}
                     onChange={handleCustomerChange}
                     className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs text-[#202D2B] focus:ring-2 focus:ring-[#28766B]/30 focus:border-[#28766B] focus:outline-none bg-white font-medium"
+                  />
+                </div>
+
+                {/* Visit / Registration Date */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-[#202D2B]">
+                      Visit Date
+                    </label>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setCustomerForm((p) => ({ ...p, visitDate: getTodayDate() }))}
+                        className={`text-[10px] px-1.5 py-0.5 rounded transition ${customerForm.visitDate === getTodayDate() ? 'bg-[#28766B] text-white font-bold' : 'bg-[#E2E7E3] text-[#202D2B]'}`}
+                      >
+                        Today
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCustomerForm((p) => ({ ...p, visitDate: getYesterdayDate() }))}
+                        className={`text-[10px] px-1.5 py-0.5 rounded transition ${customerForm.visitDate === getYesterdayDate() ? 'bg-[#28766B] text-white font-bold' : 'bg-[#E2E7E3] text-[#202D2B]'}`}
+                      >
+                        Yesterday
+                      </button>
+                    </div>
+                  </div>
+                  <input
+                    type="date"
+                    name="visitDate"
+                    value={customerForm.visitDate}
+                    onChange={handleCustomerChange}
+                    className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs font-semibold text-[#202D2B] focus:ring-2 focus:ring-[#28766B]/30 focus:border-[#28766B] focus:outline-none bg-white"
                   />
                 </div>
 
@@ -1204,7 +1397,7 @@ export default function QuickAddCustomerPage() {
                     </span>
                   </div>
                   <div className="text-[11px] text-[#66746F] pt-1">
-                    PD: {rxData.pd ? `${rxData.pd} mm` : 'Not recorded'}{' '}
+                    PD: {rxData.pd ? `${rxData.pd} mm` : 'Not recorded'} • Test Date: {rxData.testedAt || 'Today'}{' '}
                     {rxData.notes ? `• Remarks: ${rxData.notes}` : ''}
                   </div>
                 </div>
@@ -1221,23 +1414,49 @@ export default function QuickAddCustomerPage() {
               )}
 
               {/* Fast entry shortcuts bar */}
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={handleSetPlano}
-                  className="px-2.5 py-1 rounded-xl bg-[#F5F7F3] hover:bg-[#E2E7E3] text-[#66746F] text-xs font-semibold border border-[#E2E7E3] transition"
-                  title="Reset to Plano (0.00)"
-                >
-                  Plano (0.00)
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCopyRightToLeft}
-                  className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#28766B] hover:bg-[#1E5C53] text-white text-xs font-semibold shadow-xs transition"
-                >
-                  {copySuccess ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
-                  {copySuccess ? 'Copied to OS!' : 'Copy OD → OS'}
-                </button>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className="text-[11px] font-semibold text-[#66746F]">Test Date:</span>
+                  <button
+                    type="button"
+                    onClick={() => setRxData((p) => ({ ...p, testedAt: getTodayDate() }))}
+                    className={`text-[10px] px-2 py-0.5 rounded-lg border font-semibold transition ${rxData.testedAt === getTodayDate() ? 'bg-[#28766B] text-white border-[#28766B]' : 'bg-white text-[#66746F] border-[#E2E7E3]'}`}
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRxData((p) => ({ ...p, testedAt: getYesterdayDate() }))}
+                    className={`text-[10px] px-2 py-0.5 rounded-lg border font-semibold transition ${rxData.testedAt === getYesterdayDate() ? 'bg-[#28766B] text-white border-[#28766B]' : 'bg-white text-[#66746F] border-[#E2E7E3]'}`}
+                  >
+                    Yesterday
+                  </button>
+                  <input
+                    type="date"
+                    name="testedAt"
+                    value={rxData.testedAt}
+                    onChange={handleRxChange}
+                    className="text-xs px-2 py-1 rounded-lg border border-[#E2E7E3] bg-white text-[#202D2B] focus:outline-none"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSetPlano}
+                    className="px-2.5 py-1 rounded-xl bg-[#F5F7F3] hover:bg-[#E2E7E3] text-[#66746F] text-xs font-semibold border border-[#E2E7E3] transition"
+                    title="Reset to Plano (0.00)"
+                  >
+                    Plano (0.00)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyRightToLeft}
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#28766B] hover:bg-[#1E5C53] text-white text-xs font-semibold shadow-xs transition"
+                  >
+                    {copySuccess ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copySuccess ? 'Copied to OS!' : 'Copy OD → OS'}
+                  </button>
+                </div>
               </div>
 
               {/* RIGHT EYE */}
@@ -1390,10 +1609,16 @@ export default function QuickAddCustomerPage() {
                 <div className="font-bold text-[#202D2B]">
                   {items.length} Order Item(s) • Grand Total: <span className="text-[#28766B]">₹{grandTotal.toLocaleString()}</span>
                 </div>
-                <div className="text-[#66746F] flex flex-wrap gap-x-3 text-[11px]">
-                  <span>Due: {dueDate}</span>
+                <div className="text-[#66746F] flex flex-wrap gap-x-3 gap-y-1 text-[11px] items-center">
+                  <span>Bill Date: {orderState.orderDate || 'Today'}</span>
+                  <span>• Due: {dueDate}</span>
                   <span>• Advance: ₹{advanceAmount ? parseFloat(advanceAmount).toLocaleString() : '0.00'} ({paymentMethod})</span>
                   <span>• Balance: ₹{(grandTotal - (parseFloat(advanceAmount) || 0)).toLocaleString()}</span>
+                  {parseFloat(advanceAmount) >= grandTotal && grandTotal > 0 && (
+                    <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-300">
+                      ⚡ Full Paid
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -1620,9 +1845,39 @@ export default function QuickAddCustomerPage() {
                 </div>
               </div>
 
-              {/* Delivery due date & Advance Payment */}
+              {/* Dates & Advance Payment */}
               <div className="p-4 bg-[#F5F7F3] rounded-2xl border border-[#E2E7E3] space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Order / Bill Date */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-semibold text-[#202D2B]">Order / Bill Date</label>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setOrderState((p) => ({ ...p, orderDate: getTodayDate() }))}
+                          className={`text-[10px] px-1.5 py-0.5 rounded transition ${orderState.orderDate === getTodayDate() ? 'bg-[#28766B] text-white font-bold' : 'bg-[#E2E7E3] text-[#202D2B]'}`}
+                        >
+                          Today
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setOrderState((p) => ({ ...p, orderDate: getYesterdayDate() }))}
+                          className={`text-[10px] px-1.5 py-0.5 rounded transition ${orderState.orderDate === getYesterdayDate() ? 'bg-[#28766B] text-white font-bold' : 'bg-[#E2E7E3] text-[#202D2B]'}`}
+                        >
+                          Yesterday
+                        </button>
+                      </div>
+                    </div>
+                    <input
+                      type="date"
+                      value={orderState.orderDate}
+                      onChange={(e) => setOrderState((prev) => ({ ...prev, orderDate: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs font-semibold text-[#202D2B] bg-white focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Delivery Due Date */}
                   <div>
                     <label className="block text-xs font-semibold text-[#202D2B] mb-1">Delivery Due Date *</label>
                     <input
@@ -1630,19 +1885,52 @@ export default function QuickAddCustomerPage() {
                       required
                       value={dueDate}
                       onChange={(e) => setOrderState((prev) => ({ ...prev, dueDate: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs text-[#202D2B] bg-white focus:outline-none"
+                      className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs font-semibold text-[#202D2B] bg-white focus:outline-none"
                     />
                   </div>
+
+                  {/* Advance Payment with Quick Chips */}
                   <div>
-                    <label className="block text-xs font-semibold text-[#202D2B] mb-1">Advance Payment (₹)</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-semibold text-[#202D2B]">Advance Payment (₹)</label>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setOrderState((p) => ({ ...p, advanceAmount: String(grandTotal) }))}
+                          className={`text-[10px] px-1.5 py-0.5 rounded border font-bold transition ${
+                            parseFloat(advanceAmount) === grandTotal && grandTotal > 0
+                              ? 'bg-emerald-600 text-white border-emerald-600'
+                              : 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                          }`}
+                        >
+                          ⚡ Full Paid
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setOrderState((p) => ({ ...p, advanceAmount: String(Math.round(grandTotal / 2)) }))}
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-[#E2E7E3] hover:bg-[#D5DDD6] text-[#202D2B]"
+                        >
+                          50%
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setOrderState((p) => ({ ...p, advanceAmount: '' }))}
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-[#E2E7E3] hover:bg-[#D5DDD6] text-[#66746F]"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
                     <input
                       type="number"
                       placeholder="e.g. 1000"
                       value={advanceAmount}
                       onChange={(e) => setOrderState((prev) => ({ ...prev, advanceAmount: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs tabular-nums text-[#202D2B] bg-white focus:outline-none"
+                      className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs font-bold tabular-nums text-[#202D2B] bg-white focus:outline-none"
                     />
                   </div>
+
+                  {/* Payment Method */}
                   <div>
                     <label className="block text-xs font-semibold text-[#202D2B] mb-1">Payment Method</label>
                     <select
@@ -1684,10 +1972,18 @@ export default function QuickAddCustomerPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end pt-2">
+              <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={handleConfirmOrder}
+                  onClick={() => handleConfirmOrder(grandTotal)}
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition"
+                >
+                  <Zap className="w-4 h-4 text-emerald-200" />
+                  ⚡ Confirm as Full Paid (₹{grandTotal.toLocaleString()})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleConfirmOrder()}
                   className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold shadow-sm transition"
                 >
                   Confirm Order & Review Summary
@@ -1752,6 +2048,9 @@ export default function QuickAddCustomerPage() {
                 {customerForm.phone ? `Phone: ${customerForm.phone}` : 'No phone'}
               </div>
               <div className="text-[11px] text-[#66746F]">
+                Visit Date: <strong className="text-[#202D2B]">{customerForm.visitDate || 'Today'}</strong>
+              </div>
+              <div className="text-[11px] text-[#66746F]">
                 {selectedExistingCustomer ? (
                   <span className="text-purple-700 font-semibold">Existing Customer</span>
                 ) : (
@@ -1782,7 +2081,10 @@ export default function QuickAddCustomerPage() {
                   <div>
                     <strong className="text-emerald-700">OS:</strong> {formatEyeNotation(rxData.lSph, rxData.lCyl, rxData.lAxis, rxData.lAdd)}
                   </div>
-                  {rxData.pd && <div className="text-[10px] text-[#66746F]">PD: {rxData.pd} mm</div>}
+                  <div className="text-[10px] text-[#66746F] flex justify-between pt-1">
+                    <span>PD: {rxData.pd ? `${rxData.pd} mm` : '—'}</span>
+                    <span>Test: {rxData.testedAt || 'Today'}</span>
+                  </div>
                 </div>
               )}
             </div>
@@ -1813,7 +2115,26 @@ export default function QuickAddCustomerPage() {
                   ₹{(grandTotal - (parseFloat(advanceAmount) || 0)).toLocaleString()}
                 </span>
               </div>
-              <div className="text-[10px] text-[#66746F]">Due Date: {dueDate}</div>
+              {grandTotal - (parseFloat(advanceAmount) || 0) > 0 ? (
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setOrderState((p) => ({ ...p, advanceAmount: String(grandTotal) }))}
+                    className="w-full py-1 px-2 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[11px] font-bold border border-emerald-300 transition flex items-center justify-center gap-1"
+                  >
+                    <Zap className="w-3 h-3 text-emerald-600" />
+                    ⚡ Mark as Full Paid (₹{grandTotal.toLocaleString()})
+                  </button>
+                </div>
+              ) : (
+                <div className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-center border border-emerald-200">
+                  ✓ Full Amount Paid
+                </div>
+              )}
+              <div className="text-[10px] text-[#66746F] flex justify-between pt-1 border-t border-[#E2E7E3]">
+                <span>Bill: {orderState.orderDate || 'Today'}</span>
+                <span>Due: {dueDate}</span>
+              </div>
             </div>
           </div>
 
