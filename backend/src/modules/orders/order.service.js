@@ -12,6 +12,9 @@ export const orderService = {
     if (!customer) {
       throw new AppError('Customer not found in this store', 404, 'CUSTOMER_NOT_FOUND');
     }
+    if (customer.archived_at) {
+      throw new AppError('Cannot create an order for an archived customer. Please restore them from the Recycle Bin first.', 400, 'CUSTOMER_ARCHIVED');
+    }
 
     // 2. If prescriptionId provided, verify it exists and belongs to this store and customer
     if (data.prescriptionId) {

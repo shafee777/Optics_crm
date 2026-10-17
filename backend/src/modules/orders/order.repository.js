@@ -195,6 +195,7 @@ export const orderRepository = {
         c.full_name AS customer_name,
         c.phone AS customer_phone,
         c.customer_code,
+        c.archived_at AS customer_archived_at,
         u.full_name AS created_by_name,
         COALESCE((SELECT SUM(amount) FROM payments p WHERE p.order_id = o.id), 0.00) AS total_paid
       FROM orders o
@@ -271,6 +272,7 @@ export const orderRepository = {
         c.full_name AS customer_name,
         c.phone AS customer_phone,
         c.customer_code,
+        c.archived_at AS customer_archived_at,
         COALESCE((SELECT SUM(amount) FROM payments p WHERE p.order_id = o.id), 0.00) AS total_paid,
         (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) AS item_count
       FROM orders o

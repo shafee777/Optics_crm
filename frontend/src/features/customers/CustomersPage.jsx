@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../services/api.js';
 import CustomerFormModal from './CustomerFormModal.jsx';
 import AnnualRemindersTab from './AnnualRemindersTab.jsx';
+import RecycleBinTab from './RecycleBinTab.jsx';
 import BroadcastModal from './BroadcastModal.jsx';
 import BulkTagModal from './BulkTagModal.jsx';
 import { SkeletonTable } from '../../components/common/Skeleton.jsx';
+import { useAuth } from '../auth/AuthContext.jsx';
 import { 
   Search, 
   UserPlus, 
@@ -32,7 +34,9 @@ import {
   CheckSquare,
   Square,
   ShoppingBag,
-  Send
+  Send,
+  Trash2,
+  Archive
 } from 'lucide-react';
 
 const QUICK_FILTERS = [
@@ -57,7 +61,9 @@ const AVAILABLE_TAGS = [
 ];
 
 export default function CustomersPage() {
-  const [activeTab, setActiveTab] = useState('directory'); // 'directory' | 'reminders'
+  const { user } = useAuth();
+  const isOwner = user?.role === 'OWNER';
+  const [activeTab, setActiveTab] = useState('directory'); // 'directory' | 'reminders' | 'bin'
   const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -65,6 +71,10 @@ export default function CustomersPage() {
   const [meta, setMeta] = useState({ page: 1, total: 0, totalPages: 1, limit: 10 });
   const [limit, setLimit] = useState(10);
   const [page, setPage] = useState(1);
+
+  // Archive toast
+  const [archiveToast, setArchiveToast] = useState('');
+  const [archivingId, setArchivingId] = useState(null);
 
   // Filters & Sorting state
   const [segment, setSegment] = useState('ALL');
@@ -191,6 +201,32 @@ export default function CustomersPage() {
     window.open(`https://wa.me/${clean}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
   };
 
+  const handleArchiveCustomer = async (e, customer) => {
+    e.stopPropagation();
+    if (!window.confirm(`Move "${customer.full_name}" to Recycle Bin?\nYou can restore them from the Recycle Bin tab.`)) return;
+    setArchivingId(customer.id);
+    try {
+      await api.delete(`/customers/${customer.id}`);
+      setArchiveToast({ id: customer.id, name: customer.full_name });
+      setTimeout(() => setArchiveToast(null), 6000);
+      fetchCustomers(meta.page || 1);
+    } catch (err) {
+      alert(err.response?.data?.error?.message || 'Failed to archive customer.');
+    } finally {
+      setArchivingId(null);
+    }
+  };
+
+  const handleUndoArchive = async (customerId, customerName) => {
+    try {
+      await api.post(`/customers/bin/${customerId}/restore`);
+      setArchiveToast(null);
+      fetchCustomers(meta.page || 1);
+    } catch (err) {
+      alert(err.response?.data?.error?.message || `Failed to restore ${customerName}.`);
+    }
+  };
+
   return (
     <div className="space-y-5 pb-20">
       {/* Top Header */}
@@ -223,7 +259,7 @@ export default function CustomersPage() {
       </div>
 
       {/* Tab Switcher */}
-      <div className="flex gap-2 border-b border-[#E2E7E3] pb-2">
+      <div className="flex gap-2 border-b border-[#E2E7E3] pb-2 flex-wrap">
         <button
           onClick={() => setActiveTab('directory')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition ${
@@ -247,10 +283,27 @@ export default function CustomersPage() {
           <Clock className="w-3.5 h-3.5 text-amber-600" />
           1-Year Eye Test Recall Reminders
         </button>
+
+        {/* Recycle Bin tab — OWNER only */}
+        {isOwner && (
+          <button
+            onClick={() => setActiveTab('bin')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition ${
+              activeTab === 'bin'
+                ? 'bg-rose-600 text-white shadow-xs'
+                : 'bg-[#FEFEFC] text-rose-700 hover:bg-rose-50 border border-rose-200'
+            }`}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Recycle Bin
+          </button>
+        )}
       </div>
 
       {activeTab === 'reminders' ? (
         <AnnualRemindersTab />
+      ) : activeTab === 'bin' ? (
+        <RecycleBinTab />
       ) : (
         <>
           {/* Quick Filter Pills (Horizontal Scrollable) */}
@@ -629,6 +682,18 @@ export default function CustomersPage() {
                               >
                                 <Eye className="w-4 h-4" />
                               </button>
+                              {/* Move to Bin — OWNER only */}
+                              {isOwner && (
+                                <button
+                                  type="button"
+                                  disabled={archivingId === c.id}
+                                  onClick={(e) => handleArchiveCustomer(e, c)}
+                                  className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 transition disabled:opacity-50"
+                                  title="Move to Recycle Bin (Admin only)"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -765,6 +830,22 @@ export default function CustomersPage() {
         onCustomerSaved={() => fetchCustomers(meta.page)}
         onCustomerCreated={() => fetchCustomers(1)}
       />
+
+      {/* Archive success toast with Undo */}
+      {archiveToast && (
+        <div className="fixed top-5 right-5 z-50 px-5 py-3 rounded-2xl shadow-xl bg-amber-600 text-white text-xs font-semibold flex items-center gap-3 animate-fade-in">
+          <Trash2 className="w-4 h-4 flex-shrink-0" />
+          <span>"{archiveToast.name}" moved to Recycle Bin.</span>
+          <button
+            type="button"
+            onClick={() => handleUndoArchive(archiveToast.id, archiveToast.name)}
+            className="px-2.5 py-1 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+          >
+            <RotateCcw className="w-3 h-3" />
+            Undo
+          </button>
+        </div>
+      )}
     </div>
   );
 }

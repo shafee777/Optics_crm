@@ -9,13 +9,16 @@ export const prescriptionService = {
     if (!customer) {
       throw new AppError('Customer not found in this store', 404, 'CUSTOMER_NOT_FOUND');
     }
+    if (customer.archived_at) {
+      throw new AppError('Cannot add a prescription for an archived customer. Please restore them from the Recycle Bin first.', 400, 'CUSTOMER_ARCHIVED');
+    }
 
     // 2. Insert immutable prescription row
     return await prescriptionRepository.create(storeId, customerId, testedByUserId, data);
   },
 
   async getPrescriptionsByCustomer(storeId, customerId) {
-    // Verify customer exists in store
+    // Verify customer exists in store (historical prescriptions allowed even if customer is archived)
     const customer = await customerRepository.findById(storeId, customerId);
     if (!customer) {
       throw new AppError('Customer not found in this store', 404, 'CUSTOMER_NOT_FOUND');
@@ -29,6 +32,9 @@ export const prescriptionService = {
     const customer = await customerRepository.findById(storeId, customerId);
     if (!customer) {
       throw new AppError('Customer not found in this store', 404, 'CUSTOMER_NOT_FOUND');
+    }
+    if (customer.archived_at) {
+      throw new AppError('Cannot modify prescriptions for an archived customer. Please restore them from the Recycle Bin first.', 400, 'CUSTOMER_ARCHIVED');
     }
 
     // 2. Verify prescription exists for this customer

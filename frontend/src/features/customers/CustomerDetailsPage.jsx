@@ -6,7 +6,7 @@ import NewPrescriptionModal from '../prescriptions/NewPrescriptionModal.jsx';
 import PrintPrescription from '../prescriptions/PrintPrescription.jsx';
 import CustomerFormModal from './CustomerFormModal.jsx';
 import OrderStatusBadge from '../orders/OrderStatusBadge.jsx';
-import { MessageSquare, UserCheck, Edit2, Share2, Printer } from 'lucide-react';
+import { MessageSquare, UserCheck, Edit2, Share2, Printer, Trash2 } from 'lucide-react';
 import { sendWhatsApp, getGreetingMessage, getAnnualCheckupMessage } from '../../lib/whatsapp.js';
 import PdfSaveActions from '../../components/common/PdfSaveActions.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -27,6 +27,38 @@ export default function CustomerDetailsPage() {
   const [printingPrescription, setPrintingPrescription] = useState(null);
   const [sharingPrescription, setSharingPrescription] = useState(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [archiveToast, setArchiveToast] = useState('');
+
+  const isOwner = user?.role === 'OWNER';
+
+  const handleArchive = async () => {
+    if (!window.confirm(`Move "${customer?.full_name}" to the Recycle Bin?\nYou can restore them later from the Recycle Bin tab in Customers.`)) return;
+    setArchiving(true);
+    try {
+      await api.delete(`/customers/${id}`);
+      setArchiveToast(`"${customer?.full_name}" moved to Recycle Bin.`);
+      setTimeout(() => navigate('/customers'), 2000);
+    } catch (err) {
+      alert(err.response?.data?.error?.message || 'Failed to move customer to Recycle Bin.');
+      setArchiving(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    setRestoring(true);
+    try {
+      await api.post(`/customers/bin/${id}/restore`);
+      setArchiveToast(`"${customer?.full_name}" restored successfully.`);
+      setTimeout(() => setArchiveToast(''), 4000);
+      fetchCustomerData();
+    } catch (err) {
+      alert(err.response?.data?.error?.message || 'Failed to restore customer.');
+    } finally {
+      setRestoring(false);
+    }
+  };
 
   const fetchCustomerData = useCallback(async () => {
     if (!id) return;
@@ -126,6 +158,34 @@ export default function CustomerDetailsPage() {
         Back to Customers
       </button>
 
+      {/* Archive Warning Banner */}
+      {customer.archived_at && (
+        <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-amber-900 shadow-sm animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-100 rounded-xl text-amber-800 flex-shrink-0">
+              <Trash2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-amber-900">This Customer is in the Recycle Bin</h2>
+              <p className="text-xs text-amber-700">
+                Archived on {new Date(customer.archived_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}.
+                Historical orders and prescriptions are viewable below. New orders, prescriptions, and edits are disabled.
+              </p>
+            </div>
+          </div>
+          {isOwner && (
+            <button
+              disabled={restoring}
+              onClick={handleRestore}
+              className="px-4 py-2 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold shadow-xs transition flex items-center gap-1.5 disabled:opacity-60 self-start sm:self-auto flex-shrink-0"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              {restoring ? 'Restoring…' : 'Restore Customer'}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Customer Header Card */}
       <div className="bg-[#FEFEFC] rounded-2xl p-6 border border-[#E2E7E3] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">
@@ -138,6 +198,11 @@ export default function CustomerDetailsPage() {
             <span className="px-2.5 py-0.5 bg-[#F5F7F3] text-[#66746F] text-xs font-semibold rounded-full border border-[#E2E7E3]">
               {customer.gender || 'Customer'}
             </span>
+            {customer.archived_at && (
+              <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 text-xs font-bold rounded-full border border-amber-300">
+                In Recycle Bin
+              </span>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-4 text-xs text-[#66746F]">
             {customer.phone && (
@@ -162,41 +227,74 @@ export default function CustomerDetailsPage() {
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={() => setIsCustomerModalOpen(true)}
-            className="px-3.5 py-2 bg-[#FEFEFC] hover:bg-[#F5F7F3] text-[#202D2B] rounded-xl text-xs font-semibold border border-[#E2E7E3] transition flex items-center gap-1.5 shadow-sm"
-            title="Edit Customer Information"
-          >
-            <Edit2 className="w-3.5 h-3.5 text-[#28766B]" />
-            Edit Profile
-          </button>
-          <button
-            onClick={() => {
-              setEditingPrescription(null);
-              setIsPrescriptionModalOpen(true);
-            }}
-            className="px-3.5 py-2 bg-[#EBF3F1] hover:bg-[#DDEAE7] text-[#28766B] rounded-xl text-xs font-semibold border border-[#28766B]/20 transition flex items-center gap-1.5"
-          >
-            <PlusCircle className="w-4 h-4" />
-            New Eye Test
-          </button>
-          <button
-            onClick={() => navigate(`/orders/quick?customerId=${id}`)}
-            className="px-3.5 py-2 bg-[#EBF3F1] hover:bg-[#DDEAE7] text-[#28766B] rounded-xl text-xs font-semibold border border-[#28766B]/20 transition flex items-center gap-1.5"
-            title="Start guided flow for customer, prescription and order"
-          >
-            <Zap className="w-3.5 h-3.5" />
-            Quick Flow
-          </button>
-          <button
-            onClick={() => navigate(`/orders/new?customerId=${id}`)}
-            className="px-3.5 py-2 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold shadow-sm transition flex items-center gap-1.5"
-          >
-            <ShoppingBag className="w-4 h-4" />
-            Create Order
-          </button>
+          {customer.archived_at ? (
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1.5 bg-amber-50 text-amber-800 text-xs font-semibold rounded-xl border border-amber-200">
+                Archived (Read Only)
+              </span>
+              {isOwner && (
+                <button
+                  disabled={restoring}
+                  onClick={handleRestore}
+                  className="px-3.5 py-2 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold shadow-xs transition flex items-center gap-1.5 disabled:opacity-60"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  {restoring ? 'Restoring…' : 'Restore Customer'}
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={() => setIsCustomerModalOpen(true)}
+                className="px-3.5 py-2 bg-[#FEFEFC] hover:bg-[#F5F7F3] text-[#202D2B] rounded-xl text-xs font-semibold border border-[#E2E7E3] transition flex items-center gap-1.5 shadow-sm"
+                title="Edit Customer Information"
+              >
+                <Edit2 className="w-3.5 h-3.5 text-[#28766B]" />
+                Edit Profile
+              </button>
+              <button
+                onClick={() => {
+                  setEditingPrescription(null);
+                  setIsPrescriptionModalOpen(true);
+                }}
+                className="px-3.5 py-2 bg-[#EBF3F1] hover:bg-[#DDEAE7] text-[#28766B] rounded-xl text-xs font-semibold border border-[#28766B]/20 transition flex items-center gap-1.5"
+              >
+                <PlusCircle className="w-4 h-4" />
+                New Eye Test
+              </button>
+              <button
+                onClick={() => navigate(`/orders/quick?customerId=${id}`)}
+                className="px-3.5 py-2 bg-[#EBF3F1] hover:bg-[#DDEAE7] text-[#28766B] rounded-xl text-xs font-semibold border border-[#28766B]/20 transition flex items-center gap-1.5"
+                title="Start guided flow for customer, prescription and order"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                Quick Flow
+              </button>
+              <button
+                onClick={() => navigate(`/orders/new?customerId=${id}`)}
+                className="px-3.5 py-2 bg-[#28766B] hover:bg-[#1E5C53] text-white rounded-xl text-xs font-semibold shadow-sm transition flex items-center gap-1.5"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                Create Order
+              </button>
+              {/* Move to Bin — OWNER only */}
+              {isOwner && (
+                <button
+                  disabled={archiving}
+                  onClick={handleArchive}
+                  className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-semibold border border-rose-200 transition flex items-center gap-1.5 disabled:opacity-60"
+                  title="Move this customer to Recycle Bin (Admin only)"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  {archiving ? 'Archiving…' : 'Move to Bin'}
+                </button>
+              )}
+            </>
+          )}
         </div>
       </div>
+      {!customer.archived_at && (
       <div className="flex flex-wrap gap-2">
         {customer.phone && (
           <>
@@ -232,6 +330,7 @@ export default function CustomerDetailsPage() {
           </>
         )}
       </div>
+      )}
 
       {/* Main Grid: Eye Test History & Orders */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -243,15 +342,17 @@ export default function CustomerDetailsPage() {
                 <FileText className="w-4 h-4 text-[#28766B]" />
                 Eye Test & Prescription History ({prescriptions.length})
               </h2>
-              <button
-                onClick={() => {
-                  setEditingPrescription(null);
-                  setIsPrescriptionModalOpen(true);
-                }}
-                className="text-xs font-semibold text-[#28766B] hover:underline"
-              >
-                + Record Test
-              </button>
+              {!customer.archived_at && (
+                <button
+                  onClick={() => {
+                    setEditingPrescription(null);
+                    setIsPrescriptionModalOpen(true);
+                  }}
+                  className="text-xs font-semibold text-[#28766B] hover:underline"
+                >
+                  + Record Test
+                </button>
+              )}
             </div>
 
             {prescriptions.length === 0 ? (
@@ -434,6 +535,13 @@ export default function CustomerDetailsPage() {
           fetchCustomerData();
         }}
       />
+
+      {/* Archive success toast */}
+      {archiveToast && (
+        <div className="fixed top-5 right-5 z-50 px-5 py-3 rounded-2xl shadow-xl bg-amber-600 text-white text-xs font-semibold flex items-center gap-2 animate-fade-in">
+          <Trash2 className="w-4 h-4" /> {archiveToast}
+        </div>
+      )}
     </div>
   );
 }

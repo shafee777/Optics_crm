@@ -1,4 +1,5 @@
-import { query } from '../../config/database.js';
+import { query, withTransaction } from '../../config/database.js';
+import { AppError } from '../../shared/errors/AppError.js';
 
 export const customerRepository = {
   async ensureStoreCountersTable(client = null) {
@@ -85,6 +86,15 @@ export const customerRepository = {
   },
 
   async findById(storeId, customerId) {
+    const sql = `
+      SELECT * FROM customers 
+      WHERE store_id = $1 AND id = $2;
+    `;
+    const res = await query(sql, [storeId, customerId]);
+    return res.rows[0] || null;
+  },
+
+  async findActiveById(storeId, customerId) {
     const sql = `
       SELECT * FROM customers 
       WHERE store_id = $1 AND id = $2 AND archived_at IS NULL;
@@ -435,5 +445,135 @@ export const customerRepository = {
     `;
     const res = await query(sql, [storeId, customerId]);
     return res.rowCount > 0;
+  },
+
+  // ─── Recycle Bin Methods ────────────────────────────────────────────────────
+
+  /** List all soft-deleted customers for a store, newest archived first. */
+  async listBin(storeId) {
+    const sql = `
+      WITH customer_orders AS (
+        SELECT
+          o.customer_id,
+          COUNT(o.id) AS order_count,
+          COALESCE(SUM(o.total_amount), 0) AS total_spend,
+          COALESCE(SUM(o.total_amount - COALESCE(p.paid_sum, 0)), 0) AS balance_due
+        FROM orders o
+        LEFT JOIN (
+          SELECT order_id, SUM(amount) AS paid_sum
+          FROM payments
+          GROUP BY order_id
+        ) p ON p.order_id = o.id
+        WHERE o.store_id = $1 AND o.status != 'CANCELLED'
+        GROUP BY o.customer_id
+      ),
+      customer_rx AS (
+        SELECT customer_id, COUNT(id) AS prescription_count
+        FROM prescriptions
+        WHERE store_id = $1
+        GROUP BY customer_id
+      )
+      SELECT
+        c.id, c.customer_code, c.full_name, c.phone, c.email,
+        c.gender, c.age, c.category, c.tags,
+        c.created_at, c.archived_at,
+        COALESCE(co.order_count, 0)::int            AS order_count,
+        COALESCE(co.total_spend, 0)::numeric(12,2)  AS total_spend,
+        COALESCE(co.balance_due, 0)::numeric(12,2)  AS balance_due,
+        COALESCE(cr.prescription_count, 0)::int     AS prescription_count
+      FROM customers c
+      LEFT JOIN customer_orders co ON co.customer_id = c.id
+      LEFT JOIN customer_rx cr     ON cr.customer_id = c.id
+      WHERE c.store_id = $1 AND c.archived_at IS NOT NULL
+      ORDER BY c.archived_at DESC;
+    `;
+    const { rows } = await query(sql, [storeId]);
+    return rows;
+  },
+
+  /** Find a soft-deleted customer by id (used before restore). */
+  async findArchivedById(storeId, customerId) {
+    const sql = `
+      SELECT * FROM customers
+      WHERE store_id = $1 AND id = $2 AND archived_at IS NOT NULL;
+    `;
+    const res = await query(sql, [storeId, customerId]);
+    return res.rows[0] || null;
+  },
+
+  /** Restore an archived customer (clear archived_at). */
+  async restore(storeId, customerId) {
+    const sql = `
+      UPDATE customers
+      SET archived_at = NULL, updated_at = NOW()
+      WHERE store_id = $1 AND id = $2 AND archived_at IS NOT NULL
+      RETURNING *;
+    `;
+    const res = await query(sql, [storeId, customerId]);
+    return res.rows[0] || null;
+  },
+
+  /** Check whether a customer has any dependent records that prevent hard deletion. */
+  async hasDependents(storeId, customerId) {
+    const sql = `
+      SELECT
+        (SELECT COUNT(*) FROM orders       WHERE store_id = $1 AND customer_id = $2) AS order_count,
+        (SELECT COUNT(*) FROM prescriptions WHERE store_id = $1 AND customer_id = $2) AS rx_count,
+        (SELECT COUNT(*) FROM payments     WHERE order_id IN (
+           SELECT id FROM orders WHERE store_id = $1 AND customer_id = $2
+        ))                                                                             AS payment_count,
+        (SELECT COUNT(*) FROM customer_messages_log WHERE store_id = $1 AND customer_id = $2) AS msg_count;
+    `;
+    const res = await query(sql, [storeId, customerId]);
+    const row = res.rows[0];
+    return {
+      orders:        parseInt(row.order_count,   10),
+      prescriptions: parseInt(row.rx_count,      10),
+      payments:      parseInt(row.payment_count, 10),
+      messages:      parseInt(row.msg_count,     10),
+    };
+  },
+
+  /** Permanently delete an archived customer inside a transaction. Verifies no dependents first. */
+  async permanentDelete(storeId, customerId) {
+    return await withTransaction(async (client) => {
+      // 1. Lock customer row to ensure atomicity
+      const checkRes = await client.query(
+        `SELECT id FROM customers WHERE store_id = $1 AND id = $2 AND archived_at IS NOT NULL FOR UPDATE;`,
+        [storeId, customerId]
+      );
+      if (checkRes.rows.length === 0) return false;
+
+      // 2. Strict concurrency check inside transaction: verify zero orders & zero prescriptions
+      const ordersRes = await client.query(
+        `SELECT COUNT(*) FROM orders WHERE store_id = $1 AND customer_id = $2;`,
+        [storeId, customerId]
+      );
+      if (parseInt(ordersRes.rows[0].count, 10) > 0) {
+        throw new AppError('Cannot permanently delete: customer has linked orders.', 409, 'HAS_DEPENDENTS');
+      }
+
+      const rxRes = await client.query(
+        `SELECT COUNT(*) FROM prescriptions WHERE store_id = $1 AND customer_id = $2;`,
+        [storeId, customerId]
+      );
+      if (parseInt(rxRes.rows[0].count, 10) > 0) {
+        throw new AppError('Cannot permanently delete: customer has linked prescriptions.', 409, 'HAS_DEPENDENTS');
+      }
+
+      // 3. Clear non-financial communication logs if any exist
+      await client.query(
+        `DELETE FROM customer_messages_log WHERE store_id = $1 AND customer_id = $2;`,
+        [storeId, customerId]
+      );
+
+      // 4. Delete the customer record
+      const delRes = await client.query(
+        `DELETE FROM customers WHERE store_id = $1 AND id = $2 AND archived_at IS NOT NULL RETURNING id;`,
+        [storeId, customerId]
+      );
+
+      return delRes.rowCount > 0;
+    });
   },
 };

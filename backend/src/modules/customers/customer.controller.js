@@ -74,6 +74,33 @@ export const customerController = {
       next(error);
     }
   },
+
+  async listBin(req, res, next) {
+    try {
+      const customers = await customerService.listBin(req.user.storeId);
+      res.status(200).json({ success: true, data: customers });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async restoreFromBin(req, res, next) {
+    try {
+      const customer = await customerService.restoreCustomer(req.user.storeId, req.params.id);
+      res.status(200).json({ success: true, data: customer });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async permanentDelete(req, res, next) {
+    try {
+      const result = await customerService.permanentDeleteCustomer(req.user.storeId, req.params.id);
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  },
   async getDueReminders(req, res, next) {
     try {
       const dueCustomers = await customerRepository.findDueForAnnualCheckup(req.user.storeId);

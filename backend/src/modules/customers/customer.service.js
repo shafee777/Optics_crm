@@ -67,15 +67,90 @@ export const customerService = {
     if (!customer) {
       throw new AppError('Customer not found in this store', 404, 'CUSTOMER_NOT_FOUND');
     }
+    if (customer.archived_at) {
+      throw new AppError('Cannot modify an archived customer. Please restore them from the Recycle Bin first.', 400, 'CUSTOMER_ARCHIVED');
+    }
     return await customerRepository.update(storeId, customerId, data);
   },
 
   async archiveCustomer(storeId, customerId) {
+    const customer = await customerRepository.findById(storeId, customerId);
+    if (!customer) {
+      throw new AppError('Customer not found in this store', 404, 'CUSTOMER_NOT_FOUND');
+    }
+    if (customer.archived_at) {
+      throw new AppError('Customer is already in the Recycle Bin', 400, 'CUSTOMER_ALREADY_ARCHIVED');
+    }
     const success = await customerRepository.softDelete(storeId, customerId);
     if (!success) {
       throw new AppError('Customer not found or already archived', 404, 'CUSTOMER_NOT_FOUND');
     }
     return { id: customerId, archived: true };
+  },
+
+  async listBin(storeId) {
+    return await customerRepository.listBin(storeId);
+  },
+
+  async restoreCustomer(storeId, customerId) {
+    // Ensure the customer is in the bin
+    const archived = await customerRepository.findArchivedById(storeId, customerId);
+    if (!archived) {
+      throw new AppError('Customer not found in Recycle Bin', 404, 'CUSTOMER_NOT_FOUND');
+    }
+
+    // Guard: check if customer code conflicts with an active customer
+    if (archived.customer_code) {
+      const codeConflict = await customerRepository.findByCode(storeId, archived.customer_code);
+      if (codeConflict && codeConflict.id !== customerId) {
+        throw new AppError(
+          `Cannot restore: Customer ID "${archived.customer_code}" is currently in use by active customer "${codeConflict.full_name}".`,
+          409,
+          'CUSTOMER_ID_EXISTS'
+        );
+      }
+    }
+
+    // Guard: make sure no active customer already has the same name and phone
+    if (archived.phone && archived.full_name) {
+      const conflict = await customerRepository.findByNameAndPhone(storeId, archived.full_name, archived.phone);
+      if (conflict && conflict.id !== customerId) {
+        throw new AppError(
+          `Cannot restore: an active customer "${conflict.full_name}" (ID: ${conflict.customer_code}) already uses this phone number.`,
+          409,
+          'DUPLICATE_CUSTOMER'
+        );
+      }
+    }
+
+    const restored = await customerRepository.restore(storeId, customerId);
+    if (!restored) {
+      throw new AppError('Failed to restore customer', 500, 'RESTORE_FAILED');
+    }
+    return restored;
+  },
+
+  async permanentDeleteCustomer(storeId, customerId) {
+    const archived = await customerRepository.findArchivedById(storeId, customerId);
+    if (!archived) {
+      throw new AppError('Customer not found in Recycle Bin', 404, 'CUSTOMER_NOT_FOUND');
+    }
+
+    // Check for dependent records — block deletion if any exist
+    const deps = await customerRepository.hasDependents(storeId, customerId);
+    if (deps.orders > 0 || deps.prescriptions > 0 || deps.payments > 0) {
+      throw new AppError(
+        `Cannot permanently delete: this customer has ${deps.orders} order(s), ${deps.prescriptions} prescription(s), and ${deps.payments} payment record(s). Archive only — data must be preserved.`,
+        409,
+        'HAS_DEPENDENTS'
+      );
+    }
+
+    const deleted = await customerRepository.permanentDelete(storeId, customerId);
+    if (!deleted) {
+      throw new AppError('Failed to permanently delete customer', 500, 'DELETE_FAILED');
+    }
+    return { id: customerId, permanentlyDeleted: true };
   },
 
   async bulkUpdateTags(storeId, { customerIds, tagsToAdd = [], tagsToRemove = [], category = null }) {
