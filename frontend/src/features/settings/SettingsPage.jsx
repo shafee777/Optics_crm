@@ -67,6 +67,7 @@ export default function SettingsPage() {
     email: '',
     address: '',
     gstin: '',
+    gstEnabled: true,
     googleReviewLink: '',
     logoUrl: '',
     currency: 'INR',
@@ -95,6 +96,7 @@ export default function SettingsPage() {
         email: s.email || '',
         address: s.address || '',
         gstin: s.gstin || '',
+        gstEnabled: s.gstEnabled !== false,
         googleReviewLink: s.googleReviewLink || '',
         logoUrl: s.logoUrl || '',
         currency: s.currency || 'INR',
@@ -186,6 +188,7 @@ export default function SettingsPage() {
         email: res.data.data.email,
         address: res.data.data.address,
         gstin: res.data.data.gstin,
+        gstEnabled: res.data.data.gstEnabled !== false,
         logoUrl: res.data.data.logoUrl,
         googleReviewLink: res.data.data.googleReviewLink,
         google_review_link: res.data.data.googleReviewLink,
@@ -399,19 +402,47 @@ export default function SettingsPage() {
                   <span className="text-[11px] text-[#66746F] mt-0.5 block">Printed on invoice headers</span>
                 </div>
 
-                <div>
-                  <label htmlFor="SettingsPage-field-2" className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
-                    Store GSTIN / Tax ID
-                  </label>
-                  <input id="SettingsPage-field-2"
-                    type="text"
-                    disabled={!isOwner}
-                    value={storeData.gstin}
-                    onChange={(e) => setStoreData({ ...storeData, gstin: e.target.value.toUpperCase() })}
-                    placeholder="e.g. 29ABCDE1234F1Z5"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#E2E7E3] text-sm font-mono bg-[#FEFEFC] text-[#202D2B] focus:outline-none focus:border-[#28766B] focus:ring-1 focus:ring-[#28766B] transition disabled:bg-[#F5F7F3] disabled:text-[#66746F] uppercase"
-                  />
-                  <span className="text-[11px] text-[#66746F] mt-0.5 block">15-digit GST Number printed on Tax Invoices</span>
+                <div className="sm:col-span-2 p-4 rounded-xl border border-[#E2E7E3] bg-[#F5F7F3]/60 space-y-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-[#202D2B] flex items-center gap-2">
+                        <span>GST Billing & Tax Invoices</span>
+                        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${storeData.gstEnabled ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
+                          {storeData.gstEnabled ? 'Enabled' : 'Disabled (Turned Off)'}
+                        </span>
+                      </h3>
+                      <p className="text-xs text-[#66746F] mt-0.5">
+                        Turn OFF if your store is not GST-registered or does not issue tax invoices. All billing, orders, and PDF invoices will automatically format as standard Retail Invoices without GST breakdown.
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                      <input
+                        type="checkbox"
+                        disabled={!isOwner}
+                        checked={storeData.gstEnabled}
+                        onChange={(e) => setStoreData({ ...storeData, gstEnabled: e.target.checked })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-[#CCD6D2] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#28766B] disabled:opacity-50"></div>
+                    </label>
+                  </div>
+
+                  {storeData.gstEnabled && (
+                    <div className="pt-2 border-t border-[#E2E7E3] animate-in fade-in duration-150">
+                      <label htmlFor="SettingsPage-field-2" className="block text-xs font-semibold text-[#66746F] uppercase tracking-wider mb-1">
+                        Store GSTIN / Tax ID
+                      </label>
+                      <input id="SettingsPage-field-2"
+                        type="text"
+                        disabled={!isOwner}
+                        value={storeData.gstin}
+                        onChange={(e) => setStoreData({ ...storeData, gstin: e.target.value.toUpperCase() })}
+                        placeholder="e.g. 29ABCDE1234F1Z5"
+                        className="w-full max-w-md px-3.5 py-2.5 rounded-xl border border-[#E2E7E3] text-sm font-mono bg-[#FEFEFC] text-[#202D2B] focus:outline-none focus:border-[#28766B] focus:ring-1 focus:ring-[#28766B] transition disabled:bg-[#F5F7F3] disabled:text-[#66746F] uppercase"
+                      />
+                      <span className="text-[11px] text-[#66746F] mt-0.5 block">15-digit GST Number printed on Tax Invoices</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="sm:col-span-2">

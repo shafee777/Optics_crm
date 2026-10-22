@@ -59,7 +59,7 @@ export const authRepository = {
       SELECT 
         u.id, u.store_id, u.email, u.password_hash, u.full_name, u.role, u.active,
         s.name AS store_name, s.phone AS store_phone, s.email AS store_email,
-        s.address AS store_address, s.gstin AS store_gstin, s.logo_url AS store_logo_url,
+        s.address AS store_address, s.gstin AS store_gstin, s.gst_enabled AS store_gst_enabled, s.logo_url AS store_logo_url,
         s.currency, s.timezone
       FROM users u
       JOIN stores s ON u.store_id = s.id
@@ -74,7 +74,7 @@ export const authRepository = {
       SELECT 
         u.id, u.store_id, u.email, u.full_name, u.role, u.active,
         s.name AS store_name, s.phone AS store_phone, s.email AS store_email,
-        s.address AS store_address, s.gstin AS store_gstin, s.logo_url AS store_logo_url,
+        s.address AS store_address, s.gstin AS store_gstin, s.gst_enabled AS store_gst_enabled, s.logo_url AS store_logo_url,
         s.currency, s.timezone
       FROM users u
       JOIN stores s ON u.store_id = s.id

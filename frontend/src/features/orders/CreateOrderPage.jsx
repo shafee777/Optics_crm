@@ -2,9 +2,12 @@ import { calculateBilling } from '../../../../shared/billing.mjs';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../services/api.js';
-import { ArrowLeft, Plus, Trash2, ShoppingBag, AlertCircle, Zap } from 'lucide-react';
+import { useAuth } from '../auth/AuthContext.jsx';
+import { ArrowLeft, Plus, Trash2, ShoppingBag, AlertCircle, Zap, Check } from 'lucide-react';
 
 export default function CreateOrderPage() {
+  const { user } = useAuth();
+  const storeGstEnabled = user?.store?.gstEnabled !== false;
   const [searchParams] = useSearchParams();
   const preselectedCustomerId = searchParams.get('customerId');
   const navigate = useNavigate();
@@ -34,7 +37,8 @@ export default function CreateOrderPage() {
   };
 
   // Items state with GST tax fields
-  const [isGstBill, setIsGstBill] = useState(true);
+  const [isGstBill, setIsGstBill] = useState(storeGstEnabled);
+  const [isDelivered, setIsDelivered] = useState(false);
   const [items, setItems] = useState([
     { productId: null, itemType: 'FRAME', description: '', quantity: 1, unitPrice: '', discount: 0, hsnCode: '9004', gstRate: 12 },
     { productId: null, itemType: 'LENS', description: '', quantity: 1, unitPrice: '', discount: 0, hsnCode: '9001', gstRate: 18 },
@@ -163,7 +167,9 @@ export default function CreateOrderPage() {
         prescriptionId: selectedPrescriptionId || null,
         orderDate: orderDate || null,
         dueDate,
-        isGstBill,
+        isGstBill: storeGstEnabled ? isGstBill : false,
+        status: isDelivered ? 'DELIVERED' : undefined,
+        markDelivered: Boolean(isDelivered),
         items: items.map((i) => ({
           productId: i.productId || null,
           itemType: i.itemType,
@@ -172,7 +178,7 @@ export default function CreateOrderPage() {
           unitPrice: parseFloat(i.unitPrice),
           discount: parseFloat(i.discount) || 0,
           hsnCode: i.hsnCode || null,
-          gstRate: isGstBill ? (parseFloat(i.gstRate) || 0) : 0,
+          gstRate: (storeGstEnabled && isGstBill) ? (parseFloat(i.gstRate) || 0) : 0,
         })),
         discount: parseFloat(orderDiscount) || 0,
         notes,
@@ -284,15 +290,21 @@ export default function CreateOrderPage() {
               <p className="text-xs text-[#66746F]">Configure item specs, HSN codes, and GST tax rates</p>
             </div>
             <div className="flex items-center gap-3">
-              <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#202D2B] bg-[#F5F7F3] px-3 py-1.5 rounded-xl border border-[#E2E7E3]">
-                <input
-                  type="checkbox"
-                  checked={isGstBill}
-                  onChange={(e) => setIsGstBill(e.target.checked)}
-                  className="w-4 h-4 text-[#28766B] rounded focus:ring-[#28766B]"
-                />
-                <span>Generate Official Indian GST Tax Invoice</span>
-              </label>
+              {storeGstEnabled ? (
+                <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#202D2B] bg-[#F5F7F3] px-3 py-1.5 rounded-xl border border-[#E2E7E3]">
+                  <input
+                    type="checkbox"
+                    checked={isGstBill}
+                    onChange={(e) => setIsGstBill(e.target.checked)}
+                    className="w-4 h-4 text-[#28766B] rounded focus:ring-[#28766B]"
+                  />
+                  <span>Generate Official Indian GST Tax Invoice</span>
+                </label>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#66746F] bg-[#F5F7F3] px-3 py-1.5 rounded-xl border border-[#E2E7E3]">
+                  Retail Invoice (GST Turned Off in Settings)
+                </span>
+              )}
               <button
                 type="button"
                 onClick={addItem}
@@ -572,6 +584,38 @@ export default function CreateOrderPage() {
                 Target pickup/dispatch date for the customer.
               </p>
             </div>
+          </div>
+
+          {/* Immediate Delivery Option */}
+          <div className="p-3.5 rounded-xl border border-[#E2E7E3] bg-[#F5F7F3]/70 space-y-1.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <label className="flex items-center gap-2.5 cursor-pointer font-bold text-xs text-[#202D2B] select-none">
+                <input
+                  type="checkbox"
+                  checked={Boolean(isDelivered)}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setIsDelivered(checked);
+                    if (checked) {
+                      setDueDate(orderDate || todayDateStr);
+                    }
+                  }}
+                  className="w-4 h-4 text-[#28766B] rounded border-gray-300 focus:ring-[#28766B]"
+                />
+                <span>Mark as Delivered immediately</span>
+                {isDelivered && (
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Check className="w-3 h-3 text-emerald-600" /> DELIVERED
+                  </span>
+                )}
+              </label>
+              <span className="text-[11px] text-[#66746F]">
+                Bypasses lab processing & ready-for-delivery tracking
+              </span>
+            </div>
+            <p className="text-[11px] text-[#66746F]">
+              Check this if products are already handed over to the customer. Order status will be saved directly as <strong>DELIVERED</strong>.
+            </p>
           </div>
 
           {/* Payment Section with 1-Click Full Paid */}

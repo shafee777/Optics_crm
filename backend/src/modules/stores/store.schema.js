@@ -9,6 +9,7 @@ export const updateStoreSchema = z.object({
     address: z.string().nullable().optional(),
     googleReviewLink: z.string().nullable().optional(),
     gstin: z.string().max(20).nullable().optional(),
+    gstEnabled: z.boolean().optional(),
     logoUrl: z
       .string()
       .nullable()

@@ -10,6 +10,8 @@ export default function PrintOrderInvoice({ order, prescription, hideActions = f
     window.print();
   };
 
+  const isGst = order.is_gst_bill !== false && store?.gstEnabled !== false;
+
   return (
     <div>
       {/* Action Button (Hidden during printing) */}
@@ -60,7 +62,7 @@ export default function PrintOrderInvoice({ order, prescription, hideActions = f
                   </span>
                 )}
               </div>
-              {store.gstin && (
+              {store.gstin && isGst && (
                 <p className="text-slate-900 font-bold font-mono text-[11px] mt-1 bg-slate-100 px-2 py-0.5 rounded inline-block">
                   GSTIN: {store.gstin}
                 </p>
@@ -70,7 +72,7 @@ export default function PrintOrderInvoice({ order, prescription, hideActions = f
 
           <div className="text-right">
             <div className="text-lg font-mono font-extrabold text-slate-900">{order.order_number}</div>
-            <div className="text-xs font-bold text-indigo-600 uppercase tracking-wider">{order.is_gst_bill !== false ? 'OFFICIAL TAX INVOICE' : 'RETAIL INVOICE'}</div>
+            <div className="text-xs font-bold text-indigo-600 uppercase tracking-wider">{isGst ? 'OFFICIAL TAX INVOICE' : 'RETAIL INVOICE'}</div>
             <div className="mt-2 inline-block px-2.5 py-0.5 bg-slate-100 rounded text-[10px] font-bold text-slate-700 uppercase">
               Status: {order.status.replace(/_/g, ' ')}
             </div>
@@ -151,7 +153,7 @@ export default function PrintOrderInvoice({ order, prescription, hideActions = f
                 <th className="py-2 px-2 text-center">HSN</th>
                 <th className="py-2 px-2 text-center">Qty</th>
                 <th className="py-2 px-2 text-right">Taxable Val</th>
-                {order.is_gst_bill !== false && (
+                {isGst && (
                   <>
                     <th className="py-2 px-2 text-right">CGST</th>
                     <th className="py-2 px-2 text-right">SGST</th>
@@ -177,7 +179,7 @@ export default function PrintOrderInvoice({ order, prescription, hideActions = f
                     <td className="py-2.5 px-2 text-center font-mono text-[11px]">{item.hsn_code || '—'}</td>
                     <td className="py-2.5 px-2 text-center font-mono">{item.quantity}</td>
                     <td className="py-2.5 px-2 text-right font-mono">₹{taxable.toFixed(2)}</td>
-                    {order.is_gst_bill !== false && (
+                    {isGst && (
                       <>
                         <td className="py-2.5 px-2 text-right font-mono text-[11px]">
                           ₹{cgst.toFixed(2)} <span className="text-[9px] text-slate-400">({halfRate}%)</span>
@@ -214,7 +216,7 @@ export default function PrintOrderInvoice({ order, prescription, hideActions = f
           </div>
 
           <div className="w-72 space-y-1.5 text-xs bg-slate-50 p-4 rounded-xl border border-slate-200">
-            {order.is_gst_bill !== false && (
+            {isGst && (
               <>
                 <div className="flex justify-between text-slate-600 text-xs">
                   <span>Total Taxable Value:</span>

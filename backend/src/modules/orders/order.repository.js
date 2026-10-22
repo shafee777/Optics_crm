@@ -73,16 +73,19 @@ export const orderRepository = {
 
       const customOrderDate = data.orderDate || null;
       const customCreatedAt = customOrderDate ? (customOrderDate.includes('T') ? customOrderDate : `${customOrderDate} 12:00:00+05:30`) : null;
+      const isDelivered = data.status === ORDER_STATUS.DELIVERED || Boolean(data.markDelivered);
+      const initialStatus = isDelivered ? ORDER_STATUS.DELIVERED : ORDER_STATUS.PENDING;
+      const initialTimestamp = isDelivered ? (customCreatedAt ? new Date(customCreatedAt) : new Date()) : null;
 
       const orderQuery = `
         INSERT INTO orders (
           store_id, customer_id, prescription_id, order_number,
-          order_date, due_date, status,
+          order_date, due_date, status, ready_at, delivered_at,
           subtotal, discount, tax, total_amount,
           is_gst_bill, total_taxable_value, total_cgst, total_sgst,
           notes, created_by, discount_allocated, created_at
         )
-        VALUES ($1, $2, $3, $4, COALESCE($5::date, CURRENT_DATE), $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, true, COALESCE($18::timestamptz, NOW()))
+        VALUES ($1, $2, $3, $4, COALESCE($5::date, CURRENT_DATE), $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, true, COALESCE($20::timestamptz, NOW()))
         RETURNING *;
       `;
       const { rows: orderRows } = await client.query(orderQuery, [
@@ -92,7 +95,9 @@ export const orderRepository = {
         orderNumber,
         customOrderDate,
         data.dueDate,
-        ORDER_STATUS.PENDING,
+        initialStatus,
+        initialTimestamp,
+        initialTimestamp,
         subtotal,
         discount,
         tax,

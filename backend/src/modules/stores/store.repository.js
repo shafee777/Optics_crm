@@ -11,6 +11,7 @@ export const storeRepository = {
         address, 
         google_review_link, 
         gstin,
+        gst_enabled,
         logo_url,
         whatsapp_templates,
         whatsapp_config,
@@ -54,6 +55,10 @@ export const storeRepository = {
       fields.push(`gstin = $${idx++}`);
       values.push(data.gstin);
     }
+    if (data.gstEnabled !== undefined) {
+      fields.push(`gst_enabled = $${idx++}`);
+      values.push(data.gstEnabled);
+    }
     if (data.logoUrl !== undefined) {
       fields.push(`logo_url = $${idx++}`);
       values.push(data.logoUrl);
@@ -86,7 +91,7 @@ export const storeRepository = {
       UPDATE stores
       SET ${fields.join(', ')}
       WHERE id = $${idx}
-      RETURNING id, name, phone, email, address, google_review_link, gstin, logo_url, whatsapp_templates, whatsapp_config, currency, timezone, created_at, updated_at;
+      RETURNING id, name, phone, email, address, google_review_link, gstin, gst_enabled, logo_url, whatsapp_templates, whatsapp_config, currency, timezone, created_at, updated_at;
     `;
 
     const res = await query(sql, values);

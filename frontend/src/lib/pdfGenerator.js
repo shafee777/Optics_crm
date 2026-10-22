@@ -85,7 +85,7 @@ function drawHeader(doc, store, title, pageNum, totalPages) {
     leftY += 3.5;
   }
 
-  if (store?.gstin) {
+  if (store?.gstin && store?.gstEnabled !== false) {
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...PRIMARY_COLOR);
     doc.text(`GSTIN: ${store.gstin}`, textStartX, leftY);
@@ -127,7 +127,8 @@ function drawFooter(doc, store, pageNum, totalPages) {
  */
 export function renderInvoiceSection(doc, { order, customer, store, items = [], payments = [] }) {
   const pageWidth = doc.internal.pageSize.getWidth();
-  const startY = drawHeader(doc, store, 'TAX INVOICE', 1, 1);
+  const isGst = Boolean(store?.gstin) && store?.gstEnabled !== false && order?.is_gst_bill !== false && order?.isGstBill !== false;
+  const startY = drawHeader(doc, store, isGst ? 'TAX INVOICE' : 'RETAIL INVOICE', 1, 1);
 
   // Metadata Box (Customer details on left, Order details on right)
   const colWidth = (pageWidth - 28 - 6) / 2;
@@ -193,11 +194,11 @@ export function renderInvoiceSection(doc, { order, customer, store, items = [], 
     quantity: Number(item.quantity || 1),
     unitPrice: Number(item.unit_price || item.unitPrice || 0),
     discount: Number(item.discount || 0),
-    gstRate: Number(item.gst_rate ?? item.gstRate ?? (store?.gstin ? 12 : 0)),
+    gstRate: isGst ? Number(item.gst_rate ?? item.gstRate ?? 12) : 0,
   }));
 
   const orderDiscount = Number(order?.discount || 0);
-  const isGst = Boolean(store?.gstin);
+
   const extraTax = Number(order?.tax || 0);
 
   let billing;

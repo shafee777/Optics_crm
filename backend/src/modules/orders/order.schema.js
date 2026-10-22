@@ -28,6 +28,8 @@ export const createOrderSchema = z.object({
     prescriptionId: z.string().uuid('Invalid prescription ID format').optional().nullable(),
     orderDate: z.string().refine((val) => !val || isValidCalendarDate(val), { message: 'Order date must be a valid calendar date (YYYY-MM-DD)' }).optional().nullable().or(z.literal('')),
     dueDate: z.string().refine(isValidCalendarDate, { message: 'Due date must be a valid calendar date (YYYY-MM-DD)' }),
+    status: z.enum(Object.values(ORDER_STATUS)).optional(),
+    markDelivered: z.boolean().optional(),
     isGstBill: z.boolean().default(true),
     items: z
       .array(

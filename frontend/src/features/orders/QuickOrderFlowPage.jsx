@@ -2,6 +2,7 @@ import { calculateBilling } from '../../../../shared/billing.mjs';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../services/api.js';
+import { useAuth } from '../auth/AuthContext.jsx';
 import CustomerFormModal from '../customers/CustomerFormModal.jsx';
 import RecordPaymentModal from '../payments/RecordPaymentModal.jsx';
 import {
@@ -53,6 +54,7 @@ function PowerInput({ label, name, value, onChange, placeholder, step = 0.25, mi
         {allowSign && value && parseFloat(value) !== 0 && (
           <button
             type="button"
+            tabIndex={-1}
             onClick={handleToggleSign}
             className="text-[10px] tabular-nums px-1.5 py-0.5 rounded-lg bg-[#E2E7E3] hover:bg-[#D5DDD6] text-[#202D2B] transition"
             title="Toggle Positive/Negative"
@@ -64,6 +66,7 @@ function PowerInput({ label, name, value, onChange, placeholder, step = 0.25, mi
       <div className="flex items-center rounded-xl border border-[#E2E7E3] bg-white focus-within:ring-2 focus-within:ring-[#28766B]/30 focus-within:border-[#28766B] overflow-hidden shadow-sm">
         <button
           type="button"
+          tabIndex={-1}
           onClick={() => handleStep(-step)}
           className="px-2.5 py-2 text-[#66746F] hover:text-[#202D2B] hover:bg-[#F5F7F3] font-bold text-xs select-none transition"
         >
@@ -78,10 +81,25 @@ function PowerInput({ label, name, value, onChange, placeholder, step = 0.25, mi
           placeholder={placeholder}
           value={value}
           onChange={onChange}
+          onFocus={(e) => e.target.select()}
+          onClick={(e) => e.target.select()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              const container = e.target.closest('form') || document;
+              const inputs = Array.from(container.querySelectorAll('input:not([type=hidden]):not([disabled])'));
+              const index = inputs.indexOf(e.target);
+              if (index > -1 && index + 1 < inputs.length) {
+                inputs[index + 1].focus();
+                inputs[index + 1].select?.();
+              }
+            }
+          }}
           className="w-full text-center py-1.5 text-xs font-bold tabular-nums text-[#202D2B] focus:outline-none bg-transparent"
         />
         <button
           type="button"
+          tabIndex={-1}
           onClick={() => handleStep(step)}
           className="px-2.5 py-2 text-[#66746F] hover:text-[#202D2B] hover:bg-[#F5F7F3] font-bold text-xs select-none transition"
         >
@@ -362,6 +380,7 @@ function PrescriptionStep({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
+  const [samePowerBothEyes, setSamePowerBothEyes] = useState(false);
   const [existingRx, setExistingRx] = useState([]);
 
   useEffect(() => {
@@ -373,7 +392,32 @@ function PrescriptionStep({
   }, [customer?.id]);
 
   const handleChange = (e) => {
-    setRxData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setRxData((prev) => {
+      const next = { ...prev, [name]: value };
+      if (samePowerBothEyes) {
+        if (name === 'rSph') next.lSph = value;
+        if (name === 'rCyl') next.lCyl = value;
+        if (name === 'rAxis') next.lAxis = value;
+        if (name === 'rAdd') next.lAdd = value;
+      }
+      return next;
+    });
+  };
+
+  const handleToggleSamePower = (checked) => {
+    setSamePowerBothEyes(checked);
+    if (checked) {
+      setRxData((prev) => ({
+        ...prev,
+        lSph: prev.rSph,
+        lCyl: prev.rCyl,
+        lAxis: prev.rAxis,
+        lAdd: prev.rAdd,
+      }));
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 1800);
+    }
   };
 
   const handleCopyRightToLeft = () => {
@@ -581,14 +625,37 @@ function PrescriptionStep({
 
       {/* LEFT EYE */}
       <div className="p-4 rounded-2xl bg-[#F5F7F3] border border-[#E2E7E3] space-y-3">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-wrap justify-between items-center gap-2">
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-emerald-600 ring-4 ring-emerald-100" />
             <span className="font-bold text-[#202D2B] text-xs uppercase tracking-wider">Left Eye (OS - Oculus Sinister)</span>
           </div>
-          <span className="text-xs font-bold tabular-nums px-2.5 py-0.5 rounded-full bg-white text-[#202D2B] border border-[#E2E7E3]">
-            {formatEyeNotation(rxData.lSph, rxData.lCyl, rxData.lAxis, rxData.lAdd)}
-          </span>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-[#28766B] bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200 hover:bg-emerald-100/60 transition select-none">
+              <input
+                type="checkbox"
+                checked={samePowerBothEyes}
+                onChange={(e) => handleToggleSamePower(e.target.checked)}
+                className="w-3.5 h-3.5 text-[#28766B] rounded border-gray-300 focus:ring-[#28766B]"
+              />
+              <span>Both Eyes Same Power</span>
+            </label>
+
+            <button
+              type="button"
+              onClick={handleCopyRightToLeft}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white hover:bg-slate-50 text-[#202D2B] text-xs font-semibold border border-[#E2E7E3] transition shadow-xs"
+              title="Copy Right Eye power to Left Eye"
+            >
+              {copySuccess ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-[#66746F]" />}
+              <span>{copySuccess ? 'Copied to Left Eye!' : 'Copy Right Eye (OD)'}</span>
+            </button>
+
+            <span className="text-xs font-bold tabular-nums px-2.5 py-0.5 rounded-full bg-white text-[#202D2B] border border-[#E2E7E3]">
+              {formatEyeNotation(rxData.lSph, rxData.lCyl, rxData.lAxis, rxData.lAdd)}
+            </span>
+          </div>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <PowerInput label="SPHERE (SPH)" name="lSph" value={rxData.lSph} onChange={handleChange} placeholder="0.00" />
@@ -694,8 +761,12 @@ function OrderStep({
       .catch(() => {});
   }, []);
 
+  const { user } = useAuth();
+  const storeGstEnabled = user?.store?.gstEnabled !== false;
+
   const {
     isGstBill,
+    isDelivered,
     items,
     selectedPrescriptionId,
     orderDate,
@@ -783,7 +854,9 @@ function OrderStep({
         prescriptionId: selectedPrescriptionId || null,
         orderDate: orderDate || null,
         dueDate,
-        isGstBill,
+        isGstBill: storeGstEnabled ? isGstBill : false,
+        status: isDelivered ? 'DELIVERED' : undefined,
+        markDelivered: Boolean(isDelivered),
         items: items.map((i) => ({
           productId: i.productId || null,
           itemType: i.itemType,
@@ -792,7 +865,7 @@ function OrderStep({
           unitPrice: parseFloat(i.unitPrice),
           discount: parseFloat(i.discount) || 0,
           hsnCode: i.hsnCode || null,
-          gstRate: isGstBill ? (parseFloat(i.gstRate) || 0) : 0,
+          gstRate: (storeGstEnabled && isGstBill) ? (parseFloat(i.gstRate) || 0) : 0,
         })),
         discount: parseFloat(orderDiscount) || 0,
         notes,
@@ -864,15 +937,21 @@ function OrderStep({
             <p className="text-[11px] text-[#66746F]">Configure frames, spectacle lenses, coatings, or accessories</p>
           </div>
           <div className="flex items-center gap-3">
-            <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#202D2B] bg-[#F5F7F3] px-3 py-1.5 rounded-xl border border-[#E2E7E3]">
-              <input
-                type="checkbox"
-                checked={isGstBill}
-                onChange={(e) => setOrderData((prev) => ({ ...prev, isGstBill: e.target.checked }))}
-                className="w-4 h-4 text-[#28766B] rounded focus:ring-[#28766B]"
-              />
-              <span>Generate Official GST Tax Invoice</span>
-            </label>
+            {storeGstEnabled ? (
+              <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#202D2B] bg-[#F5F7F3] px-3 py-1.5 rounded-xl border border-[#E2E7E3]">
+                <input
+                  type="checkbox"
+                  checked={isGstBill}
+                  onChange={(e) => setOrderData((prev) => ({ ...prev, isGstBill: e.target.checked }))}
+                  className="w-4 h-4 text-[#28766B] rounded focus:ring-[#28766B]"
+                />
+                <span>Generate Official GST Tax Invoice</span>
+              </label>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#66746F] bg-[#F5F7F3] px-3 py-1.5 rounded-xl border border-[#E2E7E3]">
+                Retail Invoice (GST Turned Off in Settings)
+              </span>
+            )}
             <button
               type="button"
               onClick={addItem}
@@ -1135,6 +1214,39 @@ function OrderStep({
           </div>
         </div>
 
+        {/* Immediate Delivery Option */}
+        <div className="p-3.5 rounded-xl border border-[#E2E7E3] bg-[#F5F7F3]/70 space-y-1.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <label className="flex items-center gap-2.5 cursor-pointer font-bold text-xs text-[#202D2B] select-none">
+              <input
+                type="checkbox"
+                checked={Boolean(orderData.isDelivered)}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setOrderData((prev) => ({
+                    ...prev,
+                    isDelivered: checked,
+                    dueDate: checked ? (prev.orderDate || new Date().toISOString().split('T')[0]) : prev.dueDate,
+                  }));
+                }}
+                className="w-4 h-4 text-[#28766B] rounded border-gray-300 focus:ring-[#28766B]"
+              />
+              <span>Mark as Delivered immediately</span>
+              {orderData.isDelivered && (
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <Check className="w-3 h-3 text-emerald-600" /> DELIVERED
+                </span>
+              )}
+            </label>
+            <span className="text-[11px] text-[#66746F]">
+              Bypasses lab processing & ready-for-delivery tracking
+            </span>
+          </div>
+          <p className="text-[11px] text-[#66746F]">
+            Check this if products are already handed over to the customer. Order status will be recorded directly as <strong>DELIVERED</strong>.
+          </p>
+        </div>
+
         {/* Payment Collection with Quick 1-Click Full Paid */}
         <div className="pt-2 border-t border-[#E2E7E3] space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -1356,6 +1468,8 @@ export default function QuickOrderFlowPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const preselectedCustomerId = searchParams.get('customerId');
+  const { user } = useAuth();
+  const storeGstEnabled = user?.store?.gstEnabled !== false;
 
   const [step, setStep] = useState(1); // 1 | 2 | 3 | 4
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -1383,7 +1497,8 @@ export default function QuickOrderFlowPage() {
 
   // Order Form State (Preserved across step navigation)
   const [orderData, setOrderData] = useState({
-    isGstBill: true,
+    isGstBill: storeGstEnabled,
+    isDelivered: false,
     items: [
       { productId: null, itemType: 'FRAME', description: '', quantity: 1, unitPrice: '', discount: 0, hsnCode: '9004', gstRate: 12 },
       { productId: null, itemType: 'LENS', description: '', quantity: 1, unitPrice: '', discount: 0, hsnCode: '9001', gstRate: 18 },
@@ -1510,7 +1625,8 @@ export default function QuickOrderFlowPage() {
     const d = new Date();
     d.setDate(d.getDate() + 3);
     setOrderData({
-      isGstBill: true,
+      isGstBill: storeGstEnabled,
+      isDelivered: false,
       items: [
         { productId: null, itemType: 'FRAME', description: '', quantity: 1, unitPrice: '', discount: 0, hsnCode: '9004', gstRate: 12 },
         { productId: null, itemType: 'LENS', description: '', quantity: 1, unitPrice: '', discount: 0, hsnCode: '9001', gstRate: 18 },
