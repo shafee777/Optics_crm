@@ -31,5 +31,14 @@ export const loyaltyController = {
     } catch (err) {
       next(err);
     }
+  },
+
+  async updateStoreConfig(req, res, next) {
+    try {
+      const data = await loyaltyService.updateStoreConfig(req.user.storeId, req.body);
+      res.status(200).json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
   }
 };

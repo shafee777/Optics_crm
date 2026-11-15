@@ -88,5 +88,26 @@ export const outboxController = {
     } catch (err) {
       next(err);
     }
+  },
+
+  async testCloud(req, res, next) {
+    try {
+      const storeConfig = await outboxService.getStoreConfig(req.user.storeId);
+      const testPhone = req.body.phone || req.user.phone || '919876543210';
+      const result = await outboxService.dispatchViaCloud(req.user.storeId, null, req.user.id, {
+        phone: testPhone,
+        message: 'Hello from Optics CRM! Your automated background WhatsApp connection is working successfully.',
+      }).catch(async () => {
+        const { whatsappService } = await import('../whatsapp/whatsapp.service.js');
+        return await whatsappService.sendMessage(req.user.storeId, {
+          phone: testPhone,
+          message: 'Hello from Optics CRM! Your automated background WhatsApp connection is working successfully.',
+          messageType: 'TEST',
+        });
+      });
+      res.status(200).json({ success: true, message: 'Test message dispatched successfully!', data: result });
+    } catch (err) {
+      next(err);
+    }
   }
 };

@@ -70,5 +70,21 @@ export const outboxService = {
 
   async updateStoreConfig(storeId, config) {
     return await whatsappService.updateStoreConfig(storeId, config);
+  },
+
+  async autoDispatchMessageIfConfigured(storeId, messageId) {
+    if (!messageId) return;
+    try {
+      const config = await this.getStoreConfig(storeId);
+      if (config.provider === 'META_CLOUD_API' && config.metaAccessToken && config.metaPhoneNumberId) {
+        setImmediate(async () => {
+          try {
+            await this.dispatchViaCloud(storeId, messageId, null);
+          } catch (err) {
+            logger.warn({ msgId: messageId, err: err.message }, 'Background auto-dispatch failed');
+          }
+        });
+      }
+    } catch {}
   }
 };

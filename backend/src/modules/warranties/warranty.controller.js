@@ -20,6 +20,15 @@ export const warrantyController = {
     }
   },
 
+  async updatePlan(req, res, next) {
+    try {
+      const plan = await warrantyService.updatePlan(req.user.storeId, req.params.id, req.body);
+      res.status(200).json({ success: true, data: plan });
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async getCustomerWarranties(req, res, next) {
     try {
       const warranties = await warrantyService.getCustomerWarranties(req.user.storeId, req.params.customerId);

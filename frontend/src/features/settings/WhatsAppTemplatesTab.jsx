@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api.js';
+import { enterpriseApi } from '../../services/enterprise.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { DEFAULT_TEMPLATES, interpolateTemplate } from '../../lib/whatsapp.js';
 import { 
@@ -65,6 +66,20 @@ export default function WhatsAppTemplatesTab() {
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
+  // Background Meta Cloud API Configuration
+  const [cloudConfig, setCloudConfig] = useState({
+    provider: 'MOCK',
+    metaPhoneNumberId: '',
+    metaAccessToken: '',
+    metaWabaId: '',
+    autoSendOrderCreated: true,
+    autoSendOrderReady: true,
+  });
+  const [savingCloud, setSavingCloud] = useState(false);
+  const [testingCloud, setTestingCloud] = useState(false);
+  const [testPhone, setTestPhone] = useState(user?.store?.phone || '');
+  const [cloudFeedback, setCloudFeedback] = useState(null);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -79,10 +94,54 @@ export default function WhatsAppTemplatesTab() {
         ...savedTemplates,
       });
 
+      const cfg = await enterpriseApi.getWhatsAppConfig();
+      if (cfg) {
+        setCloudConfig({
+          provider: cfg.provider || 'MOCK',
+          metaPhoneNumberId: cfg.metaPhoneNumberId || '',
+          metaAccessToken: cfg.metaAccessToken || '',
+          metaWabaId: cfg.metaWabaId || '',
+          autoSendOrderCreated: cfg.autoSendOrderCreated !== false,
+          autoSendOrderReady: cfg.autoSendOrderReady !== false,
+        });
+      }
     } catch (err) {
       console.error('Failed to load whatsapp settings:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveCloud = async (e) => {
+    if (e) e.preventDefault();
+    if (!isOwner) return;
+    setSavingCloud(true);
+    setCloudFeedback(null);
+    try {
+      await enterpriseApi.updateWhatsAppConfig(cloudConfig);
+      setCloudFeedback({ type: 'success', message: 'Background WhatsApp configuration saved successfully!' });
+      setTimeout(() => setCloudFeedback(null), 4000);
+    } catch (err) {
+      setCloudFeedback({ type: 'error', message: err.response?.data?.error?.message || 'Failed to save configuration' });
+    } finally {
+      setSavingCloud(false);
+    }
+  };
+
+  const handleTestCloud = async () => {
+    if (!testPhone) {
+      setCloudFeedback({ type: 'error', message: 'Please enter a test mobile number' });
+      return;
+    }
+    setTestingCloud(true);
+    setCloudFeedback(null);
+    try {
+      await enterpriseApi.testWhatsAppCloud(testPhone);
+      setCloudFeedback({ type: 'success', message: `Test message sent successfully to ${testPhone}!` });
+    } catch (err) {
+      setCloudFeedback({ type: 'error', message: err.response?.data?.error?.message || 'Test message failed. Verify Token & Phone ID.' });
+    } finally {
+      setTestingCloud(false);
     }
   };
 
@@ -151,7 +210,181 @@ export default function WhatsAppTemplatesTab() {
 
   return (
     <div className="space-y-6">
-      <p role="status">WhatsApp opens a draft for staff to review and send. Internet is required; billing works offline.</p>
+      {/* 1. Automated Background Dispatch (Zero-Touch WhatsApp Cloud API) */}
+      <div className="bg-[#FEFEFC] p-6 rounded-2xl border border-[#E2E7E3] shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#E2E7E3]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+              <Zap className="w-5 h-5 fill-current" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-[#202D2B]">Zero-Touch Background WhatsApp Automation</h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  Meta Cloud API
+                </span>
+              </div>
+              <p className="text-xs text-[#66746F] mt-0.5">
+                Automatically send WhatsApp messages in the background when orders are confirmed or marked ready — cashiers don't need to open WhatsApp Web or hit send!
+              </p>
+            </div>
+          </div>
+
+          {isOwner && (
+            <label className="relative inline-flex items-center cursor-pointer shrink-0">
+              <input
+                type="checkbox"
+                checked={cloudConfig.provider === 'META'}
+                onChange={(e) => setCloudConfig({
+                  ...cloudConfig,
+                  provider: e.target.checked ? 'META' : 'MOCK',
+                })}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+              <span className="ml-2.5 text-xs font-bold text-[#202D2B]">
+                {cloudConfig.provider === 'META' ? 'AUTO-DISPATCH ON' : 'MANUAL OUTBOX (OFF)'}
+              </span>
+            </label>
+          )}
+        </div>
+
+        {cloudFeedback && (
+          <div
+            className={`p-3.5 rounded-xl text-xs flex items-center gap-2 font-medium ${
+              cloudFeedback.type === 'success'
+                ? 'bg-emerald-50/80 border border-emerald-200 text-emerald-800'
+                : 'bg-rose-50/80 border border-rose-200 text-rose-800'
+            }`}
+          >
+            {cloudFeedback.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+            ) : (
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+            )}
+            <span>{cloudFeedback.message}</span>
+          </div>
+        )}
+
+        {cloudConfig.provider === 'META' ? (
+          <form onSubmit={handleSaveCloud} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-[#202D2B] mb-1 flex items-center gap-1.5">
+                  <Smartphone className="w-3.5 h-3.5 text-[#28766B]" />
+                  Phone Number ID *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 104859384918274"
+                  value={cloudConfig.metaPhoneNumberId}
+                  onChange={(e) => setCloudConfig({ ...cloudConfig, metaPhoneNumberId: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs font-mono text-[#202D2B] bg-white focus:outline-none focus:border-[#28766B]"
+                  required
+                />
+                <p className="text-[10px] text-[#66746F] mt-1">From Meta App Dashboard &gt; WhatsApp &gt; API Setup</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#202D2B] mb-1 flex items-center gap-1.5">
+                  <Server className="w-3.5 h-3.5 text-[#28766B]" />
+                  WhatsApp Business Account ID (WABA)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 109823471928472"
+                  value={cloudConfig.metaWabaId}
+                  onChange={(e) => setCloudConfig({ ...cloudConfig, metaWabaId: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs font-mono text-[#202D2B] bg-white focus:outline-none focus:border-[#28766B]"
+                />
+                <p className="text-[10px] text-[#66746F] mt-1">Found in your Meta Business Suite</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#202D2B] mb-1 flex items-center gap-1.5">
+                  <Key className="w-3.5 h-3.5 text-[#28766B]" />
+                  Permanent System User Access Token *
+                </label>
+                <input
+                  type="password"
+                  placeholder="EAAG..."
+                  value={cloudConfig.metaAccessToken}
+                  onChange={(e) => setCloudConfig({ ...cloudConfig, metaAccessToken: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-[#E2E7E3] text-xs font-mono text-[#202D2B] bg-white focus:outline-none focus:border-[#28766B]"
+                  required
+                />
+                <p className="text-[10px] text-[#66746F] mt-1">Permanent access token from Meta Business System Users</p>
+              </div>
+            </div>
+
+            {/* Auto-Dispatch Triggers */}
+            <div className="p-4 rounded-xl bg-[#F5F7F3] border border-[#E2E7E3] flex flex-wrap gap-6 items-center">
+              <span className="text-xs font-bold text-[#202D2B]">Automated Background Triggers:</span>
+              <label className="inline-flex items-center gap-2 text-xs font-medium text-[#202D2B] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={cloudConfig.autoSendOrderCreated}
+                  onChange={(e) => setCloudConfig({ ...cloudConfig, autoSendOrderCreated: e.target.checked })}
+                  className="rounded text-[#28766B] focus:ring-[#28766B]"
+                />
+                Auto-send on Order Confirmation
+              </label>
+              <label className="inline-flex items-center gap-2 text-xs font-medium text-[#202D2B] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={cloudConfig.autoSendOrderReady}
+                  onChange={(e) => setCloudConfig({ ...cloudConfig, autoSendOrderReady: e.target.checked })}
+                  className="rounded text-[#28766B] focus:ring-[#28766B]"
+                />
+                Auto-send when Spectacles Ready for Pickup
+              </label>
+            </div>
+
+            {/* Save & Test Ping Actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="tel"
+                  placeholder="+919876543210"
+                  value={testPhone}
+                  onChange={(e) => setTestPhone(e.target.value)}
+                  className="px-3 py-1.5 rounded-lg border border-[#E2E7E3] text-xs font-mono text-[#202D2B] w-44"
+                />
+                <button
+                  type="button"
+                  onClick={handleTestCloud}
+                  disabled={testingCloud || !testPhone}
+                  className="px-3 py-1.5 bg-[#FEFEFC] hover:bg-[#F5F7F3] text-[#28766B] border border-[#28766B]/30 text-xs font-semibold rounded-lg shadow-xs transition flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  {testingCloud ? 'Sending Test...' : 'Send Test WhatsApp'}
+                </button>
+              </div>
+
+              {isOwner && (
+                <button
+                  type="submit"
+                  disabled={savingCloud}
+                  className="px-5 py-2 bg-[#28766B] hover:bg-[#1E5C53] text-white text-xs font-semibold rounded-xl shadow-xs transition flex items-center gap-1.5 disabled:opacity-50 self-end sm:self-auto"
+                >
+                  <Save className="w-4 h-4" />
+                  {savingCloud ? 'Saving...' : 'Save Background WhatsApp Config'}
+                </button>
+              )}
+            </div>
+          </form>
+        ) : (
+          <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200/80 text-xs text-amber-900 space-y-1">
+            <p className="font-semibold flex items-center gap-1.5">
+              <span>ℹ️</span> Background Auto-Dispatch is currently turned OFF.
+            </p>
+            <p className="text-[11px] text-amber-800">
+              All notifications are placed into your <strong>Staff Outbox Drawer</strong>. Staff can safely click each message to review and open WhatsApp Web. To send messages 100% silently in the background with zero clicks, toggle this switch ON and enter your Meta Cloud API keys.
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* 2. Message Templates Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#FEFEFC] p-5 rounded-2xl border border-[#E2E7E3] shadow-xs">
         <div>

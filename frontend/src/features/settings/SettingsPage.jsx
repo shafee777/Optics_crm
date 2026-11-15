@@ -8,6 +8,8 @@ import { SkeletonTable, SkeletonCard } from '../../components/common/Skeleton.js
 import AddStaffModal from './AddStaffModal.jsx';
 import ResetPasswordModal from './ResetPasswordModal.jsx';
 import WhatsAppTemplatesTab from './WhatsAppTemplatesTab.jsx';
+import LoyaltySettingsTab from './LoyaltySettingsTab.jsx';
+import WarrantySettingsTab from './WarrantySettingsTab.jsx';
 import { 
   Store, 
   Users, 
@@ -29,7 +31,9 @@ import {
   MessageSquare,
   Image as ImageIcon,
   Upload,
-  Trash2
+  Trash2,
+  Award,
+  ShieldCheck
 } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -275,6 +279,30 @@ export default function SettingsPage() {
               </button>
 
               <button
+                onClick={() => setActiveTab('loyalty')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition ${
+                  activeTab === 'loyalty'
+                    ? 'bg-[#FEFEFC] text-[#28766B] shadow-xs'
+                    : 'text-[#66746F] hover:text-[#202D2B]'
+                }`}
+              >
+                <Award className="w-3.5 h-3.5 text-indigo-600" />
+                Loyalty &amp; Rewards
+              </button>
+
+              <button
+                onClick={() => setActiveTab('warranties')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition ${
+                  activeTab === 'warranties'
+                    ? 'bg-[#FEFEFC] text-[#28766B] shadow-xs'
+                    : 'text-[#66746F] hover:text-[#202D2B]'
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                Warranty Plans
+              </button>
+
+              <button
                 onClick={() => setActiveTab('whatsapp')}
                 className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition ${
                   activeTab === 'whatsapp'
@@ -283,7 +311,7 @@ export default function SettingsPage() {
                 }`}
               >
                 <MessageSquare className="w-3.5 h-3.5 text-[#28766B]" />
-                WhatsApp Templates
+                WhatsApp Automation &amp; Templates
               </button>
 
               <button
@@ -703,7 +731,13 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* TAB 3: WhatsApp Message Templates */}
+      {/* TAB: Loyalty Points & Rewards */}
+      {activeTab === 'loyalty' && isOwner && <LoyaltySettingsTab />}
+
+      {/* TAB: Warranty & Care Protection Plans */}
+      {activeTab === 'warranties' && isOwner && <WarrantySettingsTab />}
+
+      {/* TAB 3: WhatsApp Message Templates & Automation */}
       {activeTab === 'whatsapp' && isOwner && <WhatsAppTemplatesTab />}
 
       {/* TAB 4: Data Backup & Export */}

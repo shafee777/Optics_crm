@@ -21,6 +21,14 @@ export const loyaltyRepository = {
     return { ...defaultConfig, ...(res.rows[0]?.loyalty_config || {}) };
   },
 
+  async updateStoreConfig(storeId, newConfig) {
+    const current = await this.getStoreConfig(storeId);
+    const merged = { ...current, ...newConfig };
+    const sql = `UPDATE stores SET loyalty_config = $1, updated_at = NOW() WHERE id = $2 RETURNING loyalty_config;`;
+    const res = await query(sql, [JSON.stringify(merged), storeId]);
+    return res.rows[0]?.loyalty_config || merged;
+  },
+
   async getCustomerBalance(storeId, customerId, client = null) {
     const sql = `
       SELECT balance_after 
@@ -202,6 +210,11 @@ export const loyaltyRepository = {
 
   async redeemPointsTx(client, storeId, customerId, orderId, pointsToRedeem, orderNumber) {
     if (!pointsToRedeem || pointsToRedeem <= 0) return { pointsRedeemed: 0 };
+
+    const config = await this.getStoreConfig(storeId, client);
+    if (!config.enabled) {
+      throw new AppError('Loyalty rewards program is currently disabled', 400, 'LOYALTY_DISABLED');
+    }
 
     const currentBalance = await this.getCustomerBalance(storeId, customerId, client);
     if (currentBalance < pointsToRedeem) {

@@ -6,6 +6,7 @@ import { ALLOWED_TRANSITIONS, ORDER_STATUS } from './order.constants.js';
 import { AppError } from '../../shared/errors/AppError.js';
 import { loyaltyRepository } from '../loyalty/loyalty.repository.js';
 import { outboxRepository } from '../outbox/outbox.repository.js';
+import { outboxService } from '../outbox/outbox.service.js';
 
 export const orderService = {
   async createOrder(storeId, userId, data) {
@@ -114,7 +115,7 @@ export const orderService = {
       if (nextStatus === ORDER_STATUS.READY_FOR_PICKUP && order.customer_phone) {
         try {
           const balText = order.balance_due > 0 ? ` Outstanding balance: ₹${order.balance_due}.` : ' Paid in full.';
-          await outboxRepository.enqueueMessage(storeId, {
+          const enqueued = await outboxRepository.enqueueMessage(storeId, {
             customerId: order.customer_id,
             orderId: order.id,
             phone: order.customer_phone,
@@ -122,10 +123,13 @@ export const orderService = {
             eventType: 'READY_FOR_PICKUP',
             messageBody: `Dear ${order.customer_name}, your spectacles (Order #${order.order_number}) are ready for pickup!${balText} Please visit us to collect.`,
           }, client);
+          if (enqueued?.id) {
+            outboxService.autoDispatchMessageIfConfigured(storeId, enqueued.id);
+          }
         } catch (err) {}
       } else if (nextStatus === ORDER_STATUS.DELIVERED && order.customer_phone) {
         try {
-          await outboxRepository.enqueueMessage(storeId, {
+          const enqueued = await outboxRepository.enqueueMessage(storeId, {
             customerId: order.customer_id,
             orderId: order.id,
             phone: order.customer_phone,
@@ -133,6 +137,9 @@ export const orderService = {
             eventType: 'ORDER_DELIVERED',
             messageBody: `Dear ${order.customer_name}, thank you for choosing Optics CRM! Your order #${order.order_number} has been delivered. Enjoy your clear vision!`,
           }, client);
+          if (enqueued?.id) {
+            outboxService.autoDispatchMessageIfConfigured(storeId, enqueued.id);
+          }
         } catch (err) {}
       }
 

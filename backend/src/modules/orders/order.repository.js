@@ -5,6 +5,7 @@ import { AppError } from '../../shared/errors/AppError.js';
 import { loyaltyRepository } from '../loyalty/loyalty.repository.js';
 import { warrantyRepository } from '../warranties/warranty.repository.js';
 import { outboxRepository } from '../outbox/outbox.repository.js';
+import { outboxService } from '../outbox/outbox.service.js';
 
 export const orderRepository = {
   async ensureStoreCountersTable(db = query) {
@@ -232,7 +233,7 @@ export const orderRepository = {
           if (earnRes?.pointsEarned > 0) {
             msg += ` You earned ${earnRes.pointsEarned} loyalty points! Total balance: ${earnRes.balance} pts.`;
           }
-          await outboxRepository.enqueueMessage(storeId, {
+          const enqueued = await outboxRepository.enqueueMessage(storeId, {
             customerId: data.customerId,
             orderId: createdOrder.id,
             phone: customer.phone,
@@ -240,6 +241,9 @@ export const orderRepository = {
             eventType: 'ORDER_CREATED',
             messageBody: msg,
           }, client);
+          if (enqueued?.id) {
+            outboxService.autoDispatchMessageIfConfigured(storeId, enqueued.id);
+          }
         }
       } catch (outboxErr) {
         // Non-blocking outbox failure

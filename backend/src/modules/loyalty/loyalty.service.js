@@ -25,5 +25,9 @@ export const loyaltyService = {
 
   async getStoreConfig(storeId) {
     return await loyaltyRepository.getStoreConfig(storeId);
+  },
+
+  async updateStoreConfig(storeId, configData) {
+    return await loyaltyRepository.updateStoreConfig(storeId, configData);
   }
 };

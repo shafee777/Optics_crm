@@ -1,6 +1,7 @@
 import { warrantyRepository } from './warranty.repository.js';
 import { customerRepository } from '../customers/customer.repository.js';
 import { outboxRepository } from '../outbox/outbox.repository.js';
+import { outboxService } from '../outbox/outbox.service.js';
 import { withTransaction } from '../../config/database.js';
 import { AppError } from '../../shared/errors/AppError.js';
 
@@ -14,6 +15,10 @@ export const warrantyService = {
       throw new AppError('Plan code and name are required', 400, 'VALIDATION_ERROR');
     }
     return await warrantyRepository.createPlan(storeId, data);
+  },
+
+  async updatePlan(storeId, planId, data) {
+    return await warrantyRepository.updatePlan(storeId, planId, data);
   },
 
   async getCustomerWarranties(storeId, customerId) {
@@ -30,13 +35,16 @@ export const warrantyService = {
       // Auto-enqueue WhatsApp notification for customer!
       if (contract?.customer_phone) {
         const msg = `Dear ${contract.customer_name}, your warranty claim for "${contract.covered_item_description}" has been successfully processed! Replacement: ${claimData.replacementDescription || 'Approved'}. Remaining claims on plan: ${result.updatedWarranty.claims_remaining}. Thank you for choosing Optics CRM!`;
-        await outboxRepository.enqueueMessage(storeId, {
+        const enqueued = await outboxRepository.enqueueMessage(storeId, {
           customerId: contract.customer_id,
           phone: contract.customer_phone,
           customerName: contract.customer_name,
           eventType: 'WARRANTY_CLAIM',
           messageBody: msg,
         }, client);
+        if (enqueued?.id) {
+          outboxService.autoDispatchMessageIfConfigured(storeId, enqueued.id);
+        }
       }
 
       return result;

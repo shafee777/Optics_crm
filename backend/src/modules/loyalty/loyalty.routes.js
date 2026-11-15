@@ -8,6 +8,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/config', loyaltyController.getStoreConfig);
+router.put('/config', authorizeRole('OWNER'), loyaltyController.updateStoreConfig);
 router.get('/customer/:customerId', loyaltyController.getCustomerProfile);
 router.post('/customer/:customerId/adjust', authorizeRole('OWNER'), loyaltyController.adjustPoints);
 

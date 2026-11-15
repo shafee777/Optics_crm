@@ -17,6 +17,11 @@ export const enterpriseApi = {
     return res.data.data;
   },
 
+  async updateLoyaltyConfig(data) {
+    const res = await api.put('/loyalty/config', data);
+    return res.data.data;
+  },
+
   // Warranty Contracts
   async getWarrantyPlans(all = false) {
     const res = await api.get(`/warranties/plans${all ? '?all=true' : ''}`);
@@ -25,6 +30,11 @@ export const enterpriseApi = {
 
   async createWarrantyPlan(data) {
     const res = await api.post('/warranties/plans', data);
+    return res.data.data;
+  },
+
+  async updateWarrantyPlan(planId, data) {
+    const res = await api.put(`/warranties/plans/${planId}`, data);
     return res.data.data;
   },
 
@@ -77,5 +87,10 @@ export const enterpriseApi = {
   async updateWhatsAppConfig(data) {
     const res = await api.put('/outbox/config', data);
     return res.data.data;
+  },
+
+  async testWhatsAppCloud(phone) {
+    const res = await api.post('/outbox/test-cloud', { phone });
+    return res.data;
   },
 };

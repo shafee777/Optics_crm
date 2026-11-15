@@ -81,6 +81,37 @@ export const warrantyRepository = {
     };
   },
 
+  async updatePlan(storeId, planId, data) {
+    const fields = [];
+    const values = [storeId, planId];
+    if (data.name !== undefined) { values.push(data.name.trim()); fields.push(`name = $${values.length}`); }
+    if (data.description !== undefined) { values.push(data.description); fields.push(`description = $${values.length}`); }
+    if (data.durationDays !== undefined) { values.push(Number(data.durationDays)); fields.push(`duration_days = $${values.length}`); }
+    if (data.price !== undefined) { values.push(Number(data.price)); fields.push(`price = $${values.length}`); }
+    if (data.maxClaims !== undefined) { values.push(Number(data.maxClaims)); fields.push(`max_claims = $${values.length}`); }
+    if (data.coveragePercentage !== undefined) { values.push(Number(data.coveragePercentage)); fields.push(`coverage_percentage = $${values.length}`); }
+    if (data.terms !== undefined) { values.push(data.terms); fields.push(`terms = $${values.length}`); }
+    if (data.active !== undefined) { values.push(Boolean(data.active)); fields.push(`active = $${values.length}`); }
+    if (fields.length === 0) return await this.getPlanById(storeId, planId);
+    fields.push('updated_at = NOW()');
+    const sql = `UPDATE warranty_plans SET ${fields.join(', ')} WHERE store_id = $1 AND id = $2 RETURNING *;`;
+    const res = await query(sql, values);
+    if (!res.rows[0]) throw new AppError('Plan not found', 404, 'PLAN_NOT_FOUND');
+    const r = res.rows[0];
+    return {
+      id: r.id,
+      planCode: r.plan_code,
+      name: r.name,
+      description: r.description,
+      durationDays: r.duration_days,
+      price: Number(r.price),
+      maxClaims: r.max_claims,
+      coveragePercentage: Number(r.coverage_percentage),
+      terms: r.terms,
+      active: r.active,
+    };
+  },
+
   async createContractTx(client, storeId, data) {
     const plan = await this.getPlanById(storeId, data.planId, client);
     if (!plan) throw new AppError('Warranty plan not found', 404, 'PLAN_NOT_FOUND');

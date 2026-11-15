@@ -9,6 +9,7 @@ router.use(authenticate);
 
 router.get('/plans', warrantyController.listPlans);
 router.post('/plans', authorizeRole('OWNER'), warrantyController.createPlan);
+router.put('/plans/:id', authorizeRole('OWNER'), warrantyController.updatePlan);
 router.get('/customer/:customerId', warrantyController.getCustomerWarranties);
 router.post('/:warrantyId/claim', warrantyController.processClaim);
 
