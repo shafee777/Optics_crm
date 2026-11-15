@@ -213,6 +213,20 @@ export default function PrintOrderInvoice({ order, prescription, hideActions = f
                 <strong>Notes:</strong> {order.notes}
               </p>
             )}
+
+            {order.warranties?.length > 0 && (
+              <div className="mt-3 p-2.5 rounded-lg border border-emerald-300 bg-emerald-50/60 text-emerald-950 text-[10.5px]">
+                <div className="font-bold flex items-center gap-1 text-emerald-900 uppercase tracking-wider text-[10px]">
+                  <span>🛡️ Extended Protection Contract</span>
+                </div>
+                <div className="mt-0.5 font-semibold text-slate-800">
+                  {order.warranties[0].plan_name} • Valid until {new Date(order.warranties[0].end_date || order.warranties[0].valid_until).toLocaleDateString()}
+                </div>
+                <div className="text-[10px] text-slate-600">
+                  Covered Item: {order.warranties[0].covered_item_description} | Max claims allowed: {order.warranties[0].claims_allowed}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="w-72 space-y-1.5 text-xs bg-slate-50 p-4 rounded-xl border border-slate-200">
@@ -233,10 +247,24 @@ export default function PrintOrderInvoice({ order, prescription, hideActions = f
               </>
             )}
 
+            {parseFloat(order.loyalty_discount || 0) > 0 && (
+              <div className="flex justify-between text-indigo-700 font-semibold text-xs">
+                <span>Loyalty Redeemed ({order.loyalty_points_redeemed} pts):</span>
+                <span className="font-mono">-₹{parseFloat(order.loyalty_discount).toFixed(2)}</span>
+              </div>
+            )}
+
             {order.discount > 0 && (
               <div className="flex justify-between text-emerald-600 text-xs">
                 <span>{order.discount_allocated ? 'Order discount (included):' : 'Discount Applied:'}</span>
                 <span className="font-mono">{order.discount_allocated ? '' : '-'}₹{parseFloat(order.discount).toFixed(2)}</span>
+              </div>
+            )}
+
+            {parseInt(order.loyalty_points_earned || 0, 10) > 0 && (
+              <div className="flex justify-between text-indigo-900 bg-indigo-50/70 px-2 py-1 rounded text-[11px] font-bold">
+                <span>Points Earned on Bill:</span>
+                <span className="font-mono">+{order.loyalty_points_earned} pts</span>
               </div>
             )}
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthContext.jsx';
 import logo from '../../assets/logo.png';
@@ -16,13 +16,36 @@ import {
   Settings,
   Menu,
   X,
-  FileSpreadsheet
+  FileSpreadsheet,
+  MessageSquare
 } from 'lucide-react';
+import SmartOutboxDrawer from '../common/SmartOutboxDrawer.jsx';
+import { enterpriseApi } from '../../services/enterprise.js';
 
 export default function AppLayout() {
   const { user, logout, isOwner } = useAuth();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [outboxOpen, setOutboxOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchCount = async () => {
+      try {
+        const count = await enterpriseApi.getPendingOutboxCount();
+        if (mounted) setPendingCount(count || 0);
+      } catch (err) {
+        // non-blocking
+      }
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 20000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -82,6 +105,21 @@ export default function AppLayout() {
 
             {/* Right: User & Role Badge & Logout & Mobile Hamburger Toggle */}
             <div className="flex items-center gap-2 sm:gap-3">
+              {/* Outbox Trigger Button */}
+              <button
+                onClick={() => setOutboxOpen(true)}
+                title="Smart Message Outbox"
+                className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#182C29] border border-[#2C4843] text-[#A3CCC4] hover:text-white hover:border-[#86C9BE] transition text-xs font-bold shadow-xs cursor-pointer"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-[#86C9BE]" />
+                <span className="hidden sm:inline">Outbox</span>
+                {pendingCount > 0 && (
+                  <span className="inline-flex items-center justify-center px-1.5 py-0.2 rounded-full bg-[#25D366] text-[#182C29] text-[10px] font-extrabold shadow-xs">
+                    {pendingCount}
+                  </span>
+                )}
+              </button>
+
               <div className="text-right hidden sm:block">
                 <div className="text-xs font-bold text-white leading-tight">{user?.fullName}</div>
                 <div className="flex items-center gap-1 justify-end mt-0.5">
@@ -175,6 +213,13 @@ export default function AppLayout() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Outlet />
       </main>
+
+      {/* Smart Outbox Slide-Over Drawer */}
+      <SmartOutboxDrawer
+        isOpen={outboxOpen}
+        onClose={() => setOutboxOpen(false)}
+        onCountChange={setPendingCount}
+      />
     </div>
   );
 }

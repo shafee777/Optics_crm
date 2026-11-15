@@ -9,6 +9,7 @@ import PdfSaveActions from '../../components/common/PdfSaveActions.jsx';
 import { prescriptionAvailability } from '../../lib/printPdf.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { SkeletonCard, SkeletonTable } from '../../components/common/Skeleton.jsx';
+import { Award, ShieldCheck, Sparkles } from 'lucide-react';
 
 import { 
   ArrowLeft, 
@@ -348,6 +349,20 @@ export default function OrderDetailsPage() {
                 <span>Total Amount:</span>
                 <span className="tabular-nums font-bold text-[#202D2B]">₹{order.total_amount.toLocaleString()}</span>
               </div>
+              {parseFloat(order.loyalty_discount || 0) > 0 && (
+                <div className="flex justify-between text-indigo-700 font-semibold">
+                  <span>Loyalty Discount (-{order.loyalty_points_redeemed} pts):</span>
+                  <span className="tabular-nums">-₹{parseFloat(order.loyalty_discount).toFixed(2)}</span>
+                </div>
+              )}
+              {parseInt(order.loyalty_points_earned || 0, 10) > 0 && (
+                <div className="flex justify-between text-indigo-900 bg-indigo-50/70 p-2 rounded-lg font-bold text-[11px]">
+                  <span className="flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-600" /> Loyalty Points Earned:
+                  </span>
+                  <span className="tabular-nums">+{order.loyalty_points_earned} pts</span>
+                </div>
+              )}
               <div className="flex justify-between text-emerald-700 font-semibold">
                 <span>Paid So Far:</span>
                 <span className="tabular-nums">₹{order.total_paid.toLocaleString()}</span>
@@ -383,6 +398,29 @@ export default function OrderDetailsPage() {
               )}
             </div>
           </div>
+
+          {/* Prepaid Protection Card (if attached) */}
+          {order.warranties?.length > 0 && (
+            <div className="bg-[#FEFEFC] p-6 rounded-2xl border border-emerald-200/80 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  Prepaid Care Plan
+                </h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 uppercase">
+                  {order.warranties[0].status}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <div className="font-bold text-[#202D2B] text-xs">{order.warranties[0].plan_name}</div>
+                <div className="text-[11px] text-[#66746F]">Item: {order.warranties[0].covered_item_description}</div>
+                <div className="text-[11px] text-[#66746F] flex justify-between pt-1 border-t border-emerald-100">
+                  <span>Expires: {new Date(order.warranties[0].end_date || order.warranties[0].valid_until).toLocaleDateString()}</span>
+                  <span>Claims: {order.warranties[0].claims_used}/{order.warranties[0].claims_allowed}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       {/* WhatsApp Quick Notification & PDF Sharing Buttons */}

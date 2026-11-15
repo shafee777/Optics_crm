@@ -6,6 +6,8 @@ import NewPrescriptionModal from '../prescriptions/NewPrescriptionModal.jsx';
 import PrintPrescription from '../prescriptions/PrintPrescription.jsx';
 import CustomerFormModal from './CustomerFormModal.jsx';
 import OrderStatusBadge from '../orders/OrderStatusBadge.jsx';
+import LoyaltyProfileCard from './LoyaltyProfileCard.jsx';
+import WarrantyContractsCard from './WarrantyContractsCard.jsx';
 import { MessageSquare, UserCheck, Edit2, Share2, Printer, Trash2 } from 'lucide-react';
 import { sendWhatsApp, getGreetingMessage, getAnnualCheckupMessage } from '../../lib/whatsapp.js';
 import PdfSaveActions from '../../components/common/PdfSaveActions.jsx';
@@ -444,6 +446,8 @@ export default function CustomerDetailsPage() {
 
         {/* Right 1 Column: Customer Orders List */}
         <div className="space-y-6">
+          <LoyaltyProfileCard customerId={id} isOwner={isOwner} />
+          <WarrantyContractsCard customerId={id} />
           <div className="bg-[#FEFEFC] p-6 rounded-2xl border border-[#E2E7E3] shadow-sm space-y-3">
             <div className="flex justify-between items-center">
               <h3 className="font-bold text-[#202D2B] flex items-center gap-2 text-sm">

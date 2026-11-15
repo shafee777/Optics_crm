@@ -2,6 +2,9 @@ import { calculateBilling } from '../../../../shared/billing.mjs';
 import { query, withTransaction } from '../../config/database.js';
 import { ORDER_STATUS } from './order.constants.js';
 import { AppError } from '../../shared/errors/AppError.js';
+import { loyaltyRepository } from '../loyalty/loyalty.repository.js';
+import { warrantyRepository } from '../warranties/warranty.repository.js';
+import { outboxRepository } from '../outbox/outbox.repository.js';
 
 export const orderRepository = {
   async ensureStoreCountersTable(db = query) {
@@ -58,8 +61,15 @@ export const orderRepository = {
       const orderNumber = await this.getNextOrderNumber(client, storeId);
 
       const isGstBill = data.isGstBill !== false;
+      const loyaltyPointsToRedeem = Math.max(0, parseInt(data.loyaltyPointsToRedeem || 0, 10));
+      let loyaltyDiscount = 0;
+      if (loyaltyPointsToRedeem > 0) {
+        const loyaltyConfig = await loyaltyRepository.getStoreConfig(storeId, client);
+        loyaltyDiscount = loyaltyPointsToRedeem * Number(loyaltyConfig.redemptionValuePerPoint || 1.0);
+      }
+
       let billing;
-      try { billing = calculateBilling(data.items, data.discount, isGstBill, data.tax); }
+      try { billing = calculateBilling(data.items, data.discount, isGstBill, data.tax, loyaltyDiscount); }
       catch (error) { throw new AppError(error.message, 400, 'INVALID_ORDER_TOTALS'); }
       const { computedItems, subtotal, discount, tax, totalAmount, totalTaxableValue, totalCgst, totalSgst } = billing;
 
@@ -83,9 +93,10 @@ export const orderRepository = {
           order_date, due_date, status, ready_at, delivered_at,
           subtotal, discount, tax, total_amount,
           is_gst_bill, total_taxable_value, total_cgst, total_sgst,
-          notes, created_by, discount_allocated, created_at
+          notes, created_by, discount_allocated, created_at,
+          loyalty_points_redeemed, loyalty_discount
         )
-        VALUES ($1, $2, $3, $4, COALESCE($5::date, CURRENT_DATE), $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, true, COALESCE($20::timestamptz, NOW()))
+        VALUES ($1, $2, $3, $4, COALESCE($5::date, CURRENT_DATE), $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, true, COALESCE($20::timestamptz, NOW()), $21, $22)
         RETURNING *;
       `;
       const { rows: orderRows } = await client.query(orderQuery, [
@@ -109,8 +120,22 @@ export const orderRepository = {
         data.notes || null,
         userId,
         customCreatedAt,
+        loyaltyPointsToRedeem,
+        loyaltyDiscount,
       ]);
       const createdOrder = orderRows[0];
+
+      // Redeem loyalty points if specified
+      if (loyaltyPointsToRedeem > 0) {
+        await loyaltyRepository.redeemPointsTx(client, storeId, data.customerId, createdOrder.id, loyaltyPointsToRedeem, orderNumber);
+      }
+
+      // Accrue earned loyalty points based on taxable value
+      const earnRes = await loyaltyRepository.earnPointsTx(client, storeId, data.customerId, createdOrder.id, totalTaxableValue, orderNumber);
+      if (earnRes.pointsEarned > 0) {
+        await client.query('UPDATE orders SET loyalty_points_earned = $1 WHERE id = $2;', [earnRes.pointsEarned, createdOrder.id]);
+        createdOrder.loyalty_points_earned = earnRes.pointsEarned;
+      }
 
       for (const item of [...computedItems].sort((a,b) => String(a.productId).localeCompare(String(b.productId)))) {
         let resolvedProductId = item.productId || null;
@@ -180,6 +205,46 @@ export const orderRepository = {
         );
       }
 
+      // Create warranty contracts if attached
+      if (Array.isArray(data.warranties) && data.warranties.length > 0) {
+        for (const w of data.warranties) {
+          try {
+            await warrantyRepository.createContractTx(client, storeId, {
+              customerId: data.customerId,
+              planId: w.planId,
+              sourceOrderId: createdOrder.id,
+              coveredProductId: w.coveredProductId || null,
+              coveredItemDescription: w.coveredItemDescription || 'Covered Optical Item',
+              notes: w.notes || `Issued with Order #${orderNumber}`,
+            });
+          } catch (wErr) {
+            // Log warranty error if plan invalid
+          }
+        }
+      }
+
+      // Auto-enqueue WhatsApp confirmation in Smart Outbox queue
+      try {
+        const custRes = await client.query('SELECT full_name, phone FROM customers WHERE id = $1;', [data.customerId]);
+        const customer = custRes.rows[0];
+        if (customer?.phone) {
+          let msg = `Dear ${customer.full_name}, your order #${orderNumber} for ₹${totalAmount.toFixed(2)} has been confirmed. Due date: ${data.dueDate}.`;
+          if (earnRes?.pointsEarned > 0) {
+            msg += ` You earned ${earnRes.pointsEarned} loyalty points! Total balance: ${earnRes.balance} pts.`;
+          }
+          await outboxRepository.enqueueMessage(storeId, {
+            customerId: data.customerId,
+            orderId: createdOrder.id,
+            phone: customer.phone,
+            customerName: customer.full_name,
+            eventType: 'ORDER_CREATED',
+            messageBody: msg,
+          }, client);
+        }
+      } catch (outboxErr) {
+        // Non-blocking outbox failure
+      }
+
       return createdOrder;
     });
   },
@@ -226,6 +291,16 @@ export const orderRepository = {
     `;
     const paymentsRes = await db.query(paymentsSql, [orderId]);
     order.payments = paymentsRes.rows;
+
+    const warrantiesSql = `
+      SELECT cw.*, wp.name AS plan_name, wp.duration_days, wp.max_claims
+      FROM customer_warranties cw
+      JOIN warranty_plans wp ON cw.plan_id = wp.id
+      WHERE cw.source_order_id = $1
+      ORDER BY cw.created_at ASC;
+    `;
+    const warrantiesRes = await db.query(warrantiesSql, [orderId]);
+    order.warranties = warrantiesRes.rows;
 
     order.total_amount = parseFloat(order.total_amount);
     order.total_paid = parseFloat(order.total_paid);

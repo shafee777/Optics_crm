@@ -4,6 +4,8 @@ import { customerRepository } from '../customers/customer.repository.js';
 import { prescriptionRepository } from '../prescriptions/prescription.repository.js';
 import { ALLOWED_TRANSITIONS, ORDER_STATUS } from './order.constants.js';
 import { AppError } from '../../shared/errors/AppError.js';
+import { loyaltyRepository } from '../loyalty/loyalty.repository.js';
+import { outboxRepository } from '../outbox/outbox.repository.js';
 
 export const orderService = {
   async createOrder(storeId, userId, data) {
@@ -99,6 +101,39 @@ export const orderService = {
             ]
           );
         }
+
+        // Reversal and clawback of loyalty ledger transactions
+        try {
+          await loyaltyRepository.clawbackPointsTx(client, storeId, order.customer_id, order.id, order.order_number);
+        } catch (loyaltyClawErr) {
+          // Log if error
+        }
+      }
+
+      // Enqueue Smart Outbox notifications on READY_FOR_PICKUP and DELIVERED
+      if (nextStatus === ORDER_STATUS.READY_FOR_PICKUP && order.customer_phone) {
+        try {
+          const balText = order.balance_due > 0 ? ` Outstanding balance: ₹${order.balance_due}.` : ' Paid in full.';
+          await outboxRepository.enqueueMessage(storeId, {
+            customerId: order.customer_id,
+            orderId: order.id,
+            phone: order.customer_phone,
+            customerName: order.customer_name,
+            eventType: 'READY_FOR_PICKUP',
+            messageBody: `Dear ${order.customer_name}, your spectacles (Order #${order.order_number}) are ready for pickup!${balText} Please visit us to collect.`,
+          }, client);
+        } catch (err) {}
+      } else if (nextStatus === ORDER_STATUS.DELIVERED && order.customer_phone) {
+        try {
+          await outboxRepository.enqueueMessage(storeId, {
+            customerId: order.customer_id,
+            orderId: order.id,
+            phone: order.customer_phone,
+            customerName: order.customer_name,
+            eventType: 'ORDER_DELIVERED',
+            messageBody: `Dear ${order.customer_name}, thank you for choosing Optics CRM! Your order #${order.order_number} has been delivered. Enjoy your clear vision!`,
+          }, client);
+        } catch (err) {}
       }
 
       await orderRepository.updateStatusTx(client, storeId, orderId, nextStatus);

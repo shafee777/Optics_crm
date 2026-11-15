@@ -2,8 +2,9 @@ import { calculateBilling } from '../../../../shared/billing.mjs';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../services/api.js';
+import { enterpriseApi } from '../../services/enterprise.js';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { ArrowLeft, Plus, Trash2, ShoppingBag, AlertCircle, Zap, Check } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, ShoppingBag, AlertCircle, Zap, Check, Award, ShieldCheck, Sparkles } from 'lucide-react';
 
 export default function CreateOrderPage() {
   const { user } = useAuth();
@@ -54,6 +55,63 @@ export default function CreateOrderPage() {
   });
   const [orderDiscount, setOrderDiscount] = useState(0);
   const [notes, setNotes] = useState('');
+
+  // Loyalty & Rewards Engine
+  const [customerLoyalty, setCustomerLoyalty] = useState(null);
+  const [loyaltyPointsToRedeem, setLoyaltyPointsToRedeem] = useState(0);
+
+  // Warranty Protection Plans
+  const [warrantyPlans, setWarrantyPlans] = useState([]);
+  const [selectedWarrantyPlanId, setSelectedWarrantyPlanId] = useState('');
+
+  const handleSelectWarrantyPlan = (planId) => {
+    setSelectedWarrantyPlanId(planId);
+    if (!planId) {
+      setItems((prev) => prev.filter((i) => !i.isWarrantyPlan));
+      return;
+    }
+    const plan = warrantyPlans.find((p) => p.id === planId);
+    if (!plan) return;
+
+    setItems((prev) => {
+      const existingIdx = prev.findIndex((i) => i.isWarrantyPlan);
+      const warrantyItem = {
+        productId: null,
+        itemType: 'SERVICE',
+        description: `${plan.name} (${Math.round((plan.durationDays || plan.duration_days || 365) / 30)}M Care Plan)`,
+        quantity: 1,
+        unitPrice: plan.price,
+        discount: 0,
+        hsnCode: '9987',
+        gstRate: 18,
+        isWarrantyPlan: true,
+      };
+      if (existingIdx >= 0) {
+        const copy = [...prev];
+        copy[existingIdx] = warrantyItem;
+        return copy;
+      } else {
+        return [...prev, warrantyItem];
+      }
+    });
+  };
+
+  useEffect(() => {
+    if (selectedCustomerId) {
+      enterpriseApi.getLoyaltyProfile(selectedCustomerId)
+        .then(setCustomerLoyalty)
+        .catch(() => setCustomerLoyalty(null));
+    } else {
+      setCustomerLoyalty(null);
+      setLoyaltyPointsToRedeem(0);
+    }
+  }, [selectedCustomerId]);
+
+  useEffect(() => {
+    enterpriseApi.getWarrantyPlans(false)
+      .then(setWarrantyPlans)
+      .catch(() => setWarrantyPlans([]));
+  }, []);
 
   // Advance Payment
   const [advanceAmount, setAdvanceAmount] = useState('');
@@ -138,11 +196,21 @@ export default function CreateOrderPage() {
     }
   };
 
+  const redemptionValue = Number(customerLoyalty?.config?.redemptionValuePerPoint || 1.0);
+  const maxRedeemablePoints = customerLoyalty?.canRedeem
+    ? Math.min(Number(customerLoyalty?.balance || 0), Math.max(0, Math.floor(((items.reduce((acc, i) => acc + (parseFloat(i.unitPrice) || 0) * (parseInt(i.quantity, 10) || 1), 0)) - (Number(orderDiscount) || 0)) / redemptionValue)))
+    : 0;
+  const loyaltyDiscount = Math.max(0, Math.min(Number(loyaltyPointsToRedeem || 0), maxRedeemablePoints) * redemptionValue);
+
   let billing, billingError = '';
-  try { billing = calculateBilling(items, orderDiscount, isGstBill); }
+  try { billing = calculateBilling(items, orderDiscount, isGstBill, 0, loyaltyDiscount); }
   catch (error) { billingError = error.message; }
   const { subtotal = 0, totalTaxableValue: totalTaxable = 0, totalCgst = 0, totalSgst = 0, totalAmount: grandTotal = 0 } = billing || {};
   const totalTax = totalCgst + totalSgst;
+
+  const earnRate = Number(customerLoyalty?.config?.earnRatePerRupee || 0.05);
+  const tierMultiplier = Number(customerLoyalty?.tierMultiplier || customerLoyalty?.multiplier || 1.0);
+  const projectedPointsEarned = Math.floor(Math.max(0, totalTaxable) * earnRate * tierMultiplier);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -162,6 +230,8 @@ export default function CreateOrderPage() {
     setLoading(true);
 
     try {
+      const coveredItem = items.find((i) => !i.isWarrantyPlan && (i.itemType === 'FRAME' || i.itemType === 'LENS' || i.itemType === 'SUNGLASSES')) || items.find((i) => !i.isWarrantyPlan) || items[0];
+
       const payload = {
         customerId: selectedCustomerId,
         prescriptionId: selectedPrescriptionId || null,
@@ -181,6 +251,15 @@ export default function CreateOrderPage() {
           gstRate: (storeGstEnabled && isGstBill) ? (parseFloat(i.gstRate) || 0) : 0,
         })),
         discount: parseFloat(orderDiscount) || 0,
+        loyaltyPointsToRedeem: Math.min(parseInt(loyaltyPointsToRedeem, 10) || 0, maxRedeemablePoints),
+        warranties: selectedWarrantyPlanId ? [
+          {
+            planId: selectedWarrantyPlanId,
+            coveredProductId: coveredItem?.productId || null,
+            coveredItemDescription: coveredItem?.description || 'Eyewear Frame & Lenses',
+            notes: 'Attached at POS checkout',
+          }
+        ] : [],
         notes,
         advancePayment:
           advanceAmount && parseFloat(advanceAmount) > 0
@@ -478,29 +557,190 @@ export default function CreateOrderPage() {
             })}
           </div>
 
-          {/* Pricing Summary */}
-          <div className="pt-4 border-t border-[#E2E7E3] flex justify-end">
-            <div className="w-80 space-y-2 text-xs bg-[#F5F7F3] p-4 rounded-xl border border-[#E2E7E3]">
+          {/* Enterprise Add-ons: Warranty Protection & Loyalty Engine */}
+          <div className="pt-4 border-t border-[#E2E7E3] grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Left 7 Cols: Loyalty Redemption & Warranty Selection */}
+            <div className="lg:col-span-7 space-y-4">
+              {/* Warranty Protection Plan Card */}
+              {warrantyPlans.length > 0 && (
+                <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-200/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                        <ShieldCheck className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-[#202D2B]">Optical Protection & Warranty Plan</h4>
+                        <p className="text-[11px] text-[#66746F]">Prepaid annual care against accidental breakage & lens scratches</p>
+                      </div>
+                    </div>
+                    {selectedWarrantyPlanId && (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                        Active Contract
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectWarrantyPlan('')}
+                      className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
+                        !selectedWarrantyPlanId
+                          ? 'border-[#28766B] bg-white shadow-2xs'
+                          : 'border-[#E2E7E3] bg-[#FEFEFC] hover:bg-[#F5F7F3]'
+                      }`}
+                    >
+                      <span className="text-xs font-bold text-[#202D2B]">No Warranty</span>
+                      <span className="text-[10px] text-[#66746F]">Standard manufacturer terms only</span>
+                    </button>
+
+                    {warrantyPlans.map((plan) => (
+                      <button
+                        key={plan.id}
+                        type="button"
+                        onClick={() => handleSelectWarrantyPlan(plan.id)}
+                        className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
+                          selectedWarrantyPlanId === plan.id
+                            ? 'border-[#28766B] bg-white ring-2 ring-[#28766B]/20 shadow-2xs'
+                            : 'border-[#E2E7E3] bg-[#FEFEFC] hover:bg-[#F5F7F3]'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start gap-1">
+                          <span className="text-xs font-bold text-[#202D2B]">{plan.name}</span>
+                          <span className="text-xs font-bold text-emerald-700 tabular-nums shrink-0">
+                            +₹{parseFloat(plan.price).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-[#66746F] mt-1 flex items-center justify-between">
+                          <span>{Math.round((plan.durationDays || plan.duration_days || 365) / 30)} mo coverage</span>
+                          <span>Max {plan.maxClaims || plan.max_claims || 1} claims</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Loyalty Points Redemption Card */}
+              {selectedCustomerId && (
+                <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-200/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+                        <Award className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-[#202D2B]">Loyalty Points & Rewards</h4>
+                        <p className="text-[11px] text-[#66746F]">Redeem customer points for instant checkout discount</p>
+                      </div>
+                    </div>
+                    {customerLoyalty && (
+                      <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[10px] font-bold uppercase">
+                        {customerLoyalty.tier} Tier ({(customerLoyalty.tierMultiplier || customerLoyalty.multiplier || 1.0)}x)
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="p-3 bg-white rounded-xl border border-indigo-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="text-[10px] font-bold text-[#66746F] uppercase">Available Wallet Balance</div>
+                      <div className="text-sm font-extrabold text-[#202D2B] tabular-nums flex items-center gap-1.5 mt-0.5">
+                        <span>{customerLoyalty?.balance || 0} Points</span>
+                        <span className="text-[11px] font-medium text-[#66746F]">
+                          (Worth ₹{((customerLoyalty?.balance || 0) * redemptionValue).toFixed(2)})
+                        </span>
+                      </div>
+                    </div>
+
+                    {maxRedeemablePoints > 0 ? (
+                      <div className="flex items-center gap-2">
+                        <div className="relative">
+                          <input
+                            type="number"
+                            min="0"
+                            max={maxRedeemablePoints}
+                            value={loyaltyPointsToRedeem || ''}
+                            placeholder="0"
+                            onChange={(e) => {
+                              const val = Math.max(0, Math.min(parseInt(e.target.value, 10) || 0, maxRedeemablePoints));
+                              setLoyaltyPointsToRedeem(val);
+                            }}
+                            className="w-24 px-2.5 py-1.5 text-xs font-bold tabular-nums text-right rounded-lg border border-indigo-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                          />
+                          <span className="absolute right-7 top-2 text-[10px] text-[#66746F] pointer-events-none"></span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setLoyaltyPointsToRedeem(maxRedeemablePoints)}
+                          className="px-2.5 py-1.5 text-[11px] font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-2xs transition shrink-0"
+                        >
+                          Use Max ({maxRedeemablePoints})
+                        </button>
+                        {loyaltyPointsToRedeem > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setLoyaltyPointsToRedeem(0)}
+                            className="px-2 py-1.5 text-[11px] font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-[11px] text-[#66746F] italic">
+                        {customerLoyalty?.balance === 0 ? 'No points to redeem' : 'Add items to redeem points'}
+                      </div>
+                    )}
+                  </div>
+
+                  {projectedPointsEarned > 0 && (
+                    <div className="flex items-center gap-1.5 text-[11px] text-indigo-900 font-semibold pt-1">
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Customer will earn ~{projectedPointsEarned} points on this bill!</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Right 5 Cols: Pricing Breakdown */}
+            <div className="lg:col-span-5 space-y-2 text-xs bg-[#F5F7F3] p-4 rounded-xl border border-[#E2E7E3]">
               <div className="flex justify-between text-[#66746F]">
                 <span>Subtotal (Incl. Taxes):</span>
-                <span className="tabular-nums font-bold text-[#202D2B]">₹{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span className="tabular-nums font-bold text-[#202D2B]">
+                  ₹{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
               </div>
 
               {isGstBill && (
                 <>
                   <div className="flex justify-between text-[#66746F]">
                     <span>Taxable Amount (Net):</span>
-                    <span className="tabular-nums">₹{totalTaxable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="tabular-nums">
+                      ₹{totalTaxable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
                   </div>
                   <div className="flex justify-between text-[#66746F]">
                     <span>CGST Total:</span>
-                    <span className="tabular-nums">₹{totalCgst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="tabular-nums">
+                      ₹{totalCgst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
                   </div>
                   <div className="flex justify-between text-[#66746F]">
                     <span>SGST Total:</span>
-                    <span className="tabular-nums">₹{totalSgst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="tabular-nums">
+                      ₹{totalSgst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
                   </div>
                 </>
+              )}
+
+              {loyaltyDiscount > 0 && (
+                <div className="flex justify-between items-center text-indigo-700 font-semibold pt-1 border-t border-[#E2E7E3]">
+                  <span>Loyalty Points (-{loyaltyPointsToRedeem} pts):</span>
+                  <span className="tabular-nums font-bold">-₹{loyaltyDiscount.toFixed(2)}</span>
+                </div>
               )}
 
               <div className="flex justify-between items-center text-[#66746F] pt-1 border-t border-[#E2E7E3]">
@@ -515,7 +755,9 @@ export default function CreateOrderPage() {
 
               <div className="flex justify-between font-bold text-sm text-[#202D2B] border-t border-[#E2E7E3] pt-2">
                 <span>Grand Total Payable:</span>
-                <span className="tabular-nums text-[#28766B]">₹{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span className="tabular-nums text-[#28766B]">
+                  ₹{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
               </div>
             </div>
           </div>

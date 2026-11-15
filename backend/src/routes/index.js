@@ -15,6 +15,9 @@ import messageRoutes from '../modules/messages/message.routes.js';
 import exportRoutes from '../modules/exports/export.routes.js';
 import supplierRoutes from '../modules/suppliers/supplier.routes.js';
 import purchaseRoutes from '../modules/purchases/purchase.routes.js';
+import loyaltyRoutes from '../modules/loyalty/loyalty.routes.js';
+import warrantyRoutes from '../modules/warranties/warranty.routes.js';
+import outboxRoutes from '../modules/outbox/outbox.routes.js';
 
 const router = Router();
 
@@ -49,5 +52,8 @@ router.use('/api/v1/messages', messageRoutes);
 router.use('/api/v1/exports', exportRoutes);
 router.use('/api/v1/suppliers', supplierRoutes);
 router.use('/api/v1/purchases', purchaseRoutes);
+router.use('/api/v1/loyalty', loyaltyRoutes);
+router.use('/api/v1/warranties', warrantyRoutes);
+router.use('/api/v1/outbox', outboxRoutes);
 
 export default router;

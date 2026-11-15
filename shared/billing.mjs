@@ -1,5 +1,5 @@
-// Prices include GST. Allocate the order discount in paise before extracting tax.
-export function calculateBilling(items, orderDiscount = 0, isGstBill = true, extraTax = 0) {
+// Prices include GST. Allocate the order and loyalty discounts in paise before extracting tax.
+export function calculateBilling(items, orderDiscount = 0, isGstBill = true, extraTax = 0, loyaltyDiscount = 0) {
   const cents = value => Math.round(Number(value || 0) * 100);
   const bases = items.map(item => {
     const gross = cents(Number(item.quantity) * Number(item.unitPrice));
@@ -8,10 +8,15 @@ export function calculateBilling(items, orderDiscount = 0, isGstBill = true, ext
     return gross - discount;
   });
   const subtotal = bases.reduce((a, b) => a + b, 0);
-  const discount = cents(orderDiscount), tax = cents(extraTax);
-  if (discount < 0 || discount > subtotal) throw new RangeError('Order discount exceeds subtotal');
+  const orderDiscCents = cents(orderDiscount);
+  const loyaltyDiscCents = cents(loyaltyDiscount);
+  const totalDiscountCents = orderDiscCents + loyaltyDiscCents;
+  const tax = cents(extraTax);
+
+  if (orderDiscCents < 0 || loyaltyDiscCents < 0 || totalDiscountCents > subtotal) throw new RangeError('Order discount exceeds subtotal');
   if (tax < 0 || (isGstBill && tax !== 0)) throw new RangeError('GST-inclusive bills cannot add extra tax');
-  let remainingDiscount = discount, remainingBase = subtotal;
+
+  let remainingDiscount = totalDiscountCents, remainingBase = subtotal;
   let taxable = 0, cgst = 0, sgst = 0;
   const computedItems = items.map((item, index) => {
     const share = remainingBase ? Math.round(remainingDiscount * bases[index] / remainingBase) : 0;
@@ -26,7 +31,11 @@ export function calculateBilling(items, orderDiscount = 0, isGstBill = true, ext
       hsnCode: item.hsnCode || null, gstRate, taxableValue: taxableCents / 100,
       cgstAmount: cgstCents / 100, sgstAmount: sgstCents / 100 };
   });
-  return { computedItems, subtotal: subtotal / 100, discount: discount / 100, tax: tax / 100,
-    totalAmount: (subtotal - discount + tax) / 100,
+  return { computedItems, subtotal: subtotal / 100, 
+    discount: totalDiscountCents / 100, 
+    orderDiscount: orderDiscCents / 100,
+    loyaltyDiscount: loyaltyDiscCents / 100,
+    tax: tax / 100,
+    totalAmount: (subtotal - totalDiscountCents + tax) / 100,
     totalTaxableValue: taxable / 100, totalCgst: cgst / 100, totalSgst: sgst / 100 };
 }

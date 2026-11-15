@@ -46,6 +46,19 @@ export const createOrderSchema = z.object({
       )
       .min(1, 'At least one item is required'),
     discount: z.coerce.number().min(0).default(0),
+    loyaltyPointsToRedeem: z.coerce.number().int().min(0).default(0).optional(),
+    warranties: z
+      .array(
+        z.object({
+          planId: z.string().uuid('Invalid warranty plan ID'),
+          sourceOrderItemIndex: z.number().int().min(0).optional().nullable(),
+          coveredProductId: z.string().uuid().optional().nullable(),
+          coveredItemDescription: z.string().trim().min(1, 'Covered item description required'),
+          notes: z.string().trim().optional().nullable(),
+        })
+      )
+      .optional()
+      .nullable(),
     tax: z.coerce.number().min(0).default(0),
     notes: z.string().trim().optional().nullable(),
     advancePayment: z

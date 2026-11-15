@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Optics CRM — Complete Interview Preparation Guide & System Deep Dive</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 14mm 14mm 14mm 14mm;
+      @bottom-right {
+        content: counter(page);
+      }
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+      color: #1e293b;
+      background: #ffffff;
+      line-height: 1.55;
+      font-size: 11.5px;
+    }
+    .page-break {
+      page-break-after: always;
+      break-after: page;
+    }
+    .avoid-break {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    
+    /* Cover / Title Header */
+    .doc-header {
+      border-bottom: 3px solid #0f766e;
+      padding-bottom: 16px;
+      margin-bottom: 20px;
+    }
+    .doc-badge {
+      display: inline-block;
+      background: #0f766e;
+      color: #ffffff;
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+    .doc-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+      line-height: 1.2;
+      margin-bottom: 6px;
+    }
+    .doc-subtitle {
+      font-size: 13px;
+      color: #475569;
+      font-weight: 500;
+      margin-bottom: 12px;
+    }
+    .meta-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      font-size: 10px;
+      color: #64748b;
+      background: #f8fafc;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+    }
+    .meta-item strong {
+      color: #0f172a;
+    }
+
+    /* Headings */
+    h2 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0f766e;
+      border-bottom: 1.5px solid #ccfbf1;
+      padding-bottom: 4px;
+      margin-top: 18px;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    h3 {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-top: 12px;
+      margin-bottom: 6px;
+    }
+    h4 {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #334155;
+      margin-top: 8px;
+      margin-bottom: 4px;
+    }
+
+    p {
+      margin-bottom: 8px;
+      text-align: justify;
+    }
+    ul, ol {
+      margin-left: 18px;
+      margin-bottom: 10px;
+    }
+    li {
+      margin-bottom: 4px;
+    }
+
+    /* Cards & Callouts */
+    .callout {
+      background: #f0fdfa;
+      border-left: 3.5px solid #0f766e;
+      padding: 10px 12px;
+      border-radius: 0 6px 6px 0;
+      margin: 10px 0;
+      font-size: 11px;
+    }
+    .callout-title {
+      font-weight: 700;
+      color: #0f766e;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .callout-warning {
+      background: #fffbeb;
+      border-left-color: #d97706;
+    }
+    .callout-warning .callout-title {
+      color: #b45309;
+    }
+    .callout-pitch {
+      background: #f8fafc;
+      border-left: 3.5px solid #3b82f6;
+      padding: 10px 14px;
+      margin: 10px 0;
+      font-style: italic;
+      color: #1e293b;
+    }
+    .callout-pitch strong {
+      font-style: normal;
+      color: #1d4ed8;
+    }
+
+    /* Metrics Grid */
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin: 12px 0;
+    }
+    .metric-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 8px 10px;
+      text-align: center;
+    }
+    .metric-num {
+      font-size: 18px;
+      font-weight: 800;
+      color: #0f766e;
+      line-height: 1.1;
+    }
+    .metric-label {
+      font-size: 9.5px;
+      font-weight: 600;
+      color: #64748b;
+      margin-top: 3px;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0 14px 0;
+      font-size: 10.5px;
+    }
+    th, td {
+      border: 1px solid #e2e8f0;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #f1f5f9;
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+
+    /* Code Blocks */
+    pre, code {
+      font-family: 'Consolas', 'Courier New', monospace;
+    }
+    code {
+      background: #f1f5f9;
+      color: #0f766e;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 10px;
+    }
+    pre {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 9.5px;
+      line-height: 1.45;
+      overflow-x: hidden;
+      margin: 8px 0;
+    }
+
+    /* Q&A Accordion Style Blocks */
+    .qa-box {
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      background: #ffffff;
+      break-inside: avoid;
+    }
+    .qa-header {
+      background: #f8fafc;
+      padding: 8px 10px;
+      border-bottom: 1px solid #e2e8f0;
+      font-weight: 700;
+      color: #0f172a;
+      font-size: 11px;
+    }
+    .qa-body {
+      padding: 8px 10px;
+      font-size: 11px;
+      color: #334155;
+    }
+    .tag {
+      display: inline-block;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 8.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-right: 5px;
+    }
+    .tag-arch { background: #e0e7ff; color: #3730a3; }
+    .tag-db { background: #dcfce7; color: #166534; }
+    .tag-concur { background: #fef3c7; color: #92400e; }
+    .tag-biz { background: #fce7f3; color: #9d174d; }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== PAGE 1: TITLE & ORIGIN STORY ==================== -->
+  <div class="doc-header">
+    <span class="doc-badge">Production Architecture & Interview Master Document</span>
+    <h1 class="doc-title">Optics CRM — Offline-First Optical Retail ERP & POS</h1>
+    <div class="doc-subtitle">Complete Interview Preparation Guide: Origin Story, System Architecture, Technical Challenges & Model Q&A</div>
+    <div class="meta-bar">
+      <div class="meta-item"><strong>Platform:</strong> Windows x64 (Electron 44)</div>
+      <div class="meta-item"><strong>Database:</strong> Bundled PostgreSQL 16 (18 Tables)</div>
+      <div class="meta-item"><strong>Frontend:</strong> React 19 + Vite + Tailwind</div>
+      <div class="meta-item"><strong>Backend:</strong> Node.js / Express (Modular Monolith)</div>
+      <div class="meta-item"><strong>Status:</strong> Live Production (100+ Walk-ins/Day)</div>
+    </div>
+  </div>
+
+  <div class="grid-4">
+    <div class="metric-card">
+      <div class="metric-num">&lt;90s</div>
+      <div class="metric-label">Counter Checkout Speed (was 5 mins)</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-num">100%</div>
+      <div class="metric-label">Offline Continuity (Zero Cloud Dependency)</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-num">&#8377;0</div>
+      <div class="metric-label">Monthly Cloud/API Subscriptions</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-num">68 / 0</div>
+      <div class="metric-label">Automated Tests Passed / Zero Failed</div>
+    </div>
+  </div>
+
+  <h2>1. Executive Summary & How the Idea Came (The Origin Story)</h2>
+
+  <h3>The Real-World Context & Motivation</h3>
+  <p>
+    Most consumer software companies build SaaS applications assuming an always-on, high-speed broadband connection. However, when observing the day-to-day operations of brick-and-mortar <strong>optical retail shops and optometry practices</strong>, a severe operational mismatch was discovered:
+  </p>
+  <ul>
+    <li><strong>The Optical Hybrid Challenge:</strong> Optical stores are not standard retail counters where items are simply scanned and bagged. An optical order is a <em>tri-part hybrid</em> of <strong>clinical optometry</strong> (recording refraction parameters: SPH, CYL, Axis, Addition, Pupillary Distance for both eyes), <strong>custom manufacturing/lab workflows</strong> (ordering lenses from surfacing labs, lens edging, frame assembly), and <strong>retail POS billing</strong> with split advances and Indian GST compliance.</li>
+    <li><strong>The SaaS Downtime Trap:</strong> Optical shops in dense Indian retail commercial complexes frequently suffer from intermittent broadband drops, power cuts, and local ISP outages. When cloud-hosted POS software loses connectivity, the counter completely freezes. Staff cannot look up patient prescription history, cannot deduct inventory, cannot generate bills, and lines form out the door.</li>
+    <li><strong>Unfair Recurring Cost Burdens:</strong> Small-to-midsize optical retail owners are burdened with recurring cloud subscriptions (&#8377;2,000 to &#8377;6,000/month), expensive per-conversation Meta WhatsApp Business API charges (&#8377;0.80 to &#8377;1.20 per template), and cloud database hosting overhead—for a business operating out of a single physical store.</li>
+    <li><strong>Manual Workarounds Were Failing:</strong> Due to frustration with cloud lag, shops were keeping paper registers for eye prescriptions, loose Excel sheets for frame inventory, and handwritten receipt slips. This led to lost customer records, uncollected balance payments at frame delivery, and stock shrinkage.</li>
+  </ul>
+
+  <div class="callout">
+    <div class="callout-title">The Core Thesis Behind Optics CRM</div>
+    "Why should a local optician pay monthly cloud rent and rely on external internet connectivity just to prescribe a pair of glasses and print a receipt? Optical retail software should be <strong>100% offline-first</strong>, live locally on the store computer, execute database queries in under 5ms, incur zero monthly subscription fees, and never freeze during an internet outage."
+  </div>
+
+  <h3>The Problem Statement</h3>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 25%;">Pain Point</th>
+        <th style="width: 35%;">Existing Cloud/Generic POS Solutions</th>
+        <th style="width: 40%;">How Optics CRM Solves It</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Connectivity Fragility</strong></td>
+        <td>Cloud SaaS requires constant internet. If Wi-Fi drops, billing and clinical lookups freeze.</td>
+        <td><strong>Embedded Local PostgreSQL:</strong> Full relational engine runs inside an Electron shell on <code>127.0.0.1</code>. Operates seamlessly with no internet.</td>
+      </tr>
+      <tr>
+        <td><strong>Clinical Eye Matrix</strong></td>
+        <td>Generic retail POS lacks optometry fields; staff write refraction data on paper.</td>
+        <td><strong>Dedicated Refraction Matrix:</strong> Full clinical tracking for Right Eye (OD) & Left Eye (OS): SPH, CYL, Axis (0-180), ADD, PD, and vision history.</td>
+      </tr>
+      <tr>
+        <td><strong>Lab & Order Lifecycle</strong></td>
+        <td>Instant retail checkout assumption doesn't fit glasses taking 2–4 days to craft.</td>
+        <td><strong>5-Stage Order State Machine:</strong> Tracks <code>PENDING</code> &rarr; <code>PROCESSING (Lab)</code> &rarr; <code>READY_FOR_PICKUP</code> &rarr; <code>DELIVERED</code>.</td>
+      </tr>
+      <tr>
+        <td><strong>Recurring Messaging Fees</strong></td>
+        <td>Meta WhatsApp Cloud API charges per template message for bills and pickup alerts.</td>
+        <td><strong>Direct <code>wa.me</code> Deep Linking:</strong> Pre-fills clean, formatted order slips and WhatsApp messages with one click for &#8377;0 API cost.</td>
+      </tr>
+      <tr>
+        <td><strong>Tax Audit Discrepancies</strong></td>
+        <td>Floating-point roundoff errors when splitting GST-inclusive prices and discounts.</td>
+        <td><strong>Paise-Level Allocation Engine:</strong> Allocates discounts across line items in integer paise <em>before</em> calculating CGST/SGST, eliminating round-off errors.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ==================== PAGE 2: COMPLETE FEATURE MATRIX ==================== -->
+  <div class="page-break"></div>
+  <h2>2. Complete Feature Matrix & Functional Deep Dive</h2>
+
+  <h3>1. Clinical Optometry & Refraction Management</h3>
+  <ul>
+    <li><strong>Complete Dual-Eye Matrix:</strong> Full clinical logging for Right Eye (<strong>OD</strong> - <em>Oculus Dexter</em>) and Left Eye (<strong>OS</strong> - <em>Oculus Sinister</em>):
+      <ul>
+        <li><strong>SPH (Spherical):</strong> Corrects nearsightedness (-) or farsightedness (+) in 0.25 diopter steps.</li>
+        <li><strong>CYL (Cylindrical) & AXIS (0&deg;&ndash;180&deg;):</strong> Astigmatism correction with strict 0 to 180 degree constraint.</li>
+        <li><strong>ADD (Addition):</strong> Reading/bifocal power for presbyopia.</li>
+        <li><strong>PD (Pupillary Distance):</strong> Distance between pupil centers (e.g., 62.5 mm) for optical center alignment.</li>
+      </ul>
+    </li>
+    <li><strong>Longitudinal Power History:</strong> Staff can instantly view a timeline of previous eye tests per patient to track visual acuity changes over years.</li>
+    <li><strong>One-Click Prescription Generation:</strong> Instant branded prescription PDF generation (<100ms) with clinic header, doctor details, and WhatsApp dispatch.</li>
+  </ul>
+
+  <h3>2. Optical POS, Billing & GST Compliance</h3>
+  <ul>
+    <li><strong>GST-Inclusive Retail Billing:</strong> Indian retail optics quotes GST-inclusive prices to consumers. The system reverse-calculates taxable base value and splits CGST (Central GST) and SGST (State GST) dynamically based on item HSN codes (e.g., Spectacle Frames vs Prescription Lenses).</li>
+    <li><strong>Sub-Paisa Discount Allocation:</strong> Order-level discounts are distributed proportionally across individual items in integer paise <em>before</em> tax extraction, ensuring the sum of individual taxable items and taxes exactly matches the receipt total down to the paisa.</li>
+    <li><strong>Mixed Physical & Lab Services:</strong> Allows mixing physical inventory (frames, sunglass SKUs) with uncataloged custom lab edging fees or optometrist consultation fees on the same bill.</li>
+    <li><strong>Client-Side PDF Invoices:</strong> Generated directly in browser memory using <code>jsPDF</code> and <code>jspdf-autotable</code>. No heavy headless Chrome/Puppeteer processes on the server.</li>
+  </ul>
+
+  <h3>3. Order Lifecycle & Production State Machine</h3>
+  <ul>
+    <li><strong>Strict Lifecycle Transitions:</strong> Orders progress through defined stages:
+      <code>PENDING</code> &rarr; <code>PROCESSING</code> (Lab fabrication) &rarr; <code>READY_FOR_PICKUP</code> &rarr; <code>DELIVERED</code> (or <code>CANCELLED</code>).</li>
+    <li><strong>Anti-Fraud Delivery Guard:</strong> The system enforces a database-level check preventing orders from being marked <code>DELIVERED</code> if there is an outstanding <code>balance_due &gt; 0</code>. Cashiers cannot hand over finished spectacles without collecting the final payment.</li>
+    <li><strong>Atomic Cancellation & Stock Restoration:</strong> If an order is cancelled, stock is restored deterministically in sorted product ID order (avoiding deadlocks), and an automatic refund expense is logged.</li>
+  </ul>
+
+  <h3>4. Customer Relationship Management (CRM)</h3>
+  <ul>
+    <li><strong>Store-Scoped Customer Code:</strong> Auto-generates sequential, human-friendly customer codes (<code>CUST-1001</code>, <code>CUST-1002</code>) partitioned per store.</li>
+    <li><strong>Flexible Phone Number Requirements:</strong> Supports elderly or minor patients without personal mobile phones without breaking relational integrity.</li>
+    <li><strong>Customer Segmentation & Tags:</strong> Allows categorizing patrons (e.g., "VIP", "Progressive Lens User", "High Myopia", "Corporate Client").</li>
+    <li><strong>Annual Eye Examination Recall Alerts:</strong> Automatically identifies patients whose last eye test occurred 11+ months ago, generating recall lists for proactive footfall retention.</li>
+  </ul>
+
+  <h3>5. Zero-Cost Customer Communication (<code>wa.me</code> Protocol)</h3>
+  <ul>
+    <li><strong>No Meta API Fees:</strong> Eliminates the costly WhatsApp Cloud API infrastructure. Generates deep-link URLs (<code>https://wa.me/&lt;phone&gt;?text=&lt;encoded_message&gt;</code>) that trigger WhatsApp Web or WhatsApp Desktop directly.</li>
+    <li><strong>Pre-Formatted Templates:</strong> One-click generation for Order Receipts, "Glasses Ready for Pickup" notices, Balance Payment Reminders, and Annual Recall messages.</li>
+    <li><strong>Offline Guard:</strong> Built-in pre-flight check validates network reachability before opening browser links so staff never see dead browser errors.</li>
+  </ul>
+
+  <h3>6. Inventory Control & 200-Event Movement Ledger</h3>
+  <ul>
+    <li><strong>Categorized Inventory Catalog:</strong> Distinct attributes for Spectacle Frames, Prescription Lenses, Contact Lenses, Sunglasses, and Accessories.</li>
+    <li><strong>Non-Negative Stock Constraints:</strong> Enforces PostgreSQL database constraints preventing negative stock counts.</li>
+    <li><strong>Immutable Movement Ledger:</strong> Every change in stock (Sales, Supplier Purchases, Customer Cancellation Returns, Manual Adjustments) records an audit entry with opening balance, delta, closing balance, user ID, and reason.</li>
+  </ul>
+
+  <h3>7. Financials, Split Payments & Supplier Management</h3>
+  <ul>
+    <li><strong>Split Payment Support:</strong> Customers frequently pay an advance deposit via UPI/Card at booking and the balance in Cash upon delivery. Each payment is tracked as an individual receipt entry.</li>
+    <li><strong>Store Expense Tracking:</strong> Logs operational overhead (shop rent, lens lab processing bills, utilities, staff salaries) to compute daily net cash flow.</li>
+    <li><strong>Supplier & Vendor Payables:</strong> Tracks vendor purchase orders, incoming stock bills, and outstanding payables with overpayment safeguards.</li>
+  </ul>
+
+  <!-- ==================== PAGE 3: ARCHITECTURE & SYSTEM DESIGN ==================== -->
+  <div class="page-break"></div>
+  <h2>3. System Architecture & Technical Design</h2>
+
+  <div class="avoid-break">
+    <h3>High-Level Architectural Topology</h3>
+    <pre>
++-----------------------------------------------------------------------------------------+
+|                        ELECTRON DESKTOP RUNTIME (Windows x64)                           |
+|                                                                                         |
+|   +------------------------------------+       +------------------------------------+   |
+|   |         REACT 19 FRONTEND          |       |       NODE / EXPRESS BACKEND       |   |
+|   | - Bundled static Vite distribution |       | - Modular monolith on 127.0.0.1    |   |
+|   | - Tailwind CSS & Lucide Icons      |  IPC  | - Zod request validation schemas   |   |
+|   | - Client-side in-memory jsPDF      | & HTTP| - JWT token & session security     |   |
+|   | - Zero external CDN dependencies   | <---> | - Concurrency-safe transactions    |   |
+|   | - wa.me deep-link URL generator    |       | - Deterministic deadlock locks     |   |
+|   +------------------------------------+       +------------------------------------+   |
+|                                                                   |                     |
+|                                                                   v (Local TCP Port)    |
+|                                                +------------------------------------+   |
+|                                                |    BUNDLED LOCAL POSTGRESQL 16     |   |
+|                                                | - Portable cluster in %APPDATA%    |   |
+|                                                | - 18 Relational tables & indexes   |   |
+|                                                | - 14 Versioned SQL migrations      |   |
+|                                                | - Sub-5ms query latency            |   |
+|                                                | - Automated pg_dump/restore drills |   |
+|                                                +------------------------------------+   |
++-----------------------------------------------------------------------------------------+</pre>
+  </div>
+
+  <h3>Architecture Deep Dive: Why These Technologies?</h3>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 22%;">Layer / Technology</th>
+        <th style="width: 38%;">Architectural Role & Implementation Details</th>
+        <th style="width: 40%;">Why Chosen Over Alternatives</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Desktop Runtime:</strong><br>Electron 44.x</td>
+        <td>Wraps the React UI, Node backend, and PostgreSQL binary into a unified, cross-process desktop app packaged via <code>electron-builder</code> into an NSIS installer.</td>
+        <td>Provides genuine native OS integration (auto-spawning child processes, managing local database files in <code>%APPDATA%</code>, hardware access to receipt printers).</td>
+      </tr>
+      <tr>
+        <td><strong>Frontend:</strong><br>React 19, Vite, Tailwind</td>
+        <td>Single-page application bundled with Vite. State managed via React hooks; styled with responsive Tailwind utility classes. Includes client-side PDF synthesis with <code>jsPDF</code>.</td>
+        <td>Near-instant load times (<200ms initial paint), rich component ecosystem, zero CDN requirements, and no remote asset requests during offline mode.</td>
+      </tr>
+      <tr>
+        <td><strong>Backend API:</strong><br>Node.js & Express (ES Modules)</td>
+        <td>Modular monolith structured by domain (<code>customers</code>, <code>prescriptions</code>, <code>orders</code>, <code>products</code>, <code>payments</code>, <code>suppliers</code>). Validates all inputs using Zod.</td>
+        <td>Fast asynchronous I/O, unified JavaScript/ESM ecosystem across client and server, zero context switching for developers, and low memory footprint (~45MB RAM).</td>
+      </tr>
+      <tr>
+        <td><strong>Database:</strong><br>PostgreSQL 16 Embedded</td>
+        <td>Runs a standalone PostgreSQL binary cluster bound dynamically to an ephemeral local port on <code>127.0.0.1</code> with SCRAM-SHA-256 credentials.</td>
+        <td><strong>Why not SQLite?</strong> SQLite lacks true row-level locking (<code>FOR UPDATE</code>), concurrent table writes, stored procedures, session variables, and production enterprise tooling.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Database Design: The 18 Relational Tables</h3>
+  <p>The schema enforces strict referential integrity, foreign key cascades, check constraints, and indexed queries across 18 core tables:</p>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 20%;">Table</th>
+        <th style="width: 45%;">Core Fields & Purpose</th>
+        <th style="width: 35%;">Constraints & Key Indexes</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>stores</code></td>
+        <td>Tenant metadata, shop name, phone, GSTIN, currency (INR), logo byte, GST settings.</td>
+        <td>Primary Key UUID. Multi-tenant ready.</td>
+      </tr>
+      <tr>
+        <td><code>users</code></td>
+        <td>Staff & Owner accounts, hashed password (bcrypt), role (<code>OWNER</code>, <code>STAFF</code>), active status.</td>
+        <td>Unique (<code>email</code>), Foreign Key (<code>store_id</code>).</td>
+      </tr>
+      <tr>
+        <td><code>customers</code></td>
+        <td>Customer code (<code>CUST-1001</code>), full name, phone (optional), age, address, notes, archived_at.</td>
+        <td>Unique (<code>store_id, customer_code</code>), indexed name search.</td>
+      </tr>
+      <tr>
+        <td><code>prescriptions</code></td>
+        <td>Right eye (OD) & Left eye (OS) clinical refractions: SPH, CYL, Axis (0-180), ADD, PD.</td>
+        <td>Check constraint (<code>axis BETWEEN 0 AND 180</code>), composite index on customer & date.</td>
+      </tr>
+      <tr>
+        <td><code>orders</code></td>
+        <td>Order number (<code>ORD-1001</code>), customer FK, prescription FK, status enum, totals, tax, due date.</td>
+        <td>Unique (<code>store_id, order_number</code>), index on status & due date.</td>
+      </tr>
+      <tr>
+        <td><code>order_items</code></td>
+        <td>Line items: product FK, item type (<code>FRAME</code>, <code>LENS</code>, <code>SERVICE</code>), qty, unit price, discount.</td>
+        <td>FK to orders (CASCADE), check (<code>quantity &gt; 0</code>).</td>
+      </tr>
+      <tr>
+        <td><code>payments</code></td>
+        <td>Financial ledger: amount, payment method (<code>CASH</code>, <code>UPI</code>, <code>CARD</code>), reference, timestamp.</td>
+        <td>FK to orders, check (<code>amount &gt; 0</code>), index on paid date.</td>
+      </tr>
+      <tr>
+        <td><code>expenses</code></td>
+        <td>Operational outflows: category (rent, lab fee, salary, refund), amount, note, incurred_at.</td>
+        <td>FK to stores, check (<code>amount &gt; 0</code>), index on incurred date.</td>
+      </tr>
+      <tr>
+        <td><code>products</code></td>
+        <td>Catalog: SKU, brand, model, item type, cost price, selling price, stock quantity.</td>
+        <td>Check constraint (<code>stock_quantity &gt;= 0</code>) prevents negative stock.</td>
+      </tr>
+      <tr>
+        <td><code>inventory_movements</code></td>
+        <td>Audit ledger: delta (+/-), balance after, movement type (<code>SALE</code>, <code>PURCHASE</code>, <code>CANCEL</code>), reason.</td>
+        <td>Immutable append-only ledger for inventory audit trails.</td>
+      </tr>
+      <tr>
+        <td><code>store_counters</code></td>
+        <td>Concurrency-safe atomic sequences for customer codes and order numbers.</td>
+        <td>Atomic <code>GREATEST() + 1</code> with row locks.</td>
+      </tr>
+      <tr>
+        <td><code>suppliers</code> & <code>purchases</code></td>
+        <td>Vendor directory, purchase invoices, line items, payments to suppliers.</td>
+        <td>Overpayment guardrails, inventory receipt hooks.</td>
+      </tr>
+      <tr>
+        <td><code>whatsapp_templates</code></td>
+        <td>Customizable message formats with variable substitution tags (<code>{customer_name}</code>, etc.).</td>
+        <td>Per-store customized messaging configurations.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ==================== PAGE 4: TECHNICAL CHALLENGES & CROWN JEWELS ==================== -->
+  <div class="page-break"></div>
+  <h2>4. Deep Technical Challenges Solved (The "Crown Jewels")</h2>
+
+  <div class="callout">
+    <div class="callout-title">Interview Advice for Engineering Highlights</div>
+    When an interviewer asks, <em>"What was the most challenging technical problem you solved?"</em>, pick any of these 4 challenges. They demonstrate deep knowledge of systems programming, database internals, concurrency, and financial precision.
+  </div>
+
+  <h3>Challenge 1: Embedding Full PostgreSQL Inside an Electron Desktop App</h3>
+  <ul>
+    <li><strong>The Problem:</strong> Traditional desktop apps use SQLite because SQLite is an in-process C-library. But SQLite does not support row-level locks (<code>FOR UPDATE</code>), concurrent writes across multiple transactions, or enterprise-grade backup tooling. We needed PostgreSQL 16 embedded directly inside the desktop distribution without requiring the shop owner to install or configure database servers.</li>
+    <li><strong>The Engineering Solution:</strong>
+      <ul>
+        <li>Packaged portable PostgreSQL 16 binaries (<code>initdb.exe</code>, <code>postgres.exe</code>, <code>pg_ctl.exe</code>, <code>pg_dump.exe</code>, <code>pg_restore.exe</code>) inside the desktop runtime.</li>
+        <li>Implemented a robust process lifecycle manager (<code>local-database.cjs</code>):
+          <ol>
+            <li><strong>Port Conflict Avoidance:</strong> On startup, dynamically queries the OS kernel for a free local TCP port using a temporary net server (avoiding clashes with any existing PostgreSQL instance on port 5432).</li>
+            <li><strong>Automatic Cluster Initialization:</strong> If <code>PG_VERSION</code> doesn't exist in <code>%APPDATA%</code>, executes <code>initdb</code> with SCRAM-SHA-256 authentication and a secure generated password.</li>
+            <li><strong>Crash Recovery & Zombie Reconnection:</strong> Inspects <code>postmaster.pid</code>. If a previous Electron crash left PostgreSQL running, the app verifies the data directory path and attaches to the existing cluster rather than failing.</li>
+            <li><strong>Automated Migrations:</strong> Reads 14 sequential SQL migration files on boot and executes only pending scripts inside transactions.</li>
+          </ol>
+        </li>
+      </ul>
+    </li>
+  </ul>
+
+  <h3>Challenge 2: Sub-Paisa Indian GST & Discount Allocation Algorithm</h3>
+  <ul>
+    <li><strong>The Problem:</strong> In Indian retail, prices quoted to consumers include GST. If a customer buys a frame (&#8377;1,500 with 12% GST) and lenses (&#8377;2,000 with 18% GST) and receives an overall order discount of &#8377;350, standard retail software splits the discount proportionally using floating-point math. This results in fractional paise (e.g., &#8377;149.999), causing the sum of (Taxable Value + CGST + SGST) to differ from the total billed amount by &#8377;0.01 or &#8377;0.02. In tax audits, this causes discrepancies.</li>
+    <li><strong>The Engineering Solution:</strong>
+      <pre>
+// Prices include GST. Allocate the order discount in paise before extracting tax.
+export function calculateBilling(items, orderDiscount = 0, isGstBill = true) {
+  const cents = value => Math.round(Number(value || 0) * 100); // Convert to integer paise
+  const bases = items.map(item => cents(item.quantity * item.unitPrice) - cents(item.discount));
+  const subtotal = bases.reduce((a, b) => a + b, 0);
+  const discount = cents(orderDiscount);
+
+  let remainingDiscount = discount;
+  let remainingBase = subtotal;
+  let taxable = 0, cgst = 0, sgst = 0;
+
+  const computedItems = items.map((item, index) => {
+    // Proportional integer share with remainder subtraction
+    const share = remainingBase ? Math.round(remainingDiscount * bases[index] / remainingBase) : 0;
+    remainingDiscount -= share;
+    remainingBase -= bases[index];
+    
+    const net = bases[index] - share;
+    const gstRate = isGstBill ? Number(item.gstRate || 0) : 0;
+    
+    // Reverse-calculate taxable base and exact CGST / SGST halves
+    const taxableCents = Math.round(net / (1 + gstRate / 100));
+    const cgstCents = Math.round((net - taxableCents) / 2);
+    const sgstCents = net - taxableCents - cgstCents; // Remainder ensures: taxable + cgst + sgst == net
+    
+    taxable += taxableCents; cgst += cgstCents; sgst += sgstCents;
+    return { ...item, taxableValue: taxableCents / 100, cgstAmount: cgstCents / 100, sgstAmount: sgstCents / 100 };
+  });
+
+  return { subtotal: subtotal / 100, discount: discount / 100, totalAmount: (subtotal - discount) / 100,
+           totalTaxableValue: taxable / 100, totalCgst: cgst / 100, totalSgst: sgst / 100 };
+}</pre>
+      By decrementing <code>remainingDiscount</code> and <code>remainingBase</code> as each line item is calculated, rounding remainders are consumed sequentially, guaranteeing 100% mathematical equality to the last paisa.
+    </li>
+  </ul>
+
+  <h3>Challenge 3: Concurrency, Deadlock Prevention & Atomic Stock Cancellation</h3>
+  <ul>
+    <li><strong>The Problem:</strong> When cancelling an order, stock must be returned to inventory, order status changed to <code>CANCELLED</code>, and a refund recorded. In a multi-item order, if two transactions simultaneously try to update stock on overlapping products (Transaction A updates Frame #1 then Frame #2; Transaction B updates Frame #2 then Frame #1), PostgreSQL triggers a cyclic <strong>deadlock</strong> error.</li>
+    <li><strong>The Engineering Solution:</strong>
+      <ul>
+        <li><strong>Deterministic Lock Ordering:</strong> Before acquiring row locks or updating inventory, product IDs are sorted alphanumerically:
+          <pre>for (const item of [...order.items].sort((a, b) => String(a.product_id).localeCompare(String(b.product_id)))) {
+  await client.query('UPDATE products SET stock_quantity = stock_quantity + $1 WHERE id = $2', [item.quantity, item.product_id]);
+}</pre>
+          Because every transaction acquires product row locks in the exact same global order, circular wait conditions are mathematically impossible.
+        </li>
+        <li><strong>Audit Session Variables:</strong> Set PostgreSQL transaction-local session state (<code>SELECT set_config('app.stock_reason', 'CANCEL_ORDER ' || order_number, true)</code>) so underlying database triggers automatically record the exact cancellation context into <code>inventory_movements</code>.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h3>Challenge 4: Disaster Recovery Verification with 18-Table Row Parity</h3>
+  <ul>
+    <li><strong>The Problem:</strong> "Backups that haven't been tested for restoration are not backups." Most businesses create <code>.dump</code> files but never test restoring them until catastrophic failure strikes.</li>
+    <li><strong>The Engineering Solution:</strong> Built an automated backup and restore test suite (<code>npm run db:restore:verify</code>). It creates a full binary <code>pg_dump</code>, spawns an isolated temporary PostgreSQL database, restores the dump into it, and programmatically queries all <strong>18 public tables</strong>, verifying that every single column, UUID, and row count matches with 100% parity before reporting success.</li>
+  </ul>
+
+  <!-- ==================== PAGE 5: INTERVIEW DELIVERY PLAYBOOK ==================== -->
+  <div class="page-break"></div>
+  <h2>5. Step-by-Step Interview Delivery Guide (How to Pitch & Explain)</h2>
+
+  <h3>1. The 30-Second Elevator Pitch (For Introductions)</h3>
+  <div class="callout-pitch">
+    "I built <strong>Optics CRM</strong>, a production-grade, 100% offline-first desktop ERP and POS system engineered for optical retail stores. It combines clinical optometry refraction records with custom lens lab order tracking, GST billing, and inventory control. I engineered it using <strong>Electron, React 19, Node.js/Express, and an embedded PostgreSQL 16 cluster</strong> that runs entirely on local store hardware. It processes over 100 walk-in customers daily, reduced checkout time from 5 minutes to under 90 seconds, and eliminated all recurring monthly cloud and WhatsApp messaging costs."
+  </div>
+
+  <h3>2. The 2-Minute Architectural Walkthrough (When Asked "How Does It Work?")</h3>
+  <ol>
+    <li><strong>Start with the Persona & Entry Point:</strong> <em>"When a customer walks in, the store optometrist enters their clinical eye refraction parameters (OD/OS, Spherical, Cylindrical, Axis, and Pupillary Distance). This creates an immutable clinical prescription record."</em></li>
+    <li><strong>Move to POS & Order Creation:</strong> <em>"Next, the cashier selects a spectacle frame from inventory and adds custom prescription lenses. The system calculates Indian GST-inclusive prices and applies discounts using a custom integer-paise allocation algorithm to eliminate round-off discrepancies."</em></li>
+    <li><strong>Explain the Lab Workflow:</strong> <em>"Because spectacles require lab edging and fitting, the order enters a multi-stage state machine (Pending &rarr; In Lab &rarr; Ready for Pickup &rarr; Delivered). Customers pay an advance deposit at booking and the remaining balance upon delivery."</em></li>
+    <li><strong>Highlight the Offline Engine:</strong> <em>"Under the hood, everything runs locally. We embedded a full PostgreSQL 16 engine inside the Electron shell. The frontend talks to a local Express monolith on 127.0.0.1. Latency is sub-5 milliseconds, and the entire shop remains fully functional even during total internet blackouts."</em></li>
+    <li><strong>Finish with Customer Communication:</strong> <em>"For receipts and pickup notices, instead of paying Meta recurring API fees, we generate instant, pre-filled WhatsApp deep-links via <code>wa.me</code> and render branded PDF invoices in-memory in under 100ms using <code>jsPDF</code>."</em></li>
+  </ol>
+
+  <h3>3. How to Answer Code Questions When You Don't Know Every Line</h3>
+  <div class="callout callout-warning">
+    <div class="callout-title">The Senior Engineering Redirect Strategy</div>
+    <p>Never panic, guess, or say <em>"I don't know"</em>. In professional development, engineers write modular code following systematic patterns. If an interviewer asks about a specific method or internal utility you don't recall offhand, use this structure:</p>
+    <ol>
+      <li><strong>Acknowledge the layer:</strong> <em>"I don't recall the exact internal variable names of that specific helper from memory, but I can walk you through the exact architectural pattern and data flow."</em></li>
+      <li><strong>Explain the pattern:</strong> <em>"Throughout the codebase, we enforce a strict 3-tier modular pattern: the Controller parses and validates input schemas with Zod; the Service layer enforces business rules and state machines; and the Repository layer handles transactional SQL execution with row locks."</em></li>
+      <li><strong>Offer pseudocode:</strong> <em>"If you'd like, I can write out the pseudocode on the whiteboard/editor right now to show how that transaction guarantees consistency."</em></li>
+    </ol>
+  </div>
+
+  <!-- ==================== PAGE 6: INTERVIEW PROBABLE QUESTIONS & ANSWERS ==================== -->
+  <div class="page-break"></div>
+  <h2>6. Comprehensive Interview Questions & Model Answers</h2>
+
+  <div class="qa-box">
+    <div class="qa-header"><span class="tag tag-arch">Architecture</span> Why did you build an Electron desktop app instead of a standard Web SaaS?</div>
+    <div class="qa-body">
+      <strong>Answer:</strong> "Retail optical counters cannot tolerate network latency or downtime. If an internet provider has an outage, a Web SaaS becomes a blank white screen—halting store billing and causing customer walkouts. By packaging with Electron, the entire application runtime, Node.js API, and PostgreSQL database live locally on the store's hardware. Queries execute in under 5ms, receipt printers connect natively via OS spoolers, and the business achieves 100% operational continuity with zero monthly cloud hosting costs."
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <div class="qa-header"><span class="tag tag-db">Database</span> Why did you choose embedded PostgreSQL instead of SQLite?</div>
+    <div class="qa-body">
+      <strong>Answer:</strong> "SQLite is great for simple mobile or single-user desktop apps, but Optics CRM manages 18 relational tables with complex constraints, financial ledgers, and concurrent transactions. PostgreSQL provides critical enterprise features:
+      <ul>
+        <li><strong>Row-Level Locking:</strong> Using <code>SELECT ... FOR UPDATE</code> during order state transitions and stock deduction prevents concurrent race conditions. SQLite only offers database-level locking.</li>
+        <li><strong>Transaction-Scoped Session Variables:</strong> We use <code>set_config('app.stock_reason', ...)</code> so audit triggers know the exact business reason for inventory movements.</li>
+        <li><strong>Crash Recovery & Tooling:</strong> PostgreSQL's Write-Ahead Logging (WAL) ensures zero data corruption on sudden power loss, and native <code>pg_dump</code> / <code>pg_restore</code> enables production backup drills."</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <div class="qa-header"><span class="tag tag-concur">Concurrency</span> How does the system handle concurrent order cancellations without causing database deadlocks?</div>
+    <div class="qa-body">
+      <strong>Answer:</strong> "When an order with multiple items is cancelled, stock must be added back to several rows in the <code>products</code> table. If two concurrent transactions attempt to lock the same products in different orders (e.g., Transaction 1 locks Product A then B; Transaction 2 locks Product B then A), PostgreSQL throws a deadlock. To eliminate this, our order service sorts all product IDs deterministically (alphanumerically) before acquiring locks and executing updates. Because every process requests locks in the exact same global order, circular wait conditions are impossible."
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <div class="qa-header"><span class="tag tag-biz">Business Logic</span> What prevents cash leakage and inventory fraud at the retail counter?</div>
+    <div class="qa-body">
+      <strong>Answer:</strong> "We built two database-enforced safeguards:
+      <ol>
+        <li><strong>Uncollected Balance Protection:</strong> The order service enforces a state machine rule: an order can never transition to <code>DELIVERED</code> if <code>balance_due &gt; 0</code>. Cashiers cannot bypass the UI to mark an order completed without collecting the balance.</li>
+        <li><strong>Non-Negative Stock Constraints:</strong> The <code>products</code> table has a <code>CHECK (stock_quantity &gt;= 0)</code> constraint. Staff cannot sell phantom stock, and all inventory adjustments are audited in an append-only <code>inventory_movements</code> ledger."</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <div class="qa-header"><span class="tag tag-arch">System Design</span> How did you achieve zero-cost WhatsApp messaging without the Meta Cloud API?</div>
+    <div class="qa-body">
+      <strong>Answer:</strong> "The Meta WhatsApp Cloud API charges per conversation template and requires webhook servers, credit cards, and verified business managers. For a local optical store, that adds unnecessary friction and monthly cost. We leveraged the universal <code>wa.me</code> protocol. Our frontend sanitizes the patient's phone number, URL-encodes a clean tax invoice summary or pickup alert, and triggers <code>https://wa.me/&lt;phone&gt;?text=&lt;encoded_msg&gt;</code>. This launches WhatsApp Web or WhatsApp Desktop with the pre-filled message, allowing staff to hit 'Send' in one click for &#8377;0 recurring cost."
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <div class="qa-header"><span class="tag tag-db">Disaster Recovery</span> What happens if the store computer's hard drive crashes? How is data protected?</div>
+    <div class="qa-body">
+      <strong>Answer:</strong> "We engineered an automated backup and restore system:
+      <ul>
+        <li>On application boot and daily at closing, the system runs <code>pg_dump</code> in custom compressed format to an isolated backup folder.</li>
+        <li>Store owners can export the backup file to a USB thumb drive or cloud drive (Google Drive/OneDrive) with one click.</li>
+        <li>Most importantly, our test harness includes an automated restore verification drill: it restores the dump into a temporary test cluster and compares complete table contents and row parity across all 18 tables, guaranteeing that the backup is 100% restorable."</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="qa-box">
+    <div class="qa-header"><span class="tag tag-arch">Scalability</span> If the store owner opens 5 more branches tomorrow, how would you scale this architecture?</div>
+    <div class="qa-body">
+      <strong>Answer:</strong> "Because the backend is already architected as a clean modular monolith with tenant-scoped tables (every table has <code>store_id</code> foreign keys and scoped sequences like <code>store_counters</code>), scaling can follow a hybrid distributed approach:
+      <ul>
+        <li><strong>Local Edge + Cloud Replication:</strong> Keep the local Electron app in each store so cashiers can bill offline without internet reliance.</li>
+        <li><strong>Change Data Capture (CDC) Sync:</strong> Implement a background sync worker using PostgreSQL logical replication or an event-based outbox pattern. When internet is active, local store events sync to a central cloud PostgreSQL cluster for multi-store analytics, centralized supplier ordering, and chain-wide reporting."</li>
+      </ul>
+    </div>
+  </div>
+
+</body>
+</html>

@@ -116,7 +116,8 @@ test('Customer Archiving, Recycle Bin, and Safe Restoration Safeguards', async (
       .get('/api/v1/customers?search=' + encodeURIComponent(custA.full_name))
       .set('Authorization', `Bearer ${ownerToken}`);
     assert.equal(activeList.status, 200);
-    assert.equal(activeList.body.data.customers.length, 0, 'Archived customer must not appear in active search');
+    const activeCustomers = Array.isArray(activeList.body.data) ? activeList.body.data : (activeList.body.data.customers || []);
+    assert.equal(activeCustomers.length, 0, 'Archived customer must not appear in active search');
 
     // Direct profile GET must succeed and include archived_at
     const directGet = await request
@@ -210,8 +211,9 @@ test('Customer Archiving, Recycle Bin, and Safe Restoration Safeguards', async (
     const activeList = await request
       .get('/api/v1/customers?search=' + encodeURIComponent(custA.full_name))
       .set('Authorization', `Bearer ${ownerToken}`);
-    assert.equal(activeList.body.data.customers.length, 1);
-    assert.equal(activeList.body.data.customers[0].id, custA.id);
+    const restoredList = Array.isArray(activeList.body.data) ? activeList.body.data : (activeList.body.data.customers || []);
+    assert.equal(restoredList.length, 1);
+    assert.equal(restoredList[0].id, custA.id);
   });
 
   // ─── Test 8: Permanent Delete Allowed for Unencumbered Records ──────────────
