@@ -18,6 +18,7 @@ import purchaseRoutes from '../modules/purchases/purchase.routes.js';
 import loyaltyRoutes from '../modules/loyalty/loyalty.routes.js';
 import warrantyRoutes from '../modules/warranties/warranty.routes.js';
 import outboxRoutes from '../modules/outbox/outbox.routes.js';
+import dailyStockExpenseRoutes from '../modules/daily_stock_expenses/dailyStockExpense.routes.js';
 
 const router = Router();
 
@@ -55,5 +56,6 @@ router.use('/api/v1/purchases', purchaseRoutes);
 router.use('/api/v1/loyalty', loyaltyRoutes);
 router.use('/api/v1/warranties', warrantyRoutes);
 router.use('/api/v1/outbox', outboxRoutes);
+router.use('/api/v1/daily-stock-expenses', dailyStockExpenseRoutes);
 
 export default router;

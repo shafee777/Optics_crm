@@ -19,12 +19,14 @@ import {
   CheckCircle2,
   Phone,
   Mail,
-  FileText
+  FileText,
+  Receipt
 } from 'lucide-react';
 import ProductModal from './ProductModal.jsx';
 import SupplierModal from '../inventory/SupplierModal.jsx';
 import NewPurchaseOrderModal from '../inventory/NewPurchaseOrderModal.jsx';
 import RecordSupplierPaymentModal from '../inventory/RecordSupplierPaymentModal.jsx';
+import DailyStockExpensesTab from '../inventory/DailyStockExpensesTab.jsx';
 
 export default function ProductsPage() {
   const [movements, setMovements] = useState(null);
@@ -266,6 +268,18 @@ export default function ProductsPage() {
         >
           <Building2 className="w-4 h-4" />
           Suppliers & Labs ({suppliers.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('daily-stock-expenses')}
+          className={`px-5 py-3 text-xs font-bold border-b-2 flex items-center gap-2 transition ${
+            activeTab === 'daily-stock-expenses'
+              ? 'border-[#28766B] text-[#28766B]'
+              : 'border-transparent text-[#66746F] hover:text-[#202D2B]'
+          }`}
+        >
+          <Receipt className="w-4 h-4" />
+          Daily Stock Expenses (Lens & Frames)
         </button>
       </div>
 
@@ -649,6 +663,9 @@ export default function ProductsPage() {
           </div>
         </div>
       )}
+
+      {/* TAB 4: DAILY STOCK EXPENSES (LENS & FRAMES) */}
+      {activeTab === 'daily-stock-expenses' && <DailyStockExpensesTab />}
 
       {/* Product Modal */}
       <ProductModal
